@@ -1,0 +1,187 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Difficulty, GameType } from '../constants/games';
+
+export interface GameStats {
+  played: number;
+  won: number;
+  bestTime: number;
+}
+
+export interface UserProgress {
+  totalPoints: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastPlayedDate: string;
+  gamesPlayed: number;
+  gamesWon: number;
+  gameStats: Record<GameType, GameStats>;
+  weeklyPoints: number[];
+}
+
+export interface AppLockEntry {
+  appName: string;
+  bundleId: string;
+  isLocked: boolean;
+}
+
+export interface Settings {
+  enabledGames: GameType[];
+  difficulty: Difficulty;
+  challengesRequired: number;
+  activeHoursStart: number;
+  activeHoursEnd: number;
+  hapticFeedback: boolean;
+  soundEnabled: boolean;
+  screenTimeAuthorized: boolean;
+  screenTimeAppCount: number;
+  screenTimeScheduleEnabled: boolean;
+}
+
+interface AppState {
+  onboardingComplete: boolean;
+  userName: string;
+  userStruggles: string[];
+  isPremium: boolean;
+  subscriptionPlan: string | null;
+  demoGameScore: number | null;
+  progress: UserProgress;
+  lockedApps: AppLockEntry[];
+  settings: Settings;
+
+  completeOnboarding: () => void;
+  setUserName: (name: string) => void;
+  setUserStruggles: (struggles: string[]) => void;
+  setSubscription: (plan: string) => void;
+  clearSubscription: () => void;
+  setDemoGameScore: (score: number) => void;
+  addPoints: (points: number) => void;
+  recordGame: (game: GameType, won: boolean, timeTaken: number) => void;
+  updateSettings: (partial: Partial<Settings>) => void;
+  toggleAppLock: (appName: string, bundleId: string) => void;
+}
+
+const defaultGameStats: Record<GameType, GameStats> = {
+  math: { played: 0, won: 0, bestTime: 999 },
+  memory: { played: 0, won: 0, bestTime: 999 },
+  pattern: { played: 0, won: 0, bestTime: 999 },
+  wordscramble: { played: 0, won: 0, bestTime: 999 },
+  speedread: { played: 0, won: 0, bestTime: 999 },
+  reaction: { played: 0, won: 0, bestTime: 999 },
+  colormatch: { played: 0, won: 0, bestTime: 999 },
+};
+
+export const useStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      onboardingComplete: false,
+      userName: '',
+      userStruggles: [],
+      isPremium: false,
+      subscriptionPlan: null,
+      demoGameScore: null,
+      progress: {
+        totalPoints: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastPlayedDate: '',
+        gamesPlayed: 0,
+        gamesWon: 0,
+        gameStats: { ...defaultGameStats },
+        weeklyPoints: [0, 0, 0, 0, 0, 0, 0],
+      },
+      lockedApps: [],
+      settings: {
+        enabledGames: ['math', 'memory', 'pattern', 'wordscramble', 'speedread', 'reaction', 'colormatch'],
+        difficulty: 'medium',
+        challengesRequired: 1,
+        activeHoursStart: 6,
+        activeHoursEnd: 23,
+        hapticFeedback: true,
+        soundEnabled: true,
+        screenTimeAuthorized: false,
+        screenTimeAppCount: 0,
+        screenTimeScheduleEnabled: false,
+      },
+
+      completeOnboarding: () => set({ onboardingComplete: true }),
+
+      setUserName: (name) => set({ userName: name }),
+
+      setUserStruggles: (struggles) => set({ userStruggles: struggles }),
+
+      setSubscription: (plan) =>
+        set({ isPremium: true, subscriptionPlan: plan }),
+
+      clearSubscription: () =>
+        set({ isPremium: false, subscriptionPlan: null }),
+
+      setDemoGameScore: (score) => set({ demoGameScore: score }),
+
+      addPoints: (points) => {
+        const { progress } = get();
+        const today = new Date().toISOString().split('T')[0];
+        const newProgress = { ...progress };
+        newProgress.totalPoints += points;
+
+        const dayOfWeek = new Date().getDay();
+        const weekly = [...newProgress.weeklyPoints];
+        weekly[dayOfWeek] += points;
+        newProgress.weeklyPoints = weekly;
+
+        if (newProgress.lastPlayedDate !== today) {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          if (newProgress.lastPlayedDate === yesterdayStr) {
+            newProgress.currentStreak += 1;
+          } else {
+            newProgress.currentStreak = 1;
+          }
+          newProgress.lastPlayedDate = today;
+        }
+        if (newProgress.currentStreak > newProgress.longestStreak) {
+          newProgress.longestStreak = newProgress.currentStreak;
+        }
+        set({ progress: newProgress });
+      },
+
+      recordGame: (game, won, timeTaken) => {
+        const { progress } = get();
+        const newProgress = { ...progress };
+        const stats = { ...newProgress.gameStats[game] };
+        stats.played += 1;
+        if (won) {
+          stats.won += 1;
+          if (timeTaken < stats.bestTime) stats.bestTime = timeTaken;
+        }
+        newProgress.gameStats = { ...newProgress.gameStats, [game]: stats };
+        newProgress.gamesPlayed += 1;
+        if (won) newProgress.gamesWon += 1;
+        set({ progress: newProgress });
+      },
+
+      updateSettings: (partial) => {
+        const { settings } = get();
+        set({ settings: { ...settings, ...partial } });
+      },
+
+      toggleAppLock: (appName, bundleId) => {
+        const { lockedApps } = get();
+        const apps = [...lockedApps];
+        const idx = apps.findIndex((a) => a.bundleId === bundleId);
+        if (idx >= 0) {
+          apps[idx] = { ...apps[idx], isLocked: !apps[idx].isLocked };
+        } else {
+          apps.push({ appName, bundleId, isLocked: true });
+        }
+        set({ lockedApps: apps });
+      },
+    }),
+    {
+      name: 'brainlock-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);
