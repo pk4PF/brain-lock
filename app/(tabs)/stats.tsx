@@ -7,15 +7,13 @@ import { GAMES, GameType } from '../../src/constants/games';
 import { GlowCard, StatCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
-
-const AMBER = '#F5A623';
-const LIGHT_BG = '#F8F9FB';
-const BORDER = '#E5E7EB';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 
 function ProgressChart({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
   const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const today = new Date().getDay();
+  const { colors } = useThemeColors();
 
   return (
     <XStack justifyContent="space-between" alignItems="flex-end" height={110} gap={6} paddingTop={10}>
@@ -30,16 +28,16 @@ function ProgressChart({ data }: { data: number[] }) {
               justifyContent="flex-end"
               borderRadius={6}
               overflow="hidden"
-              backgroundColor="#F0F1F5"
+              backgroundColor={colors.cardAlt}
             >
               <View
                 height={`${pct}%`}
                 borderRadius={6}
-                backgroundColor={isToday ? AMBER : 'rgba(245,166,35,0.3)'}
+                backgroundColor={isToday ? colors.accent : 'rgba(245,166,35,0.3)'}
               />
             </YStack>
             <Text
-              color={isToday ? AMBER : '#9CA3AF'}
+              color={isToday ? colors.accent : colors.muted}
               fontSize={11}
               fontWeight={isToday ? '700' : '500'}
             >
@@ -55,12 +53,13 @@ function ProgressChart({ data }: { data: number[] }) {
 export default function StatsScreen() {
   const { progress } = useStore();
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
   const winRate = progress.gamesPlayed > 0
     ? Math.round((progress.gamesWon / progress.gamesPlayed) * 100)
     : 0;
 
   return (
-    <YStack flex={1} backgroundColor={LIGHT_BG}>
+    <YStack flex={1} backgroundColor={colors.background}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
@@ -73,7 +72,7 @@ export default function StatsScreen() {
         {/* Header */}
         <FadeInView delay={0}>
           <Text
-            color="#1A1A2E"
+            color={colors.text}
             fontSize={28}
             fontWeight="700"
             letterSpacing={-0.5}
@@ -87,40 +86,40 @@ export default function StatsScreen() {
         <FadeInView delay={100}>
           <XStack gap={10} marginBottom={10}>
             <StatCard highlighted>
-              <Flame size={20} color={AMBER} />
-              <Text color="#1A1A2E" fontSize={24} fontWeight="700">
+              <Flame size={20} color={colors.accent} />
+              <Text color={colors.text} fontSize={24} fontWeight="700">
                 {progress.currentStreak}
               </Text>
-              <Text color="#9CA3AF" fontSize={11} fontWeight="500">
+              <Text color={colors.muted} fontSize={11} fontWeight="500">
                 Current Streak
               </Text>
             </StatCard>
             <StatCard>
-              <Target size={20} color={AMBER} />
-              <Text color="#1A1A2E" fontSize={24} fontWeight="700">
+              <Target size={20} color={colors.accent} />
+              <Text color={colors.text} fontSize={24} fontWeight="700">
                 {progress.longestStreak}
               </Text>
-              <Text color="#9CA3AF" fontSize={11} fontWeight="500">
+              <Text color={colors.muted} fontSize={11} fontWeight="500">
                 Best Streak
               </Text>
             </StatCard>
           </XStack>
           <XStack gap={10} marginBottom={28}>
             <StatCard>
-              <Gamepad2 size={20} color={AMBER} />
-              <Text color="#1A1A2E" fontSize={24} fontWeight="700">
+              <Gamepad2 size={20} color={colors.accent} />
+              <Text color={colors.text} fontSize={24} fontWeight="700">
                 {progress.gamesPlayed}
               </Text>
-              <Text color="#9CA3AF" fontSize={11} fontWeight="500">
+              <Text color={colors.muted} fontSize={11} fontWeight="500">
                 Games Played
               </Text>
             </StatCard>
             <StatCard>
-              <TrendingUp size={20} color={AMBER} />
-              <Text color="#1A1A2E" fontSize={24} fontWeight="700">
+              <TrendingUp size={20} color={colors.accent} />
+              <Text color={colors.text} fontSize={24} fontWeight="700">
                 {winRate}%
               </Text>
-              <Text color="#9CA3AF" fontSize={11} fontWeight="500">
+              <Text color={colors.muted} fontSize={11} fontWeight="500">
                 Win Rate
               </Text>
             </StatCard>
@@ -143,7 +142,7 @@ export default function StatsScreen() {
             <SectionTitle title="Game Breakdown" />
             {(Object.keys(GAMES) as GameType[]).map((key) => {
               const game = GAMES[key];
-              const stats = progress.gameStats[key];
+              const stats = progress.gameStats[key] ?? { played: 0, won: 0, bestTime: 999 };
               const rate = stats.played > 0
                 ? Math.round((stats.won / stats.played) * 100)
                 : 0;
@@ -167,10 +166,10 @@ export default function StatsScreen() {
                       />
                     </YStack>
                     <YStack flex={1} gap={6}>
-                      <Text color="#1A1A2E" fontSize={15} fontWeight="600">
+                      <Text color={colors.text} fontSize={15} fontWeight="600">
                         {game.title}
                       </Text>
-                      <YStack height={4} borderRadius={2} backgroundColor="#F0F1F5" overflow="hidden">
+                      <YStack height={4} borderRadius={2} backgroundColor={colors.cardAlt} overflow="hidden">
                         <View
                           height="100%"
                           width={`${Math.max(rate, 2)}%`}
@@ -180,10 +179,10 @@ export default function StatsScreen() {
                       </YStack>
                     </YStack>
                     <YStack alignItems="flex-end">
-                      <Text color="#1A1A2E" fontSize={17} fontWeight="700">
+                      <Text color={colors.text} fontSize={17} fontWeight="700">
                         {rate}%
                       </Text>
-                      <Text color="#9CA3AF" fontSize={12}>
+                      <Text color={colors.muted} fontSize={12}>
                         {stats.played} played
                       </Text>
                     </YStack>
@@ -201,18 +200,18 @@ export default function StatsScreen() {
               width={52}
               height={52}
               borderRadius={26}
-              backgroundColor="#FFFFFF"
+              backgroundColor={colors.card}
               borderWidth={1}
-              borderColor={BORDER}
+              borderColor={colors.border}
               justifyContent="center"
               alignItems="center"
             >
-              <Sparkles size={22} color="#D1D5DB" />
+              <Sparkles size={22} color={colors.muted} />
             </YStack>
-            <Text color="#6B7280" fontSize={17} fontWeight="600">
+            <Text color={colors.secondary} fontSize={17} fontWeight="600">
               No games played yet
             </Text>
-            <Text color="#9CA3AF" fontSize={14}>
+            <Text color={colors.muted} fontSize={14}>
               Start training to see your stats
             </Text>
           </YStack>

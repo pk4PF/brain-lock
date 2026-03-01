@@ -4,7 +4,10 @@ import Purchases, {
     type PurchasesPackage,
     type CustomerInfo,
 } from 'react-native-purchases';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
+
+// Suppress expected RevenueCat error when products aren't configured yet
+LogBox.ignoreLogs([/\[RevenueCat\].*Error fetching offerings/]);
 
 // Replace these with your actual RevenueCat API keys from the dashboard
 const API_KEYS = {
@@ -19,7 +22,7 @@ export async function initRevenueCat(): Promise<void> {
     }
 
     if (__DEV__) {
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        Purchases.setLogLevel(LOG_LEVEL.WARN);
     }
 
     await Purchases.configure({
@@ -29,10 +32,21 @@ export async function initRevenueCat(): Promise<void> {
 
 export async function getOfferings(): Promise<PurchasesOffering | null> {
     try {
+        console.log('[DEBUG] (IS $) Fetching RevenueCat offerings...');
         const offerings = await Purchases.getOfferings();
+        console.log('[DEBUG] (NO $) Offerings Response:', {
+            hasCurrentOffering: !!offerings.current,
+            offeringId: offerings.current?.identifier,
+            availablePackages: offerings.current?.availablePackages.map(p => ({
+                id: p.identifier,
+                storeProductId: p.product.identifier,
+                isStoreProductValid: !!p.product
+            })) || [],
+            allOfferingsCount: Object.keys(offerings.all).length
+        });
         return offerings.current;
     } catch (error) {
-        console.warn('Failed to fetch RevenueCat offerings:', error);
+        console.warn('[DEBUG] (NO $) Failed to fetch RevenueCat offerings:', error);
         return null;
     }
 }

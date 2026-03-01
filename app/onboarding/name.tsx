@@ -16,7 +16,7 @@ import { FontSize, FontFamily, Spacing, BorderRadius } from '../../src/constants
 import { useStore } from '../../src/store/useStore';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
-import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
+
 
 const AMBER = '#F5A623';
 
@@ -90,7 +90,6 @@ export default function NameScreen() {
 
     return (
         <OnboardingLayout>
-            <OnboardingBackButton />
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <KeyboardAvoidingView
                     style={styles.content}

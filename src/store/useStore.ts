@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Difficulty, GameType } from '../constants/games';
+import { GameType } from '../constants/games';
+import { ThemeMode } from '../constants/theme';
 
 export interface GameStats {
   played: number;
@@ -28,7 +29,6 @@ export interface AppLockEntry {
 
 export interface Settings {
   enabledGames: GameType[];
-  difficulty: Difficulty;
   challengesRequired: number;
   activeHoursStart: number;
   activeHoursEnd: number;
@@ -37,6 +37,8 @@ export interface Settings {
   screenTimeAuthorized: boolean;
   screenTimeAppCount: number;
   screenTimeScheduleEnabled: boolean;
+  activeDays: boolean[]; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  theme: ThemeMode;
 }
 
 interface AppState {
@@ -49,6 +51,9 @@ interface AppState {
   progress: UserProgress;
   lockedApps: AppLockEntry[];
   settings: Settings;
+  dailyGamesCompleted: number;
+  dailyDate: string;
+  appsUnlocked: boolean;
 
   completeOnboarding: () => void;
   setUserName: (name: string) => void;
@@ -58,6 +63,8 @@ interface AppState {
   setDemoGameScore: (score: number) => void;
   addPoints: (points: number) => void;
   recordGame: (game: GameType, won: boolean, timeTaken: number) => void;
+  completeDailyGame: () => void;
+  checkDailyReset: () => void;
   updateSettings: (partial: Partial<Settings>) => void;
   toggleAppLock: (appName: string, bundleId: string) => void;
 }
@@ -65,7 +72,7 @@ interface AppState {
 const defaultGameStats: Record<GameType, GameStats> = {
   math: { played: 0, won: 0, bestTime: 999 },
   memory: { played: 0, won: 0, bestTime: 999 },
-  pattern: { played: 0, won: 0, bestTime: 999 },
+
   wordscramble: { played: 0, won: 0, bestTime: 999 },
   speedread: { played: 0, won: 0, bestTime: 999 },
   reaction: { played: 0, won: 0, bestTime: 999 },
@@ -92,9 +99,11 @@ export const useStore = create<AppState>()(
         weeklyPoints: [0, 0, 0, 0, 0, 0, 0],
       },
       lockedApps: [],
+      dailyGamesCompleted: 0,
+      dailyDate: '',
+      appsUnlocked: false,
       settings: {
-        enabledGames: ['math', 'memory', 'pattern', 'wordscramble', 'speedread', 'reaction', 'colormatch'],
-        difficulty: 'medium',
+        enabledGames: ['math', 'memory', 'wordscramble', 'speedread', 'reaction', 'colormatch'],
         challengesRequired: 1,
         activeHoursStart: 6,
         activeHoursEnd: 23,
@@ -103,6 +112,8 @@ export const useStore = create<AppState>()(
         screenTimeAuthorized: false,
         screenTimeAppCount: 0,
         screenTimeScheduleEnabled: false,
+        activeDays: [true, true, true, true, true, true, true],
+        theme: 'system',
       },
 
       completeOnboarding: () => set({ onboardingComplete: true }),
@@ -160,6 +171,32 @@ export const useStore = create<AppState>()(
         newProgress.gamesPlayed += 1;
         if (won) newProgress.gamesWon += 1;
         set({ progress: newProgress });
+      },
+
+      completeDailyGame: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const { dailyDate, dailyGamesCompleted, settings: s } = get();
+        const count = dailyDate === today ? dailyGamesCompleted + 1 : 1;
+        const unlocked = count >= s.challengesRequired;
+        set({ dailyGamesCompleted: count, dailyDate: today, appsUnlocked: unlocked });
+        if (unlocked) {
+          try {
+            const { ScreenTime } = require('screen-time-module');
+            ScreenTime.removeShieldNow().catch(() => {});
+          } catch {}
+        }
+      },
+
+      checkDailyReset: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const { dailyDate, appsUnlocked } = get();
+        if (dailyDate !== today) {
+          set({ dailyGamesCompleted: 0, dailyDate: today, appsUnlocked: false });
+          try {
+            const { ScreenTime } = require('screen-time-module');
+            ScreenTime.applyShieldNow().catch(() => {});
+          } catch {}
+        }
       },
 
       updateSettings: (partial) => {

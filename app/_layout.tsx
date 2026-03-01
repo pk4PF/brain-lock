@@ -4,8 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { TamaguiProvider } from 'tamagui';
 import tamaguiConfig from '../tamagui.config';
 import { useStore } from '../src/store/useStore';
-import { Colors } from '../src/constants/theme';
+import { useThemeColors } from '../src/hooks/useThemeColors';
 import { initRevenueCat } from '../src/services/revenueCat';
+import { preloadSounds } from '../src/utils/sounds';
 import {
   useFonts,
   Inter_400Regular,
@@ -43,6 +44,12 @@ export default function RootLayout() {
       console.warn('RevenueCat init failed:', err)
     );
 
+    // Reset daily unlock if it's a new day
+    useStore.getState().checkDailyReset();
+
+    // Preload sound effects (non-blocking)
+    preloadSounds();
+
     return () => unsub();
   }, []);
 
@@ -56,13 +63,19 @@ export default function RootLayout() {
 
   if (!ready) return null;
 
+  return <ThemedApp />;
+}
+
+function ThemedApp() {
+  const { colors, isDark } = useThemeColors();
+
   return (
-    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
-      <StatusBar style="dark" />
+    <TamaguiProvider config={tamaguiConfig} defaultTheme={isDark ? 'dark' : 'light'}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
+          contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
         }}
       />

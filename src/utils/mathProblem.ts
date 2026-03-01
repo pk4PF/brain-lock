@@ -8,13 +8,16 @@ export interface Problem {
   options: number[];
 }
 
-export function generateProblem(difficulty: 'easy' | 'medium' | 'hard'): Problem {
-  const ops: Operation[] =
-    difficulty === 'easy' ? ['+', '-'] : ['+', '-', '×'];
+/** Generate a math problem that scales with the round number (1-based). */
+export function generateProblem(round: number): Problem {
+  // Rounds 1-3: add/subtract up to 20
+  // Rounds 4-6: add/subtract up to 50, introduce multiply
+  // Rounds 7+:  add/subtract up to 100, bigger multiplies
+  const ops: Operation[] = round <= 3 ? ['+', '-'] : ['+', '-', '×'];
   const op = ops[Math.floor(Math.random() * ops.length)];
+  const max = round <= 3 ? 20 : round <= 6 ? 50 : 100;
 
   let a: number, b: number, answer: number;
-  const max = difficulty === 'easy' ? 20 : difficulty === 'medium' ? 50 : 100;
 
   switch (op) {
     case '+':
@@ -28,8 +31,8 @@ export function generateProblem(difficulty: 'easy' | 'medium' | 'hard'): Problem
       answer = a - b;
       break;
     case '×':
-      a = Math.floor(Math.random() * (difficulty === 'hard' ? 15 : 12)) + 2;
-      b = Math.floor(Math.random() * (difficulty === 'hard' ? 15 : 12)) + 2;
+      a = Math.floor(Math.random() * (round >= 7 ? 15 : 12)) + 2;
+      b = Math.floor(Math.random() * (round >= 7 ? 15 : 12)) + 2;
       answer = a * b;
       break;
     default:

@@ -1,8 +1,8 @@
-import { TouchableOpacity, ScrollView, Image } from 'react-native';
+import { TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Shield, Flame, Clock, ChevronRight, Sparkles,
+  ChevronRight, Shield, Brain, Lock, Unlock,
   Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
 } from 'lucide-react-native';
 import { YStack, XStack, Text, View } from 'tamagui';
@@ -10,35 +10,49 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
 import { GAMES, GameType } from '../../src/constants/games';
 import { hapticLight } from '../../src/utils/haptics';
-import { GlowCard } from '../../src/components/ui/GlowCard';
+import { GlowCard, ListCard } from '../../src/components/ui/GlowCard';
 import { GoldButton } from '../../src/components/ui/GoldButton';
-import {
-  PulsingIcon,
-  FadeInView,
-  AnimatedFlame,
-} from '../../src/components/ui/AnimatedElements';
+import { FadeInView, PulsingIcon } from '../../src/components/ui/AnimatedElements';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 
-const AMBER = '#F5A623';
-const AMBER_DIM = 'rgba(245,166,35,0.08)';
-const AMBER_GLOW = 'rgba(245,166,35,0.20)';
-const LIGHT_BG = '#F8F9FB';
+// ── Helpers ──────────────────────────────────────────────────
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getFirstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || '';
+}
 
 const GAME_ICONS: Record<GameType, (size: number) => React.ReactNode> = {
   math: (s) => <Calculator size={s} color="#00F0FF" />,
   memory: (s) => <Grid3x3 size={s} color="#00D4AA" />,
-  pattern: (s) => <Sparkles size={s} color="#7B61FF" />,
   wordscramble: (s) => <Type size={s} color="#E8B84B" />,
   speedread: (s) => <BookOpen size={s} color="#FF6B35" />,
   reaction: (s) => <Zap size={s} color="#FFD600" />,
   colormatch: (s) => <Palette size={s} color="#FF69B4" />,
 };
 
-export default function HomeScreen() {
-  const { progress, settings, lockedApps } = useStore();
-  const lockedCount = lockedApps.filter((a) => a.isLocked).length;
-  const insets = useSafeAreaInsets();
+// ── Component ────────────────────────────────────────────────
 
-  const handlePlayRandom = () => {
+export default function HomeScreen() {
+  const { settings, userName, progress, dailyGamesCompleted, appsUnlocked } = useStore();
+  const insets = useSafeAreaInsets();
+  const { colors, isDark, gradients } = useThemeColors();
+
+  const isBlocking = settings.screenTimeScheduleEnabled && settings.screenTimeAppCount > 0;
+  const firstName = getFirstName(userName);
+  const greeting = getGreeting();
+  const challengesRequired = settings.challengesRequired;
+  const remaining = Math.max(0, challengesRequired - dailyGamesCompleted);
+
+  // ── Handlers ──
+
+  const handleStartWorkout = () => {
     hapticLight();
     const games = settings.enabledGames;
     const random = games[Math.floor(Math.random() * games.length)];
@@ -50,207 +64,293 @@ export default function HomeScreen() {
     router.push(`/games/${key}`);
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const handleGoToBlockApps = () => {
+    hapticLight();
+    router.push('/(tabs)/lock');
+  };
+
+  // ── Render ──
 
   return (
-    <YStack flex={1} backgroundColor={LIGHT_BG}>
+    <YStack flex={1} backgroundColor={colors.background}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
+          paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 40,
           paddingHorizontal: 20,
         }}
       >
-        {/* ── Header ── */}
+        {/* ── Greeting ── */}
         <FadeInView delay={0}>
-          <XStack justifyContent="space-between" alignItems="flex-start" marginBottom={28}>
-            <YStack flex={1} marginRight={16}>
-              <Text color="#9CA3AF" fontSize={14} fontWeight="500" marginBottom={6}>
-                {greeting}
-              </Text>
-              <Text color="#1A1A2E" fontSize={30} fontWeight="700" lineHeight={38} letterSpacing={-0.5}>
-                Brain Training{'\n'}Game
-              </Text>
-            </YStack>
-
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/settings')}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                overflow: 'hidden',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Image
-                source={require('../../assets/mascot.png')}
-                style={{ width: 44, height: 44 }}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </XStack>
+          <Text
+            color={colors.secondary}
+            fontSize={16}
+            fontWeight="500"
+            marginBottom={4}
+          >
+            {greeting}{firstName ? ',' : ''} 👋
+          </Text>
+          <Text
+            color={colors.text}
+            fontSize={28}
+            fontWeight="700"
+            letterSpacing={-0.5}
+            marginBottom={24}
+          >
+            {firstName || 'Welcome'}
+          </Text>
         </FadeInView>
 
-        {/* ── Main CTA Card ── */}
+        {/* ── Main Hero Card ── */}
         <FadeInView delay={150}>
-          <TouchableOpacity activeOpacity={0.9} onPress={handlePlayRandom}>
+          {isBlocking && appsUnlocked ? (
+            /* Apps unlocked — blocking is on but challenges are done */
             <GlowCard accent elevated marginBottom={20} padding={0} overflow="hidden">
               <LinearGradient
-                colors={['#FFFFFF', '#FFF8EE']}
+                colors={['#0A2A1A', '#0D3520']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={{ padding: 24, overflow: 'hidden' }}
+                style={{ padding: 28, alignItems: 'center' }}
               >
-                {/* Top badge */}
-                <XStack
+                <View
+                  width={56}
+                  height={56}
+                  borderRadius={28}
+                  backgroundColor="rgba(34,197,94,0.15)"
+                  justifyContent="center"
                   alignItems="center"
-                  gap={6}
-                  alignSelf="flex-start"
-                  backgroundColor={AMBER_DIM}
-                  paddingHorizontal={12}
-                  paddingVertical={5}
-                  borderRadius={999}
-                  marginBottom={20}
                 >
-                  <Shield size={12} color={AMBER} />
-                  <Text color={AMBER} fontSize={12} fontWeight="600">
-                    Next Session
-                  </Text>
-                </XStack>
+                  <Unlock size={26} color="#22C55E" />
+                </View>
 
-                {/* Center content */}
-                <XStack alignItems="center" gap={20}>
-                  <YStack flex={1}>
-                    <Text color="#1A1A2E" fontSize={22} fontWeight="700" marginBottom={6} letterSpacing={-0.3}>
-                      Start Workout
-                    </Text>
-                    <Text color="#6B7280" fontSize={14} lineHeight={20} marginBottom={18}>
-                      Complete a brain challenge to unlock your apps
-                    </Text>
-                    <GoldButton onPress={handlePlayRandom} size="sm" icon={<ChevronRight size={14} color="#FFFFFF" />}>
-                      Start Workout
-                    </GoldButton>
-                  </YStack>
-
-                  {/* Mascot */}
-                  <PulsingIcon size={60}>
-                    <Image
-                      source={require('../../assets/mascot.png')}
-                      style={{ width: 48, height: 48 }}
-                      resizeMode="contain"
-                    />
-                  </PulsingIcon>
-                </XStack>
-
-                {/* Game icons row */}
-                <XStack gap={10} marginTop={20}>
-                  {(Object.keys(GAMES) as GameType[]).slice(0, 4).map((key) => {
-                    const game = GAMES[key];
-                    return (
-                      <YStack
-                        key={key}
-                        width={42}
-                        height={42}
-                        borderRadius={12}
-                        backgroundColor={`${game.color}12`}
-                        borderWidth={1}
-                        borderColor={`${game.color}25`}
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        {GAME_ICONS[key](18)}
-                      </YStack>
-                    );
-                  })}
-                </XStack>
+                <Text
+                  color="#22C55E"
+                  fontSize={22}
+                  fontWeight="700"
+                  marginTop={18}
+                  textAlign="center"
+                  letterSpacing={-0.3}
+                >
+                  Apps Unlocked
+                </Text>
+                <Text
+                  color={colors.secondary}
+                  fontSize={14}
+                  lineHeight={20}
+                  marginTop={6}
+                  textAlign="center"
+                >
+                  You completed your daily challenges. Enjoy your apps!
+                </Text>
               </LinearGradient>
             </GlowCard>
-          </TouchableOpacity>
+          ) : isBlocking ? (
+            /* Blocking is active — play games to unlock */
+            <TouchableOpacity activeOpacity={0.9} onPress={handleStartWorkout}>
+              <GlowCard accent elevated marginBottom={20} padding={0} overflow="hidden">
+                <LinearGradient
+                  colors={gradients.cardWarm}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ padding: 28, alignItems: 'center' }}
+                >
+                  <PulsingIcon size={56}>
+                    <Lock size={26} color="#FFFFFF" />
+                  </PulsingIcon>
+
+                  <Text
+                    color={colors.text}
+                    fontSize={22}
+                    fontWeight="700"
+                    marginTop={18}
+                    textAlign="center"
+                    letterSpacing={-0.3}
+                  >
+                    {dailyGamesCompleted > 0
+                      ? `${remaining} more game${remaining > 1 ? 's' : ''} to unlock`
+                      : `Play ${challengesRequired} game${challengesRequired > 1 ? 's' : ''} to unlock`}
+                  </Text>
+                  <Text
+                    color={colors.secondary}
+                    fontSize={14}
+                    lineHeight={20}
+                    marginTop={6}
+                    textAlign="center"
+                  >
+                    {dailyGamesCompleted > 0
+                      ? `${dailyGamesCompleted}/${challengesRequired} completed`
+                      : `Complete ${challengesRequired === 1 ? 'a' : challengesRequired} brain challenge${challengesRequired > 1 ? 's' : ''} to access your blocked apps`}
+                  </Text>
+
+                  <View marginTop={20}>
+                    <GoldButton
+                      onPress={handleStartWorkout}
+                      size="md"
+                      icon={<ChevronRight size={16} color="#FFFFFF" />}
+                    >
+                      {dailyGamesCompleted > 0 ? 'Continue Workout' : 'Start Workout'}
+                    </GoldButton>
+                  </View>
+                </LinearGradient>
+              </GlowCard>
+            </TouchableOpacity>
+          ) : (
+            /* No blocking active — train your brain freely */
+            <TouchableOpacity activeOpacity={0.9} onPress={handleStartWorkout}>
+              <GlowCard accent elevated marginBottom={20} padding={0} overflow="hidden">
+                <LinearGradient
+                  colors={gradients.cardWarm}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ padding: 28, alignItems: 'center' }}
+                >
+                  <PulsingIcon size={56}>
+                    <Brain size={26} color="#FFFFFF" />
+                  </PulsingIcon>
+
+                  <Text
+                    color={colors.text}
+                    fontSize={22}
+                    fontWeight="700"
+                    marginTop={18}
+                    textAlign="center"
+                    letterSpacing={-0.3}
+                  >
+                    Train Your Brain
+                  </Text>
+                  <Text
+                    color={colors.secondary}
+                    fontSize={14}
+                    lineHeight={20}
+                    marginTop={6}
+                    textAlign="center"
+                  >
+                    Play quick challenges to sharpen your focus and memory
+                  </Text>
+
+                  <View marginTop={20}>
+                    <GoldButton
+                      onPress={handleStartWorkout}
+                      size="md"
+                      icon={<ChevronRight size={16} color="#FFFFFF" />}
+                    >
+                      Start Workout
+                    </GoldButton>
+                  </View>
+                </LinearGradient>
+              </GlowCard>
+            </TouchableOpacity>
+          )}
         </FadeInView>
 
-        {/* ── Stats Row ── */}
+        {/* ── Quick Stats ── */}
         <FadeInView delay={300}>
           <XStack gap={10} marginBottom={20}>
-            <GlowCard flex={1}>
-              <YStack alignItems="center" gap={6}>
-                <AnimatedFlame value={progress.currentStreak} />
-                <Text color="#1A1A2E" fontSize={22} fontWeight="700">
-                  {progress.currentStreak}
+            {isBlocking && (
+              <GlowCard flex={1} padding={16} alignItems="center">
+                <Text color={colors.accent} fontSize={24} fontWeight="800">
+                  {settings.screenTimeAppCount}
                 </Text>
-                <Text color="#9CA3AF" fontSize={11} fontWeight="500">
-                  day streak
+                <Text color={colors.muted} fontSize={12} marginTop={2}>
+                  Apps Blocked
                 </Text>
-              </YStack>
+              </GlowCard>
+            )}
+            <GlowCard flex={1} padding={16} alignItems="center">
+              <Text color={colors.accent} fontSize={24} fontWeight="800">
+                {progress.currentStreak}
+              </Text>
+              <Text color={colors.muted} fontSize={12} marginTop={2}>
+                Day Streak
+              </Text>
             </GlowCard>
-            <GlowCard flex={1}>
-              <YStack alignItems="center" gap={6}>
-                <Clock size={20} color={AMBER} />
-                <Text color="#1A1A2E" fontSize={22} fontWeight="700">
-                  {progress.gamesWon}
-                </Text>
-                <Text color="#9CA3AF" fontSize={11} fontWeight="500">
-                  completed
-                </Text>
-              </YStack>
+            <GlowCard flex={1} padding={16} alignItems="center">
+              <Text color={colors.accent} fontSize={24} fontWeight="800">
+                {progress.gamesWon}
+              </Text>
+              <Text color={colors.muted} fontSize={12} marginTop={2}>
+                Games Won
+              </Text>
             </GlowCard>
           </XStack>
         </FadeInView>
 
-        {/* ── All Workouts / Games Grid ── */}
-        <FadeInView delay={450}>
+        {/* ── Gentle blocking nudge when not blocking ── */}
+        {!isBlocking && (
+          <FadeInView delay={400}>
+            <ListCard interactive accent onPress={handleGoToBlockApps} marginBottom={20}>
+              <XStack alignItems="center" gap={12}>
+                <View
+                  width={40}
+                  height={40}
+                  borderRadius={12}
+                  backgroundColor={colors.accentLight}
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Shield size={20} color={colors.accent} />
+                </View>
+                <YStack flex={1}>
+                  <Text color={colors.text} fontSize={15} fontWeight="600">
+                    Block distracting apps
+                  </Text>
+                  <Text color={colors.muted} fontSize={12} lineHeight={17}>
+                    Earn screen time by training your brain
+                  </Text>
+                </YStack>
+                <ChevronRight size={18} color={colors.muted} />
+              </XStack>
+            </ListCard>
+          </FadeInView>
+        )}
+
+        {/* ── Quick Play Grid (always shown) ── */}
+        <FadeInView delay={isBlocking ? 450 : 500}>
           <XStack justifyContent="space-between" alignItems="center" marginBottom={14}>
-            <Text color="#1A1A2E" fontSize={20} fontWeight="700">
-              All Workouts
+            <Text color={colors.text} fontSize={20} fontWeight="700">
+              Quick Play
             </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/games')}>
-              <Text color={AMBER} fontSize={13} fontWeight="600">
+              <Text color={colors.accent} fontSize={13} fontWeight="600">
                 see all →
               </Text>
             </TouchableOpacity>
           </XStack>
 
           <XStack flexWrap="wrap" gap={10}>
-            {(Object.keys(GAMES) as GameType[]).map((key, i) => {
+            {(Object.keys(GAMES) as GameType[]).slice(0, 4).map((key, i) => {
               const game = GAMES[key];
               return (
-                <FadeInView key={key} delay={550 + i * 100}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
+                <FadeInView key={key} delay={(isBlocking ? 550 : 600) + i * 80}>
+                  <GlowCard
+                    width={165}
+                    height={130}
+                    padding={16}
+                    interactive
                     onPress={() => handlePlayGame(key)}
-                    style={{ width: '100%' }}
                   >
-                    <GlowCard
-                      width={165}
-                      height={140}
-                      padding={16}
-                      interactive
+                    <YStack
+                      width={42}
+                      height={42}
+                      borderRadius={14}
+                      backgroundColor={`${game.color}12`}
+                      borderWidth={1}
+                      borderColor={`${game.color}25`}
+                      justifyContent="center"
+                      alignItems="center"
+                      marginBottom={10}
                     >
-                      <YStack
-                        width={44}
-                        height={44}
-                        borderRadius={14}
-                        backgroundColor={`${game.color}12`}
-                        borderWidth={1}
-                        borderColor={`${game.color}25`}
-                        justifyContent="center"
-                        alignItems="center"
-                        marginBottom={12}
-                      >
-                        {GAME_ICONS[key](20)}
-                      </YStack>
-                      <Text color="#1A1A2E" fontSize={14} fontWeight="600" marginBottom={3}>
-                        {game.title}
-                      </Text>
-                      <Text color="#9CA3AF" fontSize={11}>
-                        {game.description}
-                      </Text>
-                    </GlowCard>
-                  </TouchableOpacity>
+                      {GAME_ICONS[key](18)}
+                    </YStack>
+                    <Text color={colors.text} fontSize={14} fontWeight="600" marginBottom={2}>
+                      {game.title}
+                    </Text>
+                    <Text color={colors.muted} fontSize={11}>
+                      {game.description}
+                    </Text>
+                  </GlowCard>
                 </FadeInView>
               );
             })}

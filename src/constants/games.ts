@@ -1,4 +1,4 @@
-export type GameType = 'math' | 'memory' | 'pattern' | 'wordscramble' | 'speedread' | 'reaction' | 'colormatch';
+export type GameType = 'math' | 'memory' | 'wordscramble' | 'speedread' | 'reaction' | 'colormatch';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameCategory = 'speed' | 'memory' | 'focus' | 'problem_solving';
 
@@ -35,14 +35,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     color: '#00D4AA',
     gradient: ['#020B2E', '#0F2847'],
   },
-  pattern: {
-    id: 'pattern',
-    title: 'Pattern Match',
-    description: 'Visual pattern recognition',
-    category: 'focus',
-    color: '#7B61FF',
-    gradient: ['#0A0E27', '#0F2027'],
-  },
+
   wordscramble: {
     id: 'wordscramble',
     title: 'Word Scramble',

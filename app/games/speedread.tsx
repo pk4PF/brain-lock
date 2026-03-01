@@ -1,144 +1,84 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { Spacing, FontSize, FontWeight, BorderRadius } from '../../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { FontFamily, BorderRadius } from '../../src/constants/theme';
 import { useStore } from '../../src/store/useStore';
-import { DIFFICULTY_CONFIG } from '../../src/constants/games';
 import GameShell, { GAME_THEMES } from '../../src/components/GameShell';
 import GameComplete from '../../src/components/GameComplete';
+import { soundTap, soundCorrect, soundWrong, soundRound, soundCountdown } from '../../src/utils/sounds';
+import { getGamePassages, type Passage } from '../../src/constants/passages';
 
-const theme = GAME_THEMES.speedread;
-
-interface Passage {
-  words: string[];
-  question: string;
-  options: string[];
-  answer: number;
-}
-
-const PASSAGES: Passage[] = [
-  {
-    words: 'The human brain uses about twenty percent of the body total energy despite being only two percent of body weight'.split(' '),
-    question: 'What percentage of energy does the brain use?',
-    options: ['Ten percent', 'Twenty percent', 'Thirty percent', 'Five percent'],
-    answer: 1,
-  },
-  {
-    words: 'Dolphins sleep with one eye open because only half of their brain rests at a time'.split(' '),
-    question: 'How do dolphins sleep?',
-    options: ['Fully awake', 'With one eye open', 'Upside down', 'In groups only'],
-    answer: 1,
-  },
-  {
-    words: 'Honey never spoils and archaeologists have found three thousand year old honey in Egyptian tombs that was still edible'.split(' '),
-    question: 'Where was ancient honey found?',
-    options: ['Greek ruins', 'Roman vaults', 'Egyptian tombs', 'Chinese caves'],
-    answer: 2,
-  },
-  {
-    words: 'Octopuses have three hearts and blue blood because they use copper instead of iron to carry oxygen'.split(' '),
-    question: 'Why do octopuses have blue blood?',
-    options: ['High salt diet', 'Copper carries oxygen', 'Cold water adaptation', 'Genetic mutation'],
-    answer: 1,
-  },
-  {
-    words: 'The speed of light is approximately three hundred thousand kilometers per second making it the fastest thing in the universe'.split(' '),
-    question: 'What is the fastest thing in the universe?',
-    options: ['Sound', 'Light', 'Gravity', 'Electricity'],
-    answer: 1,
-  },
-  {
-    words: 'Trees communicate with each other through underground fungal networks that scientists call the wood wide web'.split(' '),
-    question: 'What do scientists call tree communication networks?',
-    options: ['Root link', 'Wood wide web', 'Forest net', 'Tree talk'],
-    answer: 1,
-  },
-  {
-    words: 'Mars has the tallest mountain in our solar system called Olympus Mons which is nearly three times the height of Mount Everest'.split(' '),
-    question: 'Where is Olympus Mons?',
-    options: ['Jupiter', 'Venus', 'Mars', 'Saturn'],
-    answer: 2,
-  },
-  {
-    words: 'A group of flamingos is called a flamboyance and they get their pink color from eating shrimp and algae'.split(' '),
-    question: 'What gives flamingos their pink color?',
-    options: ['Genetics', 'Sunlight', 'Shrimp and algae', 'Water minerals'],
-    answer: 2,
-  },
-];
-
+const T = GAME_THEMES.speedread;
 const TOTAL_ROUNDS = 6;
+const WPM_STAGES = [340, 500, 650, 800, 900, 900];
+const MULT_STAGES = [1, 1, 1.2, 1.5, 1.8, 2];
 
 export default function SpeedReadGame() {
-  const { settings, addPoints, recordGame } = useStore();
-  const difficulty = settings.difficulty;
-  const multiplier = DIFFICULTY_CONFIG[difficulty].multiplier;
+  const { addPoints, recordGame, completeDailyGame } = useStore();
 
-  const wpm = difficulty === 'easy' ? 200 : difficulty === 'medium' ? 350 : 500;
-  const msPerWord = Math.round(60000 / wpm);
-
-  const [phase, setPhase] = useState<'reading' | 'question' | 'feedback'>('reading');
+  const [passages] = useState<Passage[]>(() => getGamePassages());
+  const [phase, setPhase] = useState<'countdown' | 'reading' | 'question' | 'feedback'>('countdown');
+  const [countdown, setCountdown] = useState(3);
   const [currentWordIdx, setCurrentWordIdx] = useState(0);
-  const [passageIdx, setPassageIdx] = useState(0);
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
-  const [usedPassages] = useState(() => {
-    const indices = PASSAGES.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    return indices.slice(0, TOTAL_ROUNDS);
-  });
   const startTime = useRef(Date.now());
   const wordAnim = useRef(new Animated.Value(0)).current;
+  const countdownAnim = useRef(new Animated.Value(1)).current;
+  const passage = passages[Math.min(round - 1, passages.length - 1)];
+  const currentWpm = WPM_STAGES[Math.min(round - 1, WPM_STAGES.length - 1)];
+  const msPerWord = Math.round(60000 / currentWpm);
 
-  const passage = PASSAGES[usedPassages[passageIdx]];
-
+  // Countdown timer
   useEffect(() => {
-    if (phase !== 'reading') return;
-    if (currentWordIdx >= passage.words.length) {
-      setPhase('question');
+    if (phase !== 'countdown') return;
+    if (countdown <= 0) {
+      setPhase('reading');
       return;
     }
+    soundCountdown();
+    countdownAnim.setValue(1.3);
+    Animated.timing(countdownAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown, phase]);
 
+  // Word reading timer
+  useEffect(() => {
+    if (phase !== 'reading') return;
+    if (currentWordIdx >= passage.words.length) { setPhase('question'); return; }
     wordAnim.setValue(0);
     Animated.timing(wordAnim, { toValue: 1, duration: 100, useNativeDriver: true }).start();
-
-    const timer = setTimeout(() => {
-      setCurrentWordIdx((i) => i + 1);
-    }, msPerWord);
-
+    const timer = setTimeout(() => setCurrentWordIdx((i) => i + 1), msPerWord);
     return () => clearTimeout(timer);
   }, [currentWordIdx, phase]);
 
   const handleAnswer = (idx: number) => {
     if (selected !== null) return;
-    setSelected(idx);
-    setPhase('feedback');
-
-    let newScore = score;
-    let newCorrect = correct;
-
+    soundTap();
+    setSelected(idx); setPhase('feedback');
+    let newScore = score; let newCorrect = correct;
     if (idx === passage.answer) {
-      const points = Math.round(20 * multiplier);
-      newScore = score + points;
-      newCorrect = correct + 1;
-      setScore(newScore);
-      setCorrect(newCorrect);
+      soundCorrect();
+      const mult = MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)];
+      const points = Math.round(20 * mult);
+      newScore = score + points; newCorrect = correct + 1;
+      setScore(newScore); setCorrect(newCorrect);
+    } else {
+      soundWrong();
     }
-
     setTimeout(() => {
-      if (round >= TOTAL_ROUNDS) {
-        finishGame(newCorrect, newScore);
-      } else {
+      if (round >= TOTAL_ROUNDS) finishGame(newCorrect, newScore);
+      else {
+        soundRound();
         setRound((r) => r + 1);
-        setPassageIdx((i) => i + 1);
         setCurrentWordIdx(0);
         setSelected(null);
-        setPhase('reading');
+        setCountdown(3);
+        setPhase('countdown');
       }
     }, 800);
   };
@@ -146,121 +86,88 @@ export default function SpeedReadGame() {
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
-    recordGame('speedread', finalCorrect >= TOTAL_ROUNDS * 0.5, timeTaken);
+    const won = finalCorrect >= TOTAL_ROUNDS * 0.5;
+    recordGame('speedread', won, timeTaken);
+    completeDailyGame();
     setGameOver(true);
   };
 
   const resetGame = () => {
-    setScore(0);
-    setRound(1);
-    setCorrect(0);
-    setGameOver(false);
-    setPassageIdx(0);
-    setCurrentWordIdx(0);
-    setSelected(null);
-    setPhase('reading');
+    setScore(0); setRound(1); setCorrect(0); setGameOver(false);
+    setCurrentWordIdx(0); setSelected(null);
+    setCountdown(3); setPhase('countdown');
   };
 
   if (gameOver) {
-    return (
-      <GameComplete
-        score={score}
-        correct={correct}
-        total={TOTAL_ROUNDS}
-        gameTitle="Speed Reader"
-        onPlayAgain={resetGame}
-        gameId="speedread"
-      />
-    );
+    return <GameComplete score={score} correct={correct} total={TOTAL_ROUNDS} gameTitle="Speed Reader" onPlayAgain={resetGame} gameId="speedread" />;
   }
 
   return (
-    <GameShell title="Speed Reader" color="#FF6B35" score={score} gameId="speedread">
-      <View style={styles.roundRow}>
+    <GameShell title="Speed Reader" color="#FF6B35" score={score} gameId="speedread" multiplier={MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)]}>
+      {/* Pips */}
+      <View style={styles.pips}>
         {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.roundDot,
-              i < round - 1 && { backgroundColor: '#FF6B35' },
-              i === round - 1 && { backgroundColor: '#FF6B35', width: 16 },
-            ]}
-          />
+          <View key={i} style={[styles.pip, i < round - 1 && styles.pipDone, i === round - 1 && styles.pipActive]} />
         ))}
       </View>
 
-      <View style={styles.speedBadge}>
-        <Text style={styles.speedText}>{wpm} WPM</Text>
-      </View>
+      <LinearGradient colors={['rgba(255,107,53,0.15)', 'rgba(255,107,53,0.04)']} style={styles.speedBadge}>
+        <Text style={styles.speedTxt}>{currentWpm} WPM</Text>
+      </LinearGradient>
 
-      {phase === 'reading' ? (
-        <View style={styles.readingContainer}>
+      {phase === 'countdown' ? (
+        <View style={styles.countdownWrap}>
+          <Text style={styles.getReadyTxt}>Get ready to read...</Text>
+          <Animated.Text style={[styles.countdownNum, { transform: [{ scale: countdownAnim }] }]}>
+            {countdown}
+          </Animated.Text>
+          <Text style={styles.countdownHint}>Words will flash one at a time</Text>
+        </View>
+      ) : phase === 'reading' ? (
+        <View style={styles.readingWrap}>
           <Text style={styles.readingHint}>FOCUS ON THE WORD</Text>
-          <View style={styles.wordWindow}>
+          <LinearGradient colors={['rgba(255,107,53,0.1)', 'rgba(255,107,53,0.03)']} style={styles.wordWindow}>
             <Animated.Text
-              style={[
-                styles.currentWord,
-                {
-                  opacity: wordAnim,
-                  transform: [{
-                    scale: wordAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }),
-                  }],
-                },
-              ]}
+              style={[styles.currentWord, {
+                opacity: wordAnim,
+                transform: [{ scale: wordAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+              }]}
             >
               {currentWordIdx < passage.words.length ? passage.words[currentWordIdx] : ''}
             </Animated.Text>
-          </View>
+          </LinearGradient>
           <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${(currentWordIdx / passage.words.length) * 100}%` },
-              ]}
+            <LinearGradient
+              colors={['#FF6B35', '#FF8F60']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: `${(currentWordIdx / passage.words.length) * 100}%` }]}
             />
           </View>
-          <Text style={styles.wordCount}>
-            {currentWordIdx} / {passage.words.length} words
-          </Text>
+          <Text style={styles.wordCount}>{currentWordIdx} / {passage.words.length} words</Text>
         </View>
       ) : (
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionLabel}>COMPREHENSION CHECK</Text>
-          <Text style={styles.questionText}>{passage.question}</Text>
-
-          <View style={styles.optionsContainer}>
+        <View style={styles.questionWrap}>
+          <Text style={styles.qLabel}>COMPREHENSION CHECK</Text>
+          <Text style={styles.qText}>{passage.question}</Text>
+          <View style={styles.optionsWrap}>
             {passage.options.map((option, idx) => {
-              let borderColor = 'rgba(255,107,53,0.2)';
-              let bgColor = 'rgba(255,107,53,0.06)';
-
+              let borderColor = 'rgba(255,107,53,0.15)';
+              let bgColors: [string, string] = ['rgba(255,107,53,0.06)', 'rgba(255,107,53,0.02)'];
               if (selected !== null) {
-                if (idx === passage.answer) {
-                  borderColor = '#22C55E';
-                  bgColor = 'rgba(34,197,94,0.15)';
-                } else if (idx === selected) {
-                  borderColor = '#EF4444';
-                  bgColor = 'rgba(239,68,68,0.15)';
-                }
+                if (idx === passage.answer) { borderColor = '#22C55E'; bgColors = ['rgba(34,197,94,0.18)', 'rgba(34,197,94,0.06)']; }
+                else if (idx === selected) { borderColor = '#EF4444'; bgColors = ['rgba(239,68,68,0.18)', 'rgba(239,68,68,0.06)']; }
               }
-
               return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[styles.optionButton, { backgroundColor: bgColor, borderColor }]}
-                  onPress={() => handleAnswer(idx)}
-                  disabled={selected !== null}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.optionLetter}>{String.fromCharCode(65 + idx)}</Text>
-                  <Text
-                    style={[
-                      styles.optionText,
+                <TouchableOpacity key={idx} onPress={() => handleAnswer(idx)} disabled={selected !== null} activeOpacity={0.7}>
+                  <LinearGradient colors={bgColors} style={[styles.optBtn, { borderColor }]}>
+                    <LinearGradient colors={['rgba(255,107,53,0.2)', 'rgba(255,107,53,0.08)']} style={styles.optLetter}>
+                      <Text style={styles.optLetterTxt}>{String.fromCharCode(65 + idx)}</Text>
+                    </LinearGradient>
+                    <Text style={[styles.optText,
                       selected !== null && idx === passage.answer && { color: '#22C55E' },
                       selected !== null && idx === selected && idx !== passage.answer && { color: '#EF4444' },
-                    ]}
-                  >
-                    {option}
-                  </Text>
+                    ]}>{option}</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               );
             })}
@@ -272,129 +179,41 @@ export default function SpeedReadGame() {
 }
 
 const styles = StyleSheet.create({
-  roundRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 5,
-    marginBottom: Spacing.md,
-  },
-  roundDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
+  pips: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginBottom: 12 },
+  pip: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,107,53,0.12)' },
+  pipDone: { backgroundColor: '#FF6B35' },
+  pipActive: { backgroundColor: '#FF6B35' },
   speedBadge: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255,107,53,0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,53,0.2)',
-    marginBottom: Spacing.xl,
+    alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,107,53,0.15)', marginBottom: 24,
   },
-  speedText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: '#FF6B35',
-    letterSpacing: 1,
-  },
-  readingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  readingHint: {
-    fontSize: FontSize.sm,
-    color: 'rgba(255,255,255,0.4)',
-    marginBottom: Spacing.xl,
-    letterSpacing: 2,
-  },
+  speedTxt: { fontSize: 12, fontFamily: FontFamily.bold, color: '#FF6B35', letterSpacing: 1.5 },
+  countdownWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  getReadyTxt: { fontSize: 18, fontFamily: FontFamily.semibold, color: 'rgba(255,238,230,0.6)', marginBottom: 32 },
+  countdownNum: { fontSize: 80, fontFamily: FontFamily.bold, color: '#FF6B35', marginBottom: 32 },
+  countdownHint: { fontSize: 14, fontFamily: FontFamily.medium, color: 'rgba(255,238,230,0.3)' },
+  readingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  readingHint: { fontSize: 11, color: 'rgba(255,238,230,0.35)', marginBottom: 24, letterSpacing: 2.5, fontFamily: FontFamily.bold },
   wordWindow: {
-    width: '100%',
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,107,53,0.06)',
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,53,0.15)',
-    marginBottom: Spacing.xxl,
+    width: '100%', height: 120, justifyContent: 'center', alignItems: 'center',
+    borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,107,53,0.1)', marginBottom: 28,
   },
   currentWord: {
-    fontSize: 44,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(255,107,53,0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
+    fontSize: 44, fontFamily: FontFamily.bold, color: '#FFEEE6',
+    textShadowColor: 'rgba(255,107,53,0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 18,
   },
-  progressBar: {
-    width: '80%',
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: Spacing.md,
+  progressBar: { width: '80%', height: 4, backgroundColor: 'rgba(255,107,53,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 12 },
+  progressFill: { height: '100%', borderRadius: 2 },
+  wordCount: { fontSize: 12, color: 'rgba(255,238,230,0.35)', fontFamily: FontFamily.medium },
+  questionWrap: { flex: 1, justifyContent: 'center' },
+  qLabel: { fontSize: 10, fontFamily: FontFamily.bold, color: '#FF6B35', letterSpacing: 2, textAlign: 'center', marginBottom: 12 },
+  qText: { fontSize: 20, fontFamily: FontFamily.bold, color: '#FFEEE6', textAlign: 'center', marginBottom: 28, lineHeight: 28 },
+  optionsWrap: { gap: 12 },
+  optBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 15, paddingHorizontal: 18, borderRadius: 16, borderWidth: 1,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FF6B35',
-    borderRadius: 2,
-  },
-  wordCount: {
-    fontSize: FontSize.sm,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  questionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  questionLabel: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#FF6B35',
-    letterSpacing: 2,
-    textAlign: 'center',
-    marginBottom: Spacing.md,
-  },
-  questionText: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: Spacing.xxl,
-    lineHeight: 28,
-  },
-  optionsContainer: {
-    gap: Spacing.md,
-  },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: 14,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-  },
-  optionLetter: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: '#FF6B35',
-    width: 24,
-    height: 24,
-    textAlign: 'center',
-    lineHeight: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,107,53,0.15)',
-    overflow: 'hidden',
-  },
-  optionText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: '#FFFFFF',
-    flex: 1,
-  },
+  optLetter: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  optLetterTxt: { fontSize: 12, fontFamily: FontFamily.bold, color: '#FF6B35' },
+  optText: { fontSize: 15, fontFamily: FontFamily.semibold, color: '#FFEEE6', flex: 1 },
 });

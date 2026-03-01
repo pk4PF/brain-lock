@@ -1,22 +1,20 @@
-import { TouchableOpacity, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import {
-  ChevronRight, Calculator, Grid3x3, Sparkles, Type, BookOpen, Zap, Palette,
+  ChevronRight, Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
 } from 'lucide-react-native';
-import { YStack, XStack, Text, View } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAMES, GameType, CATEGORIES, GameCategory } from '../../src/constants/games';
 import { hapticLight } from '../../src/utils/haptics';
 import { GlowCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
-
-const LIGHT_BG = '#F8F9FB';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 
 const GAME_ICONS: Record<GameType, (s: number, c: string) => React.ReactNode> = {
   math: (s, c) => <Calculator size={s} color={c} />,
   memory: (s, c) => <Grid3x3 size={s} color={c} />,
-  pattern: (s, c) => <Sparkles size={s} color={c} />,
   wordscramble: (s, c) => <Type size={s} color={c} />,
   speedread: (s, c) => <BookOpen size={s} color={c} />,
   reaction: (s, c) => <Zap size={s} color={c} />,
@@ -25,6 +23,7 @@ const GAME_ICONS: Record<GameType, (s: number, c: string) => React.ReactNode> = 
 
 export default function GamesScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
 
   const handlePlayGame = (key: GameType) => {
     hapticLight();
@@ -38,7 +37,7 @@ export default function GamesScreen() {
   }));
 
   return (
-    <YStack flex={1} backgroundColor={LIGHT_BG}>
+    <YStack flex={1} backgroundColor={colors.background}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
@@ -50,7 +49,7 @@ export default function GamesScreen() {
       >
         <FadeInView delay={0}>
           <Text
-            color="#1A1A2E"
+            color={colors.text}
             fontSize={28}
             fontWeight="700"
             letterSpacing={-0.5}
@@ -67,37 +66,36 @@ export default function GamesScreen() {
               {section.games.map((key) => {
                 const game = GAMES[key];
                 return (
-                  <TouchableOpacity
+                  <GlowCard
                     key={key}
-                    activeOpacity={0.85}
+                    marginBottom={10}
+                    interactive
                     onPress={() => handlePlayGame(key)}
                   >
-                    <GlowCard marginBottom={10} interactive>
-                      <XStack alignItems="center" gap={16}>
-                        <YStack
-                          width={48}
-                          height={48}
-                          borderRadius={16}
-                          backgroundColor={`${game.color}12`}
-                          borderWidth={1}
-                          borderColor={`${game.color}25`}
-                          justifyContent="center"
-                          alignItems="center"
-                        >
-                          {GAME_ICONS[key](22, game.color)}
-                        </YStack>
-                        <YStack flex={1}>
-                          <Text color="#1A1A2E" fontSize={16} fontWeight="600" marginBottom={3}>
-                            {game.title}
-                          </Text>
-                          <Text color="#9CA3AF" fontSize={13}>
-                            {game.description}
-                          </Text>
-                        </YStack>
-                        <ChevronRight size={18} color="#D1D5DB" />
-                      </XStack>
-                    </GlowCard>
-                  </TouchableOpacity>
+                    <XStack alignItems="center" gap={16}>
+                      <YStack
+                        width={48}
+                        height={48}
+                        borderRadius={16}
+                        backgroundColor={`${game.color}12`}
+                        borderWidth={1}
+                        borderColor={`${game.color}25`}
+                        justifyContent="center"
+                        alignItems="center"
+                      >
+                        {GAME_ICONS[key](22, game.color)}
+                      </YStack>
+                      <YStack flex={1}>
+                        <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
+                          {game.title}
+                        </Text>
+                        <Text color={colors.muted} fontSize={13}>
+                          {game.description}
+                        </Text>
+                      </YStack>
+                      <ChevronRight size={18} color={colors.border} />
+                    </XStack>
+                  </GlowCard>
                 );
               })}
             </YStack>

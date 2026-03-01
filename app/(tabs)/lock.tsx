@@ -26,12 +26,18 @@ import { IconBadge } from '../../src/components/ui/IconBadge';
 import { FadeInView, PulsingIcon } from '../../src/components/ui/AnimatedElements';
 import { hapticLight, hapticMedium, hapticSuccess } from '../../src/utils/haptics';
 import { ScreenTime } from 'screen-time-module';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { TimePickerSheet } from '../../src/components/ui/TimePickerSheet';
 
-const AMBER = '#F5A623';
-const AMBER_DIM = 'rgba(245,166,35,0.08)';
-const LIGHT_BG = '#F8F9FB';
-const BORDER = '#E5E7EB';
 const GREEN = '#22C55E';
+
+const formatHour = (h: number) => {
+  const period = h >= 12 ? 'PM' : 'AM';
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${display}:00 ${period}`;
+};
+
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 const SPRING_CONFIG = { damping: 15, stiffness: 150, mass: 0.8 };
 const SPRING_BOUNCY = { damping: 12, stiffness: 180, mass: 0.6 };
@@ -78,16 +84,17 @@ function AnimatedButton({
 
 // Inline success toast that appears briefly
 function InlineToast({ message, visible }: { message: string; visible: boolean }) {
+  const { colors, isDark } = useThemeColors();
   if (!visible) return null;
   return (
     <Animated.View
       entering={FadeInDown.duration(300).springify().damping(14)}
       exiting={FadeOut.duration(250)}
       style={{
-        backgroundColor: '#ECFDF5',
+        backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : '#ECFDF5',
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#A7F3D0',
+        borderColor: isDark ? 'rgba(34,197,94,0.25)' : '#A7F3D0',
         paddingVertical: 12,
         paddingHorizontal: 16,
         flexDirection: 'row',
@@ -109,23 +116,26 @@ function InlineToast({ message, visible }: { message: string; visible: boolean }
       >
         <Check size={14} color="#FFFFFF" strokeWidth={3} />
       </Animated.View>
-      <Text color="#065F46" fontSize={14} fontWeight="600" flex={1}>
+      <Text color={isDark ? '#6EE7B7' : '#065F46'} fontSize={14} fontWeight="600" flex={1}>
         {message}
       </Text>
     </Animated.View>
   );
 }
 
+const DEFAULT_DAYS = [true, true, true, true, true, true, true];
+
 export default function LockScreen() {
   const { settings, updateSettings } = useStore();
+  const activeDays = settings.activeDays ?? DEFAULT_DAYS;
   const insets = useSafeAreaInsets();
+  const { colors, isDark, gradients } = useThemeColors();
 
   const [authStatus, setAuthStatus] = useState<'approved' | 'denied' | 'notDetermined' | 'unavailable'>('notDetermined');
   const [appCount, setAppCount] = useState(settings.screenTimeAppCount);
   const [loading, setLoading] = useState(false);
-  const [blockLoading, setBlockLoading] = useState(false);
-  const [unblockLoading, setUnblockLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
 
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
@@ -219,7 +229,7 @@ export default function LockScreen() {
       );
       updateSettings({ screenTimeScheduleEnabled: true });
       hapticSuccess();
-      showToast(`Schedule active: ${settings.activeHoursStart.toString().padStart(2, '0')}:00 – ${settings.activeHoursEnd.toString().padStart(2, '0')}:00`);
+      showToast(`Schedule active: ${formatHour(settings.activeHoursStart)} – ${formatHour(settings.activeHoursEnd)}`);
     } catch {
       Alert.alert('Error', 'Could not set schedule. Please try again.');
     } finally {
@@ -242,39 +252,13 @@ export default function LockScreen() {
     }
   }, []);
 
-  const handleBlockNow = useCallback(async () => {
-    setBlockLoading(true);
-    hapticMedium();
-    try {
-      await ScreenTime.applyShieldNow();
-      hapticSuccess();
-      showToast('Apps are now blocked');
-    } catch {
-      Alert.alert('Error', 'Could not apply shields.');
-    } finally {
-      setBlockLoading(false);
-    }
-  }, []);
 
-  const handleUnblockNow = useCallback(async () => {
-    setUnblockLoading(true);
-    hapticLight();
-    try {
-      await ScreenTime.removeShieldNow();
-      hapticSuccess();
-      showToast('All blocks removed');
-    } catch {
-      Alert.alert('Error', 'Could not remove shields.');
-    } finally {
-      setUnblockLoading(false);
-    }
-  }, []);
 
   const isAuthorized = authStatus === 'approved';
   const hasApps = appCount > 0;
 
   return (
-    <YStack flex={1} backgroundColor={LIGHT_BG}>
+    <YStack flex={1} backgroundColor={colors.background}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
@@ -288,7 +272,7 @@ export default function LockScreen() {
           {/* Header */}
           <FadeInView delay={0}>
             <Text
-              color="#1A1A2E"
+              color={colors.text}
               fontSize={28}
               fontWeight="700"
               letterSpacing={-0.5}
@@ -305,7 +289,7 @@ export default function LockScreen() {
           <FadeInView delay={100}>
             <GlowCard accent elevated marginBottom={16} padding={0} overflow="hidden">
               <LinearGradient
-                colors={['#FFFFFF', '#FFF8EE']}
+                colors={gradients.cardWarm}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ padding: 24, alignItems: 'center' }}
@@ -313,14 +297,14 @@ export default function LockScreen() {
                 <PulsingIcon size={56}>
                   <Shield size={26} color="#FFFFFF" />
                 </PulsingIcon>
-                <Text color="#1A1A2E" fontSize={20} fontWeight="700" marginTop={14}>
+                <Text color={colors.text} fontSize={20} fontWeight="700" marginTop={14}>
                   {!isAuthorized
                     ? 'Set Up App Blocking'
                     : hasApps
                       ? 'App Blocking Active'
                       : 'Choose Apps to Block'}
                 </Text>
-                <Text color="#6B7280" fontSize={14} marginTop={4} textAlign="center">
+                <Text color={colors.secondary} fontSize={14} marginTop={4} textAlign="center">
                   {!isAuthorized
                     ? 'Enable Screen Time to block distracting apps'
                     : hasApps
@@ -339,7 +323,7 @@ export default function LockScreen() {
                   <IconBadge size={32} color="#EF4444">
                     <AlertTriangle size={14} color="#EF4444" />
                   </IconBadge>
-                  <Text color="#6B7280" fontSize={13} lineHeight={19} flex={1}>
+                  <Text color={colors.secondary} fontSize={13} lineHeight={19} flex={1}>
                     Screen Time app blocking is only available on iOS devices.
                   </Text>
                 </XStack>
@@ -367,20 +351,20 @@ export default function LockScreen() {
                     paddingHorizontal={20}
                   >
                     <XStack alignItems="center" gap={14}>
-                      <IconBadge size={40} color={isAuthorized ? GREEN : AMBER} glow={isAuthorized}>
+                      <IconBadge size={40} color={isAuthorized ? GREEN : colors.accent} glow={isAuthorized}>
                         {isAuthorized ? (
                           <CheckCircle size={18} color={GREEN} />
                         ) : loading ? (
-                          <ActivityIndicator size="small" color={AMBER} />
+                          <ActivityIndicator size="small" color={colors.accent} />
                         ) : (
-                          <Shield size={18} color={AMBER} />
+                          <Shield size={18} color={colors.accent} />
                         )}
                       </IconBadge>
                       <YStack>
-                        <Text color="#1A1A2E" fontSize={16} fontWeight="600">
+                        <Text color={colors.text} fontSize={16} fontWeight="600">
                           {isAuthorized ? 'Screen Time Enabled' : 'Enable Screen Time'}
                         </Text>
-                        <Text color="#9CA3AF" fontSize={13} marginTop={2}>
+                        <Text color={colors.muted} fontSize={13} marginTop={2}>
                           {isAuthorized
                             ? 'BrainLock can manage app access'
                             : 'Required to block apps on your device'}
@@ -388,7 +372,7 @@ export default function LockScreen() {
                       </YStack>
                     </XStack>
                     {!isAuthorized && !loading && (
-                      <ChevronRight size={20} color="#9CA3AF" />
+                      <ChevronRight size={20} color={colors.muted} />
                     )}
                   </XStack>
                 </GlowCard>
@@ -416,25 +400,25 @@ export default function LockScreen() {
                     paddingHorizontal={20}
                   >
                     <XStack alignItems="center" gap={14}>
-                      <IconBadge size={40} color={hasApps ? GREEN : AMBER} glow={hasApps}>
+                      <IconBadge size={40} color={hasApps ? GREEN : colors.accent} glow={hasApps}>
                         {hasApps ? (
                           <CheckCircle size={18} color={GREEN} />
                         ) : (
-                          <Shield size={18} color={AMBER} />
+                          <Shield size={18} color={colors.accent} />
                         )}
                       </IconBadge>
                       <YStack>
-                        <Text color="#1A1A2E" fontSize={16} fontWeight="600">
+                        <Text color={colors.text} fontSize={16} fontWeight="600">
                           {hasApps ? `${appCount} Selected` : 'Select Apps to Block'}
                         </Text>
-                        <Text color="#9CA3AF" fontSize={13} marginTop={2}>
+                        <Text color={colors.muted} fontSize={13} marginTop={2}>
                           {hasApps
                             ? 'Tap to change your selection'
                             : 'Opens the iOS app picker'}
                         </Text>
                       </YStack>
                     </XStack>
-                    <ChevronRight size={20} color="#9CA3AF" />
+                    <ChevronRight size={20} color={colors.muted} />
                   </XStack>
                 </GlowCard>
               </AnimatedButton>
@@ -448,146 +432,210 @@ export default function LockScreen() {
               exiting={FadeOutUp.duration(250)}
             >
               <SectionTitle title="Step 3: Set Schedule" />
-              <GlowCard accent marginBottom={12}>
-                <XStack alignItems="center" gap={12} marginBottom={16}>
+
+              {/* ── Schedule Card: From / To rows ── */}
+              <GlowCard accent marginBottom={12} padding={0} overflow="hidden">
+                <XStack alignItems="center" gap={10} paddingHorizontal={20} paddingTop={20} paddingBottom={14}>
                   <IconBadge size={36}>
-                    <Clock size={16} color={AMBER} />
+                    <Clock size={16} color={colors.accent} />
                   </IconBadge>
-                  <Text color="#1A1A2E" fontSize={16} fontWeight="600">
-                    Active Hours
+                  <Text color={colors.text} fontSize={16} fontWeight="700">
+                    Block Time
                   </Text>
                 </XStack>
-                <Text color="#6B7280" fontSize={13} marginBottom={16}>
-                  Apps will be blocked during these hours
-                </Text>
-                <XStack justifyContent="center" alignItems="center" gap={16} marginBottom={20}>
-                  <YStack alignItems="center" gap={4}>
-                    <Text color="#9CA3AF" fontSize={11} fontWeight="600" textTransform="uppercase" letterSpacing={1}>
-                      From
-                    </Text>
-                    <Text color="#1A1A2E" fontSize={28} fontWeight="700">
-                      {settings.activeHoursStart.toString().padStart(2, '0')}:00
-                    </Text>
-                  </YStack>
-                  <Text color="#9CA3AF" fontSize={16}>to</Text>
-                  <YStack alignItems="center" gap={4}>
-                    <Text color="#9CA3AF" fontSize={11} fontWeight="600" textTransform="uppercase" letterSpacing={1}>
-                      Until
-                    </Text>
-                    <Text color="#1A1A2E" fontSize={28} fontWeight="700">
-                      {settings.activeHoursEnd.toString().padStart(2, '0')}:00
-                    </Text>
-                  </YStack>
-                </XStack>
-                <Text color="#9CA3AF" fontSize={12} textAlign="center" marginBottom={16}>
-                  Change hours in the Profile tab
-                </Text>
 
-                {settings.screenTimeScheduleEnabled ? (
-                  <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
-                    <YStack
-                      paddingVertical={14}
-                      borderRadius={14}
-                      backgroundColor="#FEE2E2"
-                      borderWidth={1}
-                      borderColor="#FECACA"
-                      alignItems="center"
-                    >
+                {/* From row */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => { hapticLight(); setPickerTarget('start'); }}
+                >
+                  <XStack
+                    alignItems="center"
+                    justifyContent="space-between"
+                    paddingHorizontal={20}
+                    paddingVertical={16}
+                    borderTopWidth={1}
+                    borderTopColor={colors.border}
+                  >
+                    <XStack alignItems="center" gap={10}>
+                      <View width={8} height={8} borderRadius={4} backgroundColor={colors.accent} />
+                      <Text color={colors.secondary} fontSize={15} fontWeight="500">From</Text>
+                    </XStack>
+                    <XStack alignItems="center" gap={6}>
+                      <Text color={colors.text} fontSize={16} fontWeight="600">
+                        {formatHour(settings.activeHoursStart)}
+                      </Text>
+                      <ChevronRight size={16} color={colors.muted} />
+                    </XStack>
+                  </XStack>
+                </TouchableOpacity>
+
+                {/* Divider with connector */}
+                <View paddingLeft={24}>
+                  <View width={1} height={8} backgroundColor={colors.border} marginLeft={3} />
+                </View>
+
+                {/* To row */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => { hapticLight(); setPickerTarget('end'); }}
+                >
+                  <XStack
+                    alignItems="center"
+                    justifyContent="space-between"
+                    paddingHorizontal={20}
+                    paddingVertical={16}
+                    borderBottomWidth={1}
+                    borderBottomColor={colors.border}
+                  >
+                    <XStack alignItems="center" gap={10}>
+                      <View width={8} height={8} borderRadius={4} borderWidth={1.5} borderColor={colors.muted} />
+                      <Text color={colors.secondary} fontSize={15} fontWeight="500">To</Text>
+                    </XStack>
+                    <XStack alignItems="center" gap={6}>
+                      <Text color={colors.text} fontSize={16} fontWeight="600">
+                        {formatHour(settings.activeHoursEnd)}
+                      </Text>
+                      <ChevronRight size={16} color={colors.muted} />
+                    </XStack>
+                  </XStack>
+                </TouchableOpacity>
+
+                <View height={12} />
+              </GlowCard>
+
+              {/* ── Days Card ── */}
+              <GlowCard marginBottom={12}>
+                <XStack alignItems="center" justifyContent="space-between" marginBottom={14}>
+                  <Text color={colors.secondary} fontSize={14} fontWeight="600">On these days:</Text>
+                  <Text color={colors.accent} fontSize={13} fontWeight="600">
+                    {activeDays.every(Boolean)
+                      ? 'Every day'
+                      : activeDays.filter(Boolean).length === 0
+                        ? 'None'
+                        : `${activeDays.filter(Boolean).length} days`}
+                  </Text>
+                </XStack>
+                <XStack justifyContent="space-between">
+                  {DAY_LABELS.map((label, i) => {
+                    const active = activeDays[i];
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => {
+                          hapticLight();
+                          const next = [...activeDays];
+                          next[i] = !next[i];
+                          updateSettings({ activeDays: next });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          width={40}
+                          height={40}
+                          borderRadius={20}
+                          backgroundColor={active ? colors.accent : colors.cardAlt}
+                          justifyContent="center"
+                          alignItems="center"
+                        >
+                          <Text
+                            color={active ? '#FFFFFF' : colors.muted}
+                            fontSize={13}
+                            fontWeight="700"
+                          >
+                            {label}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </XStack>
+              </GlowCard>
+
+              {/* ── Apps Blocked Card ── */}
+              <AnimatedButton onPress={handlePickApps}>
+                <GlowCard padding={0} marginBottom={12}>
+                  <XStack
+                    alignItems="center"
+                    justifyContent="space-between"
+                    paddingVertical={16}
+                    paddingHorizontal={20}
+                  >
+                    <Text color={colors.text} fontSize={16} fontWeight="600">
+                      Apps Blocked
+                    </Text>
+                    <XStack alignItems="center" gap={8}>
+                      <View
+                        width={26}
+                        height={26}
+                        borderRadius={6}
+                        backgroundColor={colors.accentLight}
+                        justifyContent="center"
+                        alignItems="center"
+                      >
+                        <Text color={colors.accent} fontSize={12} fontWeight="700">{appCount}</Text>
+                      </View>
+                      <Text color={colors.accent} fontSize={14} fontWeight="600">Block List</Text>
+                      <ChevronRight size={16} color={colors.accent} />
+                    </XStack>
+                  </XStack>
+                </GlowCard>
+              </AnimatedButton>
+
+              {/* ── Activate / Disable Button ── */}
+              {settings.screenTimeScheduleEnabled ? (
+                <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
+                  <YStack
+                    paddingVertical={14}
+                    borderRadius={14}
+                    backgroundColor={isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2'}
+                    borderWidth={1}
+                    borderColor={isDark ? 'rgba(239,68,68,0.25)' : '#FECACA'}
+                    alignItems="center"
+                    marginBottom={12}
+                  >
+                    {scheduleLoading ? (
+                      <ActivityIndicator size="small" color="#DC2626" />
+                    ) : (
+                      <Text color="#DC2626" fontSize={15} fontWeight="700">
+                        Disable Schedule
+                      </Text>
+                    )}
+                  </YStack>
+                </AnimatedButton>
+              ) : (
+                <AnimatedButton onPress={handleApplySchedule} disabled={scheduleLoading}>
+                  <LinearGradient
+                    colors={[colors.accent, '#FF6B35']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}
+                  >
+                    <YStack paddingVertical={14} alignItems="center">
                       {scheduleLoading ? (
-                        <ActivityIndicator size="small" color="#DC2626" />
+                        <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text color="#DC2626" fontSize={15} fontWeight="700">
-                          Disable Schedule
+                        <Text color="#FFFFFF" fontSize={15} fontWeight="700">
+                          Activate Schedule
                         </Text>
                       )}
                     </YStack>
-                  </AnimatedButton>
-                ) : (
-                  <AnimatedButton onPress={handleApplySchedule} disabled={scheduleLoading}>
-                    <LinearGradient
-                      colors={[AMBER, '#FF6B35']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{ borderRadius: 14, overflow: 'hidden' }}
-                    >
-                      <YStack paddingVertical={14} alignItems="center">
-                        {scheduleLoading ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <Text color="#FFFFFF" fontSize={15} fontWeight="700">
-                            Activate Schedule
-                          </Text>
-                        )}
-                      </YStack>
-                    </LinearGradient>
-                  </AnimatedButton>
-                )}
-              </GlowCard>
+                  </LinearGradient>
+                </AnimatedButton>
+              )}
             </Animated.View>
           )}
 
-          {/* Quick Actions */}
-          {isAuthorized && hasApps && (
-            <Animated.View
-              entering={FadeInDown.delay(200).duration(400).springify().damping(16)}
-              exiting={FadeOutUp.duration(250)}
-            >
-              <SectionTitle title="Quick Actions" />
-              <XStack gap={10} marginBottom={20}>
-                <AnimatedButton
-                  onPress={handleBlockNow}
-                  disabled={blockLoading}
-                  style={{ flex: 1 }}
-                >
-                  <GlowCard accent padding={16} alignItems="center">
-                    <IconBadge size={36} glow>
-                      {blockLoading ? (
-                        <ActivityIndicator size="small" color={AMBER} />
-                      ) : (
-                        <Shield size={16} color={AMBER} />
-                      )}
-                    </IconBadge>
-                    <Text color="#1A1A2E" fontSize={14} fontWeight="600" marginTop={10}>
-                      Block Now
-                    </Text>
-                    <Text color="#9CA3AF" fontSize={11} marginTop={2} textAlign="center">
-                      Immediately block
-                    </Text>
-                  </GlowCard>
-                </AnimatedButton>
-                <AnimatedButton
-                  onPress={handleUnblockNow}
-                  disabled={unblockLoading}
-                  style={{ flex: 1 }}
-                >
-                  <GlowCard padding={16} alignItems="center">
-                    <IconBadge size={36}>
-                      {unblockLoading ? (
-                        <ActivityIndicator size="small" color="#9CA3AF" />
-                      ) : (
-                        <Shield size={16} color="#9CA3AF" />
-                      )}
-                    </IconBadge>
-                    <Text color="#1A1A2E" fontSize={14} fontWeight="600" marginTop={10}>
-                      Unblock All
-                    </Text>
-                    <Text color="#9CA3AF" fontSize={11} marginTop={2} textAlign="center">
-                      Remove all blocks
-                    </Text>
-                  </GlowCard>
-                </AnimatedButton>
-              </XStack>
-            </Animated.View>
-          )}
+
 
           {/* Info tip */}
           <FadeInView delay={isAuthorized && hasApps ? 600 : 300}>
             <GlowCard glass size="sm" marginBottom={16}>
               <XStack alignItems="center" gap={12}>
                 <IconBadge size={32}>
-                  <Info size={14} color={AMBER} />
+                  <Info size={14} color={colors.accent} />
                 </IconBadge>
-                <Text color="#6B7280" fontSize={13} lineHeight={19} flex={1}>
+                <Text color={colors.secondary} fontSize={13} lineHeight={19} flex={1}>
                   Blocked apps require completing {settings.challengesRequired} brain
                   challenge{settings.challengesRequired > 1 ? 's' : ''} before opening.
                 </Text>
@@ -598,10 +646,10 @@ export default function LockScreen() {
           {/* How it works */}
           <FadeInView delay={isAuthorized && hasApps ? 700 : 400}>
             <ListCard noteStyle>
-              <Text color="#1A1A2E" fontSize={16} fontWeight="600" marginBottom={8}>
+              <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={8}>
                 How it works
               </Text>
-              <Text color="#6B7280" fontSize={14} lineHeight={21}>
+              <Text color={colors.secondary} fontSize={14} lineHeight={21}>
                 BrainLock uses iOS Screen Time to actually block apps on your device.
                 When you try to open a blocked app during active hours, you'll need to
                 complete a brain challenge first.
@@ -612,6 +660,23 @@ export default function LockScreen() {
           <View height={20} />
         </Animated.View>
       </ScrollView>
+
+      <TimePickerSheet
+        visible={pickerTarget === 'start'}
+        title="Start Time"
+        subtitle="Select when blocking begins"
+        value={settings.activeHoursStart}
+        onChange={(h) => updateSettings({ activeHoursStart: h })}
+        onClose={() => setPickerTarget(null)}
+      />
+      <TimePickerSheet
+        visible={pickerTarget === 'end'}
+        title="End Time"
+        subtitle="Select when blocking ends"
+        value={settings.activeHoursEnd}
+        onChange={(h) => updateSettings({ activeHoursEnd: h })}
+        onClose={() => setPickerTarget(null)}
+      />
     </YStack>
   );
 }

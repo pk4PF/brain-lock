@@ -2,6 +2,7 @@ import { Text, XStack } from 'tamagui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TouchableOpacity, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface GoldButtonProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export function GoldButton({
   style,
   fullWidth = false,
 }: GoldButtonProps) {
+  const { isDark } = useThemeColors();
   const height = size === 'sm' ? 36 : size === 'md' ? 48 : 56;
   const px = size === 'sm' ? 16 : size === 'md' ? 24 : 28;
   const fontSize = size === 'sm' ? 13 : size === 'md' ? 15 : 17;
@@ -39,9 +41,9 @@ export function GoldButton({
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
           shadowColor: '#F5A623',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
+          shadowOpacity: isDark ? 0.15 : 0.3,
           shadowRadius: 16,
-          elevation: 8,
+          elevation: isDark ? 2 : 8,
         },
         style,
       ]}
@@ -68,7 +70,6 @@ export function GoldButton({
   );
 }
 
-// Secondary outline button with amber accent
 export function GhostButton({
   children,
   onPress,
@@ -76,6 +77,8 @@ export function GhostButton({
   disabled = false,
   style,
 }: Omit<GoldButtonProps, 'size' | 'fullWidth'>) {
+  const { colors } = useThemeColors();
+
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -99,7 +102,7 @@ export function GhostButton({
       ]}
     >
       {icon}
-      <Text color="#1A1A2E" fontSize={15} fontWeight="600">
+      <Text color={colors.text} fontSize={15} fontWeight="600">
         {children}
       </Text>
     </TouchableOpacity>

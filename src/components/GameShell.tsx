@@ -1,13 +1,15 @@
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { X } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
-import { Spacing, FontSize, FontWeight, BorderRadius } from '../constants/theme';
+import { ChevronLeft } from 'lucide-react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Spacing, FontSize, FontWeight, FontFamily, BorderRadius } from '../constants/theme';
+import { soundCountdown } from '../utils/sounds';
 
 export interface GameTheme {
   gradient: [string, string, string];
   accent: string;
+  accentSoft: string;
   textPrimary: string;
   textSecondary: string;
   cardBg: string;
@@ -15,85 +17,88 @@ export interface GameTheme {
   timerBg: string;
   timerFill: string;
   timerLow: string;
+  orbColors: [string, string, string];
 }
 
 export const GAME_THEMES: Record<string, GameTheme> = {
   math: {
-    gradient: ['#0D0221', '#1A0533', '#2D1B69'],
+    gradient: ['#050D1A', '#0A1929', '#0F2847'],
     accent: '#00F0FF',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(0,240,255,0.08)',
-    cardBorder: 'rgba(0,240,255,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    accentSoft: 'rgba(0,240,255,0.12)',
+    textPrimary: '#E8F4FF',
+    textSecondary: 'rgba(232,244,255,0.5)',
+    cardBg: 'rgba(0,240,255,0.06)',
+    cardBorder: 'rgba(0,240,255,0.12)',
+    timerBg: 'rgba(0,240,255,0.08)',
     timerFill: '#00F0FF',
     timerLow: '#FF3366',
+    orbColors: ['rgba(0,240,255,0.04)', 'rgba(0,180,216,0.03)', 'rgba(0,240,255,0.025)'],
   },
   memory: {
-    gradient: ['#020B2E', '#0A1628', '#0F2847'],
+    gradient: ['#021A14', '#041F1A', '#0A2E28'],
     accent: '#00D4AA',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(0,212,170,0.08)',
-    cardBorder: 'rgba(0,212,170,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    accentSoft: 'rgba(0,212,170,0.12)',
+    textPrimary: '#E0FFF5',
+    textSecondary: 'rgba(224,255,245,0.5)',
+    cardBg: 'rgba(0,212,170,0.06)',
+    cardBorder: 'rgba(0,212,170,0.12)',
+    timerBg: 'rgba(0,212,170,0.08)',
     timerFill: '#00D4AA',
     timerLow: '#FF6B6B',
+    orbColors: ['rgba(0,212,170,0.04)', 'rgba(0,180,140,0.03)', 'rgba(0,212,170,0.025)'],
   },
-  pattern: {
-    gradient: ['#0A0E27', '#1B0F3A', '#0F2027'],
-    accent: '#7B61FF',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(123,97,255,0.08)',
-    cardBorder: 'rgba(123,97,255,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
-    timerFill: '#7B61FF',
-    timerLow: '#FF4D6D',
-  },
+
   wordscramble: {
-    gradient: ['#1A1207', '#2D1F0E', '#3D2B14'],
+    gradient: ['#1A1408', '#241C0E', '#2E2414'],
     accent: '#E8B84B',
+    accentSoft: 'rgba(232,184,75,0.12)',
     textPrimary: '#FFF8E7',
-    textSecondary: 'rgba(255,248,231,0.6)',
-    cardBg: 'rgba(232,184,75,0.08)',
-    cardBorder: 'rgba(232,184,75,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    textSecondary: 'rgba(255,248,231,0.5)',
+    cardBg: 'rgba(232,184,75,0.06)',
+    cardBorder: 'rgba(232,184,75,0.12)',
+    timerBg: 'rgba(232,184,75,0.08)',
     timerFill: '#E8B84B',
     timerLow: '#E85D4B',
+    orbColors: ['rgba(232,184,75,0.04)', 'rgba(200,160,50,0.03)', 'rgba(232,184,75,0.025)'],
   },
   speedread: {
-    gradient: ['#1A0A0A', '#2D0F0F', '#3D1414'],
+    gradient: ['#1A0C08', '#28120E', '#381A14'],
     accent: '#FF6B35',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(255,107,53,0.08)',
-    cardBorder: 'rgba(255,107,53,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    accentSoft: 'rgba(255,107,53,0.12)',
+    textPrimary: '#FFEEE6',
+    textSecondary: 'rgba(255,238,230,0.5)',
+    cardBg: 'rgba(255,107,53,0.06)',
+    cardBorder: 'rgba(255,107,53,0.12)',
+    timerBg: 'rgba(255,107,53,0.08)',
     timerFill: '#FF6B35',
     timerLow: '#FF3333',
+    orbColors: ['rgba(255,107,53,0.04)', 'rgba(220,80,30,0.03)', 'rgba(255,107,53,0.025)'],
   },
   reaction: {
-    gradient: ['#0A0A1A', '#141433', '#1E1E4D'],
+    gradient: ['#0C0C18', '#141430', '#1A1A48'],
     accent: '#FFD600',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(255,214,0,0.08)',
-    cardBorder: 'rgba(255,214,0,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    accentSoft: 'rgba(255,214,0,0.12)',
+    textPrimary: '#FFFCE6',
+    textSecondary: 'rgba(255,252,230,0.5)',
+    cardBg: 'rgba(255,214,0,0.06)',
+    cardBorder: 'rgba(255,214,0,0.12)',
+    timerBg: 'rgba(255,214,0,0.08)',
     timerFill: '#FFD600',
     timerLow: '#FF4444',
+    orbColors: ['rgba(255,214,0,0.04)', 'rgba(220,185,0,0.03)', 'rgba(255,214,0,0.025)'],
   },
   colormatch: {
-    gradient: ['#1A0A2E', '#2D1052', '#3F1676'],
+    gradient: ['#180A28', '#220E3A', '#2E1450'],
     accent: '#FF69B4',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.6)',
-    cardBg: 'rgba(255,105,180,0.08)',
-    cardBorder: 'rgba(255,105,180,0.2)',
-    timerBg: 'rgba(255,255,255,0.1)',
+    accentSoft: 'rgba(255,105,180,0.12)',
+    textPrimary: '#FFE8F3',
+    textSecondary: 'rgba(255,232,243,0.5)',
+    cardBg: 'rgba(255,105,180,0.06)',
+    cardBorder: 'rgba(255,105,180,0.12)',
+    timerBg: 'rgba(255,105,180,0.08)',
     timerFill: '#FF69B4',
     timerLow: '#FF4444',
+    orbColors: ['rgba(255,105,180,0.05)', 'rgba(220,80,150,0.03)', 'rgba(255,105,180,0.025)'],
   },
 };
 
@@ -106,29 +111,57 @@ interface GameShellProps {
   children: React.ReactNode;
   onClose?: () => void;
   gameId?: string;
+  multiplier?: number;
 }
 
-export default function GameShell({ title, color, score, timeLeft, maxTime = 30, children, onClose, gameId }: GameShellProps) {
+interface FloatingPoint {
+  id: number;
+  value: number;
+  anim: Animated.Value;
+}
+
+export default function GameShell({ title, color, score, timeLeft, maxTime = 30, children, onClose, gameId, multiplier = 1 }: GameShellProps) {
   const theme = GAME_THEMES[gameId || ''] || GAME_THEMES.math;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const scoreAnim = useRef(new Animated.Value(1)).current;
   const prevScore = useRef(score);
+  const [floatingPoints, setFloatingPoints] = useState<FloatingPoint[]>([]);
+  const floatingIdRef = useRef(0);
 
   useEffect(() => {
     if (score !== prevScore.current) {
+      const delta = score - prevScore.current;
       prevScore.current = score;
+
+      // Bounce the score badge
       Animated.sequence([
-        Animated.timing(scoreAnim, { toValue: 1.2, duration: 100, useNativeDriver: true }),
-        Animated.timing(scoreAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(scoreAnim, { toValue: 1.15, duration: 80, useNativeDriver: true }),
+        Animated.spring(scoreAnim, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
       ]).start();
+
+      // Spawn floating point popup
+      if (delta > 0) {
+        const id = ++floatingIdRef.current;
+        const anim = new Animated.Value(0);
+        setFloatingPoints((prev) => [...prev, { id, value: delta, anim }]);
+
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }).start(() => {
+          setFloatingPoints((prev) => prev.filter((p) => p.id !== id));
+        });
+      }
     }
   }, [score]);
 
   useEffect(() => {
     if (timeLeft !== undefined && timeLeft <= 5 && timeLeft > 0) {
+      soundCountdown();
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.05, duration: 150, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.03, duration: 120, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
       ]).start();
     }
   }, [timeLeft]);
@@ -138,41 +171,82 @@ export default function GameShell({ title, color, score, timeLeft, maxTime = 30,
 
   return (
     <LinearGradient colors={theme.gradient} style={styles.container}>
+      {/* Decorative ambient orbs for depth */}
+      <View style={[styles.orb, styles.orbTR, { backgroundColor: theme.orbColors[0] }]} />
+      <View style={[styles.orb, styles.orbBL, { backgroundColor: theme.orbColors[1] }]} />
+      <View style={[styles.orb, styles.orbMR, { backgroundColor: theme.orbColors[2] }]} />
+
       <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+            style={[styles.closeBtn, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
             onPress={onClose ?? (() => router.back())}
           >
-            <X size={16} color={theme.textSecondary} />
+            <ChevronLeft size={20} color={theme.textPrimary} />
           </TouchableOpacity>
 
-          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>{title}</Text>
+          <View style={styles.titleWrap}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>{title}</Text>
+          </View>
 
-          <Animated.View
-            style={[
-              styles.scoreContainer,
-              { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
-              { transform: [{ scale: scoreAnim }] },
-            ]}
-          >
-            <Text style={[styles.scoreValue, { color: theme.accent }]}>{score}</Text>
-            <Text style={[styles.scoreLabel, { color: theme.textSecondary }]}>pts</Text>
-          </Animated.View>
+          <View style={styles.scoreArea}>
+            <Animated.View
+              style={[
+                styles.scoreBadge,
+                { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+                { transform: [{ scale: scoreAnim }] },
+              ]}
+            >
+              <Text style={[styles.scoreVal, { color: theme.accent }]}>{score}</Text>
+              <Text style={[styles.scoreLbl, { color: theme.textSecondary }]}>pts</Text>
+            </Animated.View>
+
+            {/* Multiplier badge */}
+            {multiplier > 1 && (
+              <View style={[styles.multBadge, { backgroundColor: theme.accentSoft }]}>
+                <Text style={[styles.multText, { color: theme.accent }]}>{multiplier}x</Text>
+              </View>
+            )}
+
+            {/* Floating point popups */}
+            {floatingPoints.map((fp) => (
+              <Animated.Text
+                key={fp.id}
+                style={[
+                  styles.floatingPoint,
+                  { color: theme.accent },
+                  {
+                    opacity: fp.anim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 0] }),
+                    transform: [{
+                      translateY: fp.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -40] }),
+                    }],
+                  },
+                ]}
+              >
+                +{fp.value}
+              </Animated.Text>
+            ))}
+          </View>
         </View>
 
+        {/* Timer bar */}
         {timeLeft !== undefined && (
-          <Animated.View style={[styles.timerBar, { backgroundColor: theme.timerBg, transform: [{ scaleX: pulseAnim }] }]}>
-            <View
-              style={[
-                styles.timerFill,
-                {
-                  width: `${timerPercent}%`,
-                  backgroundColor: isLow ? theme.timerLow : theme.timerFill,
-                },
-              ]}
-            />
-          </Animated.View>
+          <View style={styles.timerWrap}>
+            <Animated.View
+              style={[styles.timerTrack, { backgroundColor: theme.timerBg, transform: [{ scaleX: pulseAnim }] }]}
+            >
+              <LinearGradient
+                colors={isLow ? [theme.timerLow, '#FF6666'] : [theme.accent, theme.timerFill]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.timerFill, { width: `${timerPercent}%` }]}
+              />
+            </Animated.View>
+            <Text style={[styles.timerNum, { color: isLow ? theme.timerLow : theme.textSecondary }]}>
+              {timeLeft}s
+            </Text>
+          </View>
         )}
 
         <View style={styles.content}>{children}</View>
@@ -182,20 +256,24 @@ export default function GameShell({ title, color, score, timeLeft, maxTime = 30,
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+
+  // Ambient orbs
+  orb: { position: 'absolute', borderRadius: 999 },
+  orbTR: { width: 280, height: 280, top: -60, right: -80 },
+  orbBL: { width: 220, height: 220, bottom: 60, left: -60 },
+  orbMR: { width: 160, height: 160, top: '42%', right: -30 },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
-  closeButton: {
+  closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -203,40 +281,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  titleWrap: { flex: 1, alignItems: 'center' },
   headerTitle: {
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 0.5,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 0.3,
   },
-  scoreContainer: {
+  scoreBadge: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    gap: 2,
+    gap: 3,
   },
-  scoreValue: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
+  scoreArea: { alignItems: 'center' },
+  scoreVal: { fontSize: FontSize.xl, fontFamily: FontFamily.bold },
+  scoreLbl: { fontSize: 10, fontFamily: FontFamily.semibold, letterSpacing: 0.5 },
+  multBadge: {
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  scoreLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
+  multText: { fontSize: 11, fontFamily: FontFamily.bold, letterSpacing: 0.3 },
+  floatingPoint: {
+    position: 'absolute',
+    top: -8,
+    right: -4,
+    fontSize: 16,
+    fontFamily: FontFamily.bold,
   },
-  timerBar: {
-    height: 4,
-    marginHorizontal: Spacing.xl,
-    borderRadius: 2,
+
+  // Timer
+  timerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    gap: 10,
+    marginBottom: 4,
+  },
+  timerTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  timerFill: {
-    height: '100%',
-    borderRadius: 2,
+  timerFill: { height: '100%', borderRadius: 3 },
+  timerNum: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
+    width: 28,
+    textAlign: 'right',
   },
-  content: {
-    flex: 1,
-    padding: Spacing.xl,
-  },
+
+  // Content
+  content: { flex: 1, padding: Spacing.xl },
 });

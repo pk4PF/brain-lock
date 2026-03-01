@@ -3,8 +3,11 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef } from 'react';
-import { Spacing, FontSize, FontWeight, BorderRadius } from '../constants/theme';
-import { GAME_THEMES, GameTheme } from './GameShell';
+import { Spacing, FontSize, FontFamily, BorderRadius } from '../constants/theme';
+import { soundComplete, soundFail } from '../utils/sounds';
+import { GAME_THEMES } from './GameShell';
+import { useStore } from '../store/useStore';
+import { GameType } from '../constants/games';
 
 interface GameCompleteProps {
   score: number;
@@ -20,11 +23,22 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
   const isGood = percentage >= 70;
   const theme = GAME_THEMES[gameId || ''] || GAME_THEMES.math;
 
+  const { progress, dailyGamesCompleted, settings } = useStore();
+  const gameStats = gameId ? progress.gameStats[gameId as GameType] : null;
+  const isNewBest = gameStats && score > 0 && gameStats.played <= 1;
+  const hasGamesRemaining = dailyGamesCompleted < settings.challengesRequired;
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
+    if (isGood) {
+      soundComplete();
+    } else {
+      soundFail();
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
@@ -34,6 +48,10 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
 
   return (
     <LinearGradient colors={theme.gradient} style={styles.container}>
+      {/* Ambient orbs */}
+      <View style={[styles.orb, { backgroundColor: theme.orbColors[0], top: -40, right: -60, width: 240, height: 240 }]} />
+      <View style={[styles.orb, { backgroundColor: theme.orbColors[1], bottom: 80, left: -50, width: 200, height: 200 }]} />
+
       {isGood && (
         <LottieView
           source={require('../../assets/animations/confetti.json')}
@@ -51,7 +69,7 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
         ]}
       >
-        <View style={styles.resultIcon}>
+        <View style={[styles.resultIcon, { backgroundColor: `${theme.accent}10` }]}>
           {isGood ? (
             <LottieView
               source={require('../../assets/animations/success.json')}
@@ -65,11 +83,21 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
         </View>
 
         <Text style={[styles.title, { color: theme.textPrimary }]}>
-          {isGood ? 'Well Done' : 'Keep Going'}
+          {isGood ? 'Well Done!' : correct > 0 ? 'Nice Try!' : 'Keep Going'}
         </Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{gameTitle}</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          {isGood
+            ? gameTitle
+            : `You got ${correct} right${total - correct <= 2 ? ' — so close!' : '. Keep practicing!'}`}
+        </Text>
 
-        <View style={[styles.statsRow, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+        {isNewBest && score > 0 && (
+          <View style={[styles.bestBadge, { backgroundColor: `${theme.accent}15` }]}>
+            <Text style={[styles.bestBadgeText, { color: theme.accent }]}>New Personal Best!</Text>
+          </View>
+        )}
+
+        <View style={[styles.statsRow, { backgroundColor: `${theme.accent}08` }]}>
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: theme.accent }]}>{score}</Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Credits</Text>
@@ -90,7 +118,7 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
       <Animated.View style={[styles.actions, { opacity: fadeAnim }]}>
         <TouchableOpacity activeOpacity={0.8} onPress={onPlayAgain} style={styles.buttonWrapper}>
           <LinearGradient
-            colors={[theme.accent, theme.accent + 'CC']}
+            colors={[theme.accent, `${theme.accent}CC`]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.primaryButton}
@@ -98,6 +126,24 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
             <Text style={styles.primaryButtonText}>Play Again</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        {hasGamesRemaining && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.replace('/(tabs)/games')}
+            style={styles.buttonWrapper}
+          >
+            <LinearGradient
+              colors={[`${theme.accent}30`, `${theme.accent}15`]}
+              style={styles.primaryButton}
+            >
+              <Text style={[styles.primaryButtonText, { color: theme.textPrimary }]}>
+                Next Game ({settings.challengesRequired - dailyGamesCompleted} left)
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.replace('/(tabs)')}
@@ -117,6 +163,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.xl,
   },
+  orb: { position: 'absolute', borderRadius: 999 },
   card: {
     width: '100%',
     borderRadius: BorderRadius.xl,
@@ -138,29 +185,35 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
     overflow: 'hidden',
   },
-  resultAnimation: {
-    width: 80,
-    height: 80,
-  },
-  resultDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
+  resultAnimation: { width: 80, height: 80 },
+  resultDot: { width: 24, height: 24, borderRadius: 12 },
   title: {
     fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bold,
     marginBottom: Spacing.xs,
   },
   subtitle: {
     fontSize: FontSize.md,
-    marginBottom: Spacing.xxl,
+    fontFamily: FontFamily.medium,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  bestBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: Spacing.lg,
+  },
+  bestBadgeText: {
+    fontSize: 13,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 0.3,
   },
   statsRow: {
     flexDirection: 'row',
@@ -168,30 +221,12 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     width: '100%',
   },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-  },
-  statLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    marginTop: 2,
-  },
-  divider: {
-    width: 1,
-  },
-  actions: {
-    width: '100%',
-    gap: Spacing.md,
-  },
-  buttonWrapper: {
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-  },
+  stat: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: FontSize.xl, fontFamily: FontFamily.bold },
+  statLabel: { fontSize: FontSize.sm, fontFamily: FontFamily.medium, marginTop: 2 },
+  divider: { width: 1 },
+  actions: { width: '100%', gap: Spacing.md },
+  buttonWrapper: { borderRadius: BorderRadius.md, overflow: 'hidden' },
   primaryButton: {
     height: 52,
     justifyContent: 'center',
@@ -201,7 +236,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bold,
   },
   secondaryButton: {
     height: 52,
@@ -212,6 +247,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.semibold,
+    fontFamily: FontFamily.semibold,
   },
 });

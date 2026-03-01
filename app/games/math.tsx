@@ -1,27 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Spacing, FontSize, FontWeight, BorderRadius } from '../../src/constants/theme';
+import { FontFamily, BorderRadius } from '../../src/constants/theme';
 import { useStore } from '../../src/store/useStore';
-import { DIFFICULTY_CONFIG } from '../../src/constants/games';
 import GameShell, { GAME_THEMES } from '../../src/components/GameShell';
 import GameComplete from '../../src/components/GameComplete';
 import { generateProblem, type Problem } from '../../src/utils/mathProblem';
+import { soundTap, soundCorrect, soundWrong, soundRound } from '../../src/utils/sounds';
 
 const TOTAL_ROUNDS = 10;
-const theme = GAME_THEMES.math;
+const T = GAME_THEMES.math;
+const TIME_STAGES = [15, 15, 12, 12, 10, 10, 8, 8, 7, 6];
+const MULT_STAGES = [1, 1, 1, 1.2, 1.2, 1.5, 1.5, 1.8, 2, 2];
 
 export default function MathGame() {
-  const { settings, addPoints, recordGame } = useStore();
-  const difficulty = settings.difficulty;
-  const timeLimit = DIFFICULTY_CONFIG[difficulty].timeLimit;
-  const multiplier = DIFFICULTY_CONFIG[difficulty].multiplier;
+  const { addPoints, recordGame, completeDailyGame } = useStore();
 
-  const [problem, setProblem] = useState<Problem>(generateProblem(difficulty));
+  const [problem, setProblem] = useState<Problem>(generateProblem(1));
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
   const [correct, setCorrect] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(timeLimit);
+  const [timeLeft, setTimeLeft] = useState(TIME_STAGES[0]);
   const [gameOver, setGameOver] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
@@ -48,10 +47,7 @@ export default function MathGame() {
     startTime.current = Date.now();
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
-        if (t <= 1) {
-          handleTimeout();
-          return 0;
-        }
+        if (t <= 1) { handleTimeout(); return 0; }
         return t - 1;
       });
     }, 1000);
@@ -63,53 +59,56 @@ export default function MathGame() {
     if (roundRef.current >= TOTAL_ROUNDS) {
       finishGame(correctRef.current, scoreRef.current);
     } else {
-      setRound((r) => r + 1);
-      setProblem(generateProblem(difficulty));
-      setTimeLeft(timeLimit);
+      const nextRound = roundRef.current + 1;
+      setRound(nextRound);
+      setProblem(generateProblem(nextRound));
+      setTimeLeft(TIME_STAGES[Math.min(nextRound - 1, TIME_STAGES.length - 1)]);
       setSelectedAnswer(null);
       setIsCorrectAnswer(null);
     }
-  }, [difficulty, timeLimit]);
+  }, []);
 
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
-    recordGame('math', finalCorrect >= TOTAL_ROUNDS * 0.6, timeTaken);
+    const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
+    recordGame('math', won, timeTaken);
+    completeDailyGame();
     setGameOver(true);
   };
 
   const handleAnswer = (answer: number) => {
     if (selectedAnswer !== null) return;
+    soundTap();
     clearInterval(timerRef.current);
-
     const isRight = answer === problem.answer;
     setSelectedAnswer(answer);
     setIsCorrectAnswer(isRight);
-
     if (isRight) {
+      soundCorrect();
       Animated.sequence([
         Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
         Animated.timing(flashAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
       ]).start();
     }
-
+    if (!isRight) { soundWrong(); }
     let newScore = score;
     let newCorrect = correct;
     if (isRight) {
-      const points = Math.round(10 * multiplier);
+      const points = Math.round(10 * MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)]);
       newScore = score + points;
       newCorrect = correct + 1;
       setScore(newScore);
       setCorrect(newCorrect);
     }
-
     setTimeout(() => {
-      if (round >= TOTAL_ROUNDS) {
-        finishGame(newCorrect, newScore);
-      } else {
-        setRound((r) => r + 1);
-        setProblem(generateProblem(difficulty));
-        setTimeLeft(timeLimit);
+      if (round >= TOTAL_ROUNDS) { finishGame(newCorrect, newScore); }
+      else {
+        soundRound();
+        const nextR = round + 1;
+        setRound(nextR);
+        setProblem(generateProblem(nextR));
+        setTimeLeft(TIME_STAGES[Math.min(nextR - 1, TIME_STAGES.length - 1)]);
         setSelectedAnswer(null);
         setIsCorrectAnswer(null);
       }
@@ -117,89 +116,72 @@ export default function MathGame() {
   };
 
   const resetGame = () => {
-    setScore(0);
-    setRound(1);
-    setCorrect(0);
-    setTimeLeft(timeLimit);
-    setGameOver(false);
-    setSelectedAnswer(null);
-    setIsCorrectAnswer(null);
-    setProblem(generateProblem(difficulty));
+    setScore(0); setRound(1); setCorrect(0); setTimeLeft(TIME_STAGES[0]);
+    setGameOver(false); setSelectedAnswer(null); setIsCorrectAnswer(null);
+    setProblem(generateProblem(1));
   };
 
   if (gameOver) {
-    return (
-      <GameComplete
-        score={score}
-        correct={correct}
-        total={TOTAL_ROUNDS}
-        gameTitle="Math Blitz"
-        onPlayAgain={resetGame}
-        gameId="math"
-      />
-    );
+    return <GameComplete score={score} correct={correct} total={TOTAL_ROUNDS} gameTitle="Math Blitz" onPlayAgain={resetGame} gameId="math" />;
   }
 
   return (
-    <GameShell title="Math Blitz" color="#00F0FF" score={score} timeLeft={timeLeft} gameId="math">
-      {/* Neon glow flash on correct */}
+    <GameShell title="Math Blitz" color="#00F0FF" score={score} timeLeft={timeLeft} gameId="math" multiplier={MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)]}>
       <Animated.View style={[styles.glowOverlay, { opacity: flashAnim }]} pointerEvents="none" />
 
-      <View style={styles.roundIndicator}>
+      {/* Progress pips */}
+      <View style={styles.pips}>
         {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.roundDot,
-              i < round - 1 && styles.roundDotDone,
-              i === round - 1 && styles.roundDotCurrent,
-            ]}
-          />
+          <View key={i} style={[styles.pip, i < round - 1 && styles.pipDone, i === round - 1 && styles.pipCurrent]} />
         ))}
       </View>
 
-      <Animated.View style={[styles.problemContainer, { transform: [{ scale: problemScale }] }]}>
-        <View style={styles.problemCard}>
-          <Text style={styles.problemText}>
-            {problem.a} {problem.op} {problem.b}
-          </Text>
-          <View style={styles.equalsLine} />
-          <Text style={styles.equalsText}>?</Text>
-        </View>
+      {/* Problem display */}
+      <Animated.View style={[styles.problemWrap, { transform: [{ scale: problemScale }] }]}>
+        <LinearGradient
+          colors={['rgba(0,240,255,0.08)', 'rgba(0,240,255,0.02)']}
+          style={styles.problemCard}
+        >
+          <Text style={styles.problemText}>{problem.a} {problem.op} {problem.b}</Text>
+          <LinearGradient
+            colors={['transparent', 'rgba(0,240,255,0.25)', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={styles.dividerLine}
+          />
+          <Text style={styles.equalsQ}>?</Text>
+        </LinearGradient>
       </Animated.View>
 
-      <View style={styles.optionsGrid}>
+      {/* Answer grid */}
+      <View style={styles.grid}>
         {problem.options.map((option, idx) => {
-          let borderCol = theme.cardBorder;
-          let bgColor = theme.cardBg;
-          let textColor = theme.textPrimary;
-          let glowColor = 'transparent';
+          let borderCol = 'rgba(0,240,255,0.12)';
+          let bgColors: [string, string] = ['rgba(0,240,255,0.05)', 'rgba(0,240,255,0.02)'];
+          let textCol = '#E8F4FF';
 
           if (selectedAnswer !== null) {
             if (option === problem.answer) {
               borderCol = '#22C55E';
-              bgColor = 'rgba(34,197,94,0.15)';
-              textColor = '#22C55E';
-              glowColor = 'rgba(34,197,94,0.3)';
+              bgColors = ['rgba(34,197,94,0.18)', 'rgba(34,197,94,0.06)'];
+              textCol = '#22C55E';
             } else if (option === selectedAnswer && !isCorrectAnswer) {
               borderCol = '#EF4444';
-              bgColor = 'rgba(239,68,68,0.15)';
-              textColor = '#EF4444';
+              bgColors = ['rgba(239,68,68,0.18)', 'rgba(239,68,68,0.06)'];
+              textCol = '#EF4444';
             }
           }
 
           return (
             <TouchableOpacity
               key={idx}
-              style={[
-                styles.optionButton,
-                { backgroundColor: bgColor, borderColor: borderCol, shadowColor: glowColor },
-              ]}
+              style={styles.optionTouch}
               onPress={() => handleAnswer(option)}
               activeOpacity={0.7}
               disabled={selectedAnswer !== null}
             >
-              <Text style={[styles.optionText, { color: textColor }]}>{option}</Text>
+              <LinearGradient colors={bgColors} style={[styles.optionCard, { borderColor: borderCol }]}>
+                <Text style={[styles.optionText, { color: textCol }]}>{option}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           );
         })}
@@ -211,83 +193,71 @@ export default function MathGame() {
 const styles = StyleSheet.create({
   glowOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,240,255,0.05)',
+    backgroundColor: 'rgba(0,240,255,0.04)',
     borderRadius: 20,
   },
-  roundIndicator: {
+  pips: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 6,
-    marginBottom: Spacing.lg,
+    marginBottom: 20,
   },
-  roundDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  pip: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: 'rgba(0,240,255,0.12)',
   },
-  roundDotDone: {
-    backgroundColor: '#00F0FF',
-  },
-  roundDotCurrent: {
-    backgroundColor: '#00F0FF',
-    width: 20,
-    borderRadius: 4,
-  },
-  problemContainer: {
+  pipDone: { backgroundColor: '#00F0FF' },
+  pipCurrent: { backgroundColor: '#00F0FF' },
+  problemWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.xxl,
+    flex: 1,
+    maxHeight: 260,
   },
   problemCard: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxl,
-    paddingHorizontal: Spacing.xxxxl,
-    borderRadius: BorderRadius.xl,
-    backgroundColor: 'rgba(0,240,255,0.06)',
+    paddingVertical: 36,
+    paddingHorizontal: 48,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(0,240,255,0.15)',
+    borderColor: 'rgba(0,240,255,0.1)',
   },
   problemText: {
     fontSize: 52,
-    fontWeight: FontWeight.heavy,
-    color: '#FFFFFF',
+    fontFamily: FontFamily.heavy,
+    color: '#E8F4FF',
     letterSpacing: 4,
-    textShadowColor: 'rgba(0,240,255,0.4)',
+    textShadowColor: 'rgba(0,240,255,0.35)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    textShadowRadius: 24,
   },
-  equalsLine: {
-    width: 40,
+  dividerLine: {
+    width: 60,
     height: 2,
-    backgroundColor: 'rgba(0,240,255,0.3)',
-    marginVertical: Spacing.md,
     borderRadius: 1,
+    marginVertical: 14,
   },
-  equalsText: {
+  equalsQ: {
     fontSize: 36,
-    fontWeight: FontWeight.bold,
-    color: 'rgba(0,240,255,0.5)',
+    fontFamily: FontFamily.bold,
+    color: 'rgba(0,240,255,0.4)',
   },
-  optionsGrid: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: 12,
     justifyContent: 'center',
-    marginTop: Spacing.lg,
+    paddingBottom: 12,
   },
-  optionButton: {
-    width: '44%',
-    paddingVertical: 18,
-    borderRadius: BorderRadius.lg,
+  optionTouch: { width: '46%' },
+  optionCard: {
+    paddingVertical: 20,
+    borderRadius: 18,
     alignItems: 'center',
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
   },
   optionText: {
     fontSize: 28,
-    fontWeight: FontWeight.bold,
+    fontFamily: FontFamily.bold,
   },
 });

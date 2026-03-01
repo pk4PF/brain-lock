@@ -8,8 +8,18 @@ export default function Index() {
   const { onboardingComplete } = useStore();
 
   useEffect(() => {
-    // DEV: always show onboarding on reload (remove this override when done)
-    router.replace('/onboarding');
+    // DEV: always show onboarding on app start
+    if (__DEV__) {
+      useStore.setState({ onboardingComplete: false });
+      router.replace('/onboarding');
+      return;
+    }
+
+    if (onboardingComplete) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/onboarding');
+    }
   }, []);
 
   return (

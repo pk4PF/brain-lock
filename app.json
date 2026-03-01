@@ -19,6 +19,9 @@
       "deploymentTarget": "16.0",
       "entitlements": {
         "com.apple.developer.family-controls": true
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +30,8 @@
         "backgroundColor": "#0A0A0A"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.pk4pf.brainlock"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -35,6 +39,12 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "31dff2f4-7930-4d3f-8fd9-55d8410bd215"
+      }
+    }
   }
 }

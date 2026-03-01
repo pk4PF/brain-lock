@@ -1,125 +1,113 @@
-import { YStack, styled } from 'tamagui';
+import { YStack } from 'tamagui';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
-export const GlowCard = styled(YStack, {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 20,
-  borderWidth: 1,
-  borderColor: '#E5E7EB',
-  padding: 20,
-  overflow: 'hidden',
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.04,
-  shadowRadius: 8,
-  elevation: 2,
+interface GlowCardProps {
+  accent?: boolean;
+  elevated?: boolean;
+  subtle?: boolean;
+  glass?: boolean;
+  interactive?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  children?: React.ReactNode;
+  [key: string]: any;
+}
 
-  variants: {
-    accent: {
-      true: {
-        borderColor: 'rgba(245,166,35,0.20)',
-      },
-    },
-    elevated: {
-      true: {
-        shadowColor: '#F5A623',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.10,
-        shadowRadius: 20,
-        elevation: 6,
-      },
-    },
-    subtle: {
-      true: {
-        backgroundColor: '#F0F1F5',
-        borderColor: '#E5E7EB',
-      },
-    },
-    glass: {
-      true: {
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        borderColor: '#E5E7EB',
-      },
-    },
-    interactive: {
-      true: {
-        pressStyle: {
-          scale: 0.98,
-          opacity: 0.9,
-        },
-      },
-    },
-    size: {
-      sm: { padding: 14, borderRadius: 14 },
-      md: { padding: 20, borderRadius: 20 },
-      lg: { padding: 24, borderRadius: 24 },
-    },
-  } as const,
-});
+export function GlowCard({
+  accent,
+  elevated,
+  subtle,
+  glass,
+  interactive,
+  size = 'md',
+  ...rest
+}: GlowCardProps) {
+  const { colors, isDark } = useThemeColors();
 
-// Compact stat card
-export const StatCard = styled(YStack, {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: '#E5E7EB',
-  padding: 16,
-  alignItems: 'center',
-  gap: 4,
-  flex: 1,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.04,
-  shadowRadius: 6,
-  elevation: 2,
+  const bgColor = subtle
+    ? colors.cardAlt
+    : glass
+      ? (isDark ? 'rgba(30,30,40,0.92)' : 'rgba(255,255,255,0.92)')
+      : colors.card;
 
-  variants: {
-    highlighted: {
-      true: {
-        borderColor: 'rgba(245,166,35,0.20)',
-        shadowColor: '#F5A623',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.10,
-        shadowRadius: 12,
-        elevation: 4,
-      },
-    },
-  } as const,
-});
+  const isAccented = accent || elevated;
 
-// Row item card for lists
-export const ListCard = styled(YStack, {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: '#E5E7EB',
-  padding: 16,
-  marginBottom: 8,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.03,
-  shadowRadius: 4,
-  elevation: 1,
+  const borderColor = isAccented
+    ? colors.accentGlow
+    : `rgba(0,0,0,${isDark ? '0.15' : '0.06'})`;
 
-  variants: {
-    interactive: {
-      true: {
-        pressStyle: {
-          scale: 0.985,
-          opacity: 0.85,
-          backgroundColor: '#F0F1F5',
-        },
-      },
-    },
-    accent: {
-      true: {
-        borderColor: 'rgba(245,166,35,0.15)',
-      },
-    },
-    noteStyle: {
-      true: {
-        borderLeftWidth: 3,
-        borderLeftColor: '#F5A623',
-      },
-    },
-  } as const,
-});
+  const sizeStyles = size === 'sm'
+    ? { padding: 14, borderRadius: 14 }
+    : size === 'lg'
+      ? { padding: 24, borderRadius: 24 }
+      : { padding: 20, borderRadius: 20 };
+
+  return (
+    <YStack
+      backgroundColor={bgColor}
+      borderWidth={1}
+      borderColor={borderColor}
+      overflow="hidden"
+      shadowColor={isDark ? 'transparent' : (isAccented ? '#F5A623' : '#000000')}
+      shadowOffset={{ width: 0, height: elevated ? 6 : 3 }}
+      shadowOpacity={isDark ? 0 : (isAccented ? (elevated ? 0.25 : 0.15) : 0.06)}
+      shadowRadius={isAccented ? (elevated ? 24 : 16) : 10}
+      elevation={isDark ? 0 : (isAccented ? (elevated ? 8 : 3) : 2)}
+      {...sizeStyles}
+      {...(interactive ? { pressStyle: { scale: 0.98, opacity: 0.9 } } : {})}
+      {...rest}
+    />
+  );
+}
+
+export function StatCard({ highlighted, ...rest }: { highlighted?: boolean; children?: React.ReactNode; [key: string]: any }) {
+  const { colors, isDark } = useThemeColors();
+
+  return (
+    <YStack
+      backgroundColor={colors.card}
+      borderRadius={16}
+      borderWidth={1}
+      borderColor={highlighted ? colors.accentGlow : `rgba(0,0,0,${isDark ? '0.15' : '0.06'})`}
+      padding={16}
+      alignItems="center"
+      gap={4}
+      flex={1}
+      shadowColor={isDark ? 'transparent' : (highlighted ? '#F5A623' : '#000000')}
+      shadowOffset={{ width: 0, height: highlighted ? 4 : 2 }}
+      shadowOpacity={isDark ? 0 : (highlighted ? 0.2 : 0.05)}
+      shadowRadius={highlighted ? 16 : 8}
+      elevation={isDark ? 0 : (highlighted ? 6 : 2)}
+      {...rest}
+    />
+  );
+}
+
+export function ListCard({
+  interactive,
+  accent,
+  noteStyle,
+  ...rest
+}: { interactive?: boolean; accent?: boolean; noteStyle?: boolean; children?: React.ReactNode; [key: string]: any }) {
+  const { colors, isDark } = useThemeColors();
+
+  return (
+    <YStack
+      backgroundColor={colors.card}
+      borderRadius={16}
+      borderWidth={1}
+      borderColor={accent ? colors.accentGlow : `rgba(0,0,0,${isDark ? '0.13' : '0.06'})`}
+      padding={16}
+      marginBottom={8}
+      shadowColor={isDark ? 'transparent' : (accent ? '#F5A623' : '#000000')}
+      shadowOffset={{ width: 0, height: 2 }}
+      shadowOpacity={isDark ? 0 : (accent ? 0.1 : 0.04)}
+      shadowRadius={accent ? 10 : 6}
+      elevation={isDark ? 0 : 2}
+      {...(noteStyle ? { borderLeftWidth: 3, borderLeftColor: '#F5A623' } : {})}
+      {...(interactive
+        ? { pressStyle: { scale: 0.985, opacity: 0.85, backgroundColor: colors.cardAlt } }
+        : {})}
+      {...rest}
+    />
+  );
+}
