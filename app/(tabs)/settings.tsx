@@ -1,6 +1,7 @@
-import { ScrollView, Switch, TouchableOpacity } from 'react-native';
+import { useState, useRef } from 'react';
+import { ScrollView, Switch, TouchableOpacity, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Volume2, User, Sun, Moon, Smartphone, Check } from 'lucide-react-native';
+import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil } from 'lucide-react-native';
 import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
@@ -9,12 +10,33 @@ import { GlowCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { IconBadge } from '../../src/components/ui/IconBadge';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { hapticLight } from '../../src/utils/haptics';
 import type { ThemeMode } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
-  const { progress, settings, updateSettings } = useStore();
+  const { progress, settings, updateSettings, userName, setUserName } = useStore();
   const insets = useSafeAreaInsets();
   const { colors, isDark, gradients } = useThemeColors();
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(userName);
+  const nameInputRef = useRef<TextInput>(null);
+
+  const handleSaveName = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed) {
+      setUserName(trimmed);
+    } else {
+      setNameInput(userName);
+    }
+    setEditingName(false);
+  };
+
+  const handleEditName = () => {
+    setNameInput(userName);
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 100);
+  };
 
   const toggleGame = (game: GameType) => {
     const enabled = settings.enabledGames.includes(game);
@@ -83,9 +105,44 @@ export default function ProfileScreen() {
             >
               <User size={30} color={colors.accent} />
             </YStack>
-            <Text color={colors.text} fontSize={22} fontWeight="700">
-              Brain Athlete
-            </Text>
+
+            {editingName ? (
+              <TextInput
+                ref={nameInputRef}
+                value={nameInput}
+                onChangeText={setNameInput}
+                onBlur={handleSaveName}
+                onSubmitEditing={handleSaveName}
+                returnKeyType="done"
+                maxLength={24}
+                autoFocus
+                style={{
+                  fontSize: 22,
+                  fontWeight: '700',
+                  color: colors.text,
+                  textAlign: 'center',
+                  paddingVertical: 4,
+                  paddingHorizontal: 16,
+                  minWidth: 120,
+                  borderBottomWidth: 2,
+                  borderBottomColor: colors.accent,
+                }}
+                placeholderTextColor={colors.secondary}
+                placeholder="Your name"
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={handleEditName}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              >
+                <Text color={colors.text} fontSize={22} fontWeight="700">
+                  {userName || 'Tap to set name'}
+                </Text>
+                <Pencil size={14} color={colors.secondary} />
+              </TouchableOpacity>
+            )}
+
             <Text color={colors.secondary} fontSize={14} marginTop={4}>
               {progress.gamesWon} challenges won
             </Text>
@@ -229,6 +286,74 @@ export default function ProfileScreen() {
             </XStack>
             <Text color={colors.muted} fontSize={13}>
               Number of brain challenges required to unlock apps
+            </Text>
+          </GlowCard>
+        </YStack>
+
+        {/* Disable Difficulty */}
+        <YStack marginBottom={28}>
+          <SectionTitle title="Disable Difficulty" />
+          <GlowCard>
+            <XStack gap={8} marginBottom={14}>
+              {([
+                { value: 'easy', label: 'Easy' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'hard', label: 'Hard' },
+              ] as const).map(({ value, label }) => {
+                const active = settings.disableDifficulty === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      hapticLight();
+                      updateSettings({ disableDifficulty: value });
+                    }}
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {active ? (
+                      <LinearGradient
+                        colors={[colors.accent, colors.accentDark]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{
+                          paddingVertical: 12,
+                          alignItems: 'center',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <Text color="#FFFFFF" fontSize={14} fontWeight="700">
+                          {label}
+                        </Text>
+                      </LinearGradient>
+                    ) : (
+                      <YStack
+                        paddingVertical={12}
+                        alignItems="center"
+                        backgroundColor={colors.cardAlt}
+                        borderRadius={12}
+                        borderWidth={1}
+                        borderColor={colors.border}
+                      >
+                        <Text color={colors.secondary} fontSize={14} fontWeight="600">
+                          {label}
+                        </Text>
+                      </YStack>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </XStack>
+            <Text color={colors.muted} fontSize={13}>
+              {settings.disableDifficulty === 'easy'
+                ? 'Blocking can be disabled instantly'
+                : settings.disableDifficulty === 'medium'
+                  ? '30-second wait before blocking can be disabled'
+                  : 'Blocking cannot be disabled once activated'}
             </Text>
           </GlowCard>
         </YStack>

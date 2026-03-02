@@ -39,6 +39,7 @@ export interface Settings {
   screenTimeScheduleEnabled: boolean;
   activeDays: boolean[]; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
   theme: ThemeMode;
+  disableDifficulty: 'easy' | 'medium' | 'hard';
 }
 
 interface AppState {
@@ -105,7 +106,7 @@ export const useStore = create<AppState>()(
       settings: {
         enabledGames: ['math', 'memory', 'wordscramble', 'speedread', 'reaction', 'colormatch'],
         challengesRequired: 1,
-        activeHoursStart: 6,
+        activeHoursStart: 0,
         activeHoursEnd: 23,
         hapticFeedback: true,
         soundEnabled: true,
@@ -114,6 +115,7 @@ export const useStore = create<AppState>()(
         screenTimeScheduleEnabled: false,
         activeDays: [true, true, true, true, true, true, true],
         theme: 'system',
+        disableDifficulty: 'easy',
       },
 
       completeOnboarding: () => set({ onboardingComplete: true }),
@@ -182,8 +184,9 @@ export const useStore = create<AppState>()(
         if (unlocked) {
           try {
             const { ScreenTime } = require('screen-time-module');
-            ScreenTime.removeShieldNow().catch(() => {});
-          } catch {}
+            ScreenTime.removeShieldNow().catch(() => { });
+            ScreenTime.setAppsUnlocked(true).catch(() => { });
+          } catch { }
         }
       },
 
@@ -194,8 +197,9 @@ export const useStore = create<AppState>()(
           set({ dailyGamesCompleted: 0, dailyDate: today, appsUnlocked: false });
           try {
             const { ScreenTime } = require('screen-time-module');
-            ScreenTime.applyShieldNow().catch(() => {});
-          } catch {}
+            ScreenTime.setAppsUnlocked(false).catch(() => { });
+            ScreenTime.applyShieldNow().catch(() => { });
+          } catch { }
         }
       },
 

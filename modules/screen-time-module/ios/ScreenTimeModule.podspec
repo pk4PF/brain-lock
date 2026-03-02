@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.homepage       = 'https://github.com/placeholder'
   s.license        = 'MIT'
   s.author         = 'BrainLock'
-  s.platform       = :ios, '16.0'
+  s.platform       = :ios, '15.1'
   s.source         = { git: '' }
   s.static_framework = true
 

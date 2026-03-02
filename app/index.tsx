@@ -10,7 +10,18 @@ export default function Index() {
   useEffect(() => {
     // DEV: always show onboarding on app start
     if (__DEV__) {
-      useStore.setState({ onboardingComplete: false });
+      const { settings } = useStore.getState();
+      useStore.setState({
+        onboardingComplete: false,
+        dailyGamesCompleted: 0,
+        appsUnlocked: false,
+        settings: {
+          ...settings,
+          screenTimeAuthorized: false,
+          screenTimeAppCount: 0,
+          screenTimeScheduleEnabled: false,
+        },
+      });
       router.replace('/onboarding');
       return;
     }

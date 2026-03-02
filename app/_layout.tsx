@@ -6,6 +6,7 @@ import tamaguiConfig from '../tamagui.config';
 import { useStore } from '../src/store/useStore';
 import { useThemeColors } from '../src/hooks/useThemeColors';
 import { initRevenueCat } from '../src/services/revenueCat';
+import { ScreenTime } from 'screen-time-module';
 import { preloadSounds } from '../src/utils/sounds';
 import {
   useFonts,
@@ -46,6 +47,9 @@ export default function RootLayout() {
 
     // Reset daily unlock if it's a new day
     useStore.getState().checkDailyReset();
+
+    // Re-apply shields on app launch (respects unlock state)
+    ScreenTime.ensureBlocking().catch(() => {});
 
     // Preload sound effects (non-blocking)
     preloadSounds();

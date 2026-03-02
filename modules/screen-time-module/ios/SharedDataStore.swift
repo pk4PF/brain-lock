@@ -61,4 +61,29 @@ public class SharedDataStore {
         get { defaults?.bool(forKey: scheduleEnabledKey) ?? false }
         set { defaults?.set(newValue, forKey: scheduleEnabledKey) }
     }
+
+    // MARK: - Unlock State
+
+    private let appsUnlockedKey = "appsUnlocked"
+    private let unlockDateKey = "unlockDate"
+
+    /// Whether the user has completed enough games to unlock apps today
+    public var appsUnlocked: Bool {
+        get {
+            guard let date = defaults?.string(forKey: unlockDateKey) else { return false }
+            let today = Self.todayString()
+            return date == today && (defaults?.bool(forKey: appsUnlockedKey) ?? false)
+        }
+        set {
+            defaults?.set(newValue, forKey: appsUnlockedKey)
+            defaults?.set(Self.todayString(), forKey: unlockDateKey)
+        }
+    }
+
+    private static func todayString() -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        fmt.timeZone = .current
+        return fmt.string(from: Date())
+    }
 }

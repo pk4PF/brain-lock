@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ScrollView, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
+import { ScrollView, TouchableOpacity, Alert, Platform, ActivityIndicator, Modal } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -28,6 +28,7 @@ import { hapticLight, hapticMedium, hapticSuccess } from '../../src/utils/haptic
 import { ScreenTime } from 'screen-time-module';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { TimePickerSheet } from '../../src/components/ui/TimePickerSheet';
+import DisableCountdownScreen from '../../src/components/DisableCountdownScreen';
 
 const GREEN = '#22C55E';
 
@@ -137,6 +138,13 @@ export default function LockScreen() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
 
+  // Countdown state (medium difficulty)
+  const COUNTDOWN_SECONDS = 30;
+  const [countdownActive, setCountdownActive] = useState(false);
+  const [countdownRemaining, setCountdownRemaining] = useState(0);
+  const countdownStartTime = useRef<number>(0);
+  const countdownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,19 +193,27 @@ export default function LockScreen() {
     setLoading(true);
     hapticLight();
     try {
+      console.log('[LockScreen] Requesting Screen Time authorization...');
       const result = await ScreenTime.requestAuthorization();
-      setAuthStatus(result);
-      updateSettings({ screenTimeAuthorized: result === 'approved' });
-      if (result === 'approved') {
+      console.log('[LockScreen] Authorization result:', result);
+
+      // Handle "denied:reason" format from native module
+      const status = result.startsWith('denied') ? 'denied' : result;
+      const reason = result.includes(':') ? result.split(':').slice(1).join(':') : '';
+
+      setAuthStatus(status as any);
+      updateSettings({ screenTimeAuthorized: status === 'approved' });
+      if (status === 'approved') {
         hapticSuccess();
-      } else if (result === 'denied') {
+      } else if (status === 'denied') {
         Alert.alert(
           'Permission Denied',
-          'BrainLock needs Screen Time access to block apps. You can enable it in Settings > Screen Time > BrainLock.'
+          `BrainLock needs Screen Time access to block apps.${reason ? `\n\nReason: ${reason}` : ''}\n\nYou can enable it in Settings > Screen Time > BrainLock.`
         );
       }
-    } catch {
-      Alert.alert('Error', 'Could not request Screen Time permission. Please try again.');
+    } catch (e: any) {
+      console.log('[LockScreen] Screen Time authorization error:', e?.message || e);
+      Alert.alert('Error', `Could not request Screen Time permission.\n\nDetails: ${e?.message || String(e)}`);
     } finally {
       setLoading(false);
     }
@@ -225,7 +241,7 @@ export default function LockScreen() {
         settings.activeHoursStart,
         0,
         settings.activeHoursEnd,
-        0
+        59
       );
       updateSettings({ screenTimeScheduleEnabled: true });
       hapticSuccess();
@@ -237,19 +253,80 @@ export default function LockScreen() {
     }
   }, [settings.activeHoursStart, settings.activeHoursEnd]);
 
-  const handleDisableSchedule = useCallback(async () => {
+  const performDisable = useCallback(async () => {
     setScheduleLoading(true);
-    hapticLight();
     try {
       await ScreenTime.setScheduleEnabled(false);
       await ScreenTime.removeShieldNow();
       updateSettings({ screenTimeScheduleEnabled: false });
+      hapticSuccess();
       showToast('Schedule disabled');
     } catch {
       Alert.alert('Error', 'Could not disable schedule.');
     } finally {
       setScheduleLoading(false);
     }
+  }, []);
+
+  const handleDisableSchedule = useCallback(() => {
+    if (settings.disableDifficulty === 'medium') {
+      hapticMedium();
+      countdownStartTime.current = Date.now();
+      setCountdownRemaining(COUNTDOWN_SECONDS);
+      setCountdownActive(true);
+      return;
+    }
+    // Easy mode — instant disable
+    hapticLight();
+    performDisable();
+  }, [settings.disableDifficulty, performDisable]);
+
+  // Countdown interval — wall-clock based for accuracy after backgrounding
+  useEffect(() => {
+    if (!countdownActive) return;
+
+    countdownInterval.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - countdownStartTime.current) / 1000);
+      const remaining = Math.max(0, COUNTDOWN_SECONDS - elapsed);
+      setCountdownRemaining(remaining);
+
+      if (remaining <= 0) {
+        if (countdownInterval.current) clearInterval(countdownInterval.current);
+        countdownInterval.current = null;
+        setCountdownActive(false);
+        performDisable();
+      }
+    }, 1000);
+
+    return () => {
+      if (countdownInterval.current) {
+        clearInterval(countdownInterval.current);
+        countdownInterval.current = null;
+      }
+    };
+  }, [countdownActive, performDisable]);
+
+  const handleCancelCountdown = useCallback(() => {
+    Alert.alert(
+      'Cancel Countdown?',
+      'The timer will reset. You\'ll need to wait again next time.',
+      [
+        { text: 'Keep Waiting', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'destructive',
+          onPress: () => {
+            if (countdownInterval.current) {
+              clearInterval(countdownInterval.current);
+              countdownInterval.current = null;
+            }
+            setCountdownActive(false);
+            setCountdownRemaining(0);
+            hapticLight();
+          },
+        },
+      ]
+    );
   }, []);
 
 
@@ -584,25 +661,27 @@ export default function LockScreen() {
 
               {/* ── Activate / Disable Button ── */}
               {settings.screenTimeScheduleEnabled ? (
-                <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
-                  <YStack
-                    paddingVertical={14}
-                    borderRadius={14}
-                    backgroundColor={isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2'}
-                    borderWidth={1}
-                    borderColor={isDark ? 'rgba(239,68,68,0.25)' : '#FECACA'}
-                    alignItems="center"
-                    marginBottom={12}
-                  >
-                    {scheduleLoading ? (
-                      <ActivityIndicator size="small" color="#DC2626" />
-                    ) : (
-                      <Text color="#DC2626" fontSize={15} fontWeight="700">
-                        Disable Schedule
-                      </Text>
-                    )}
-                  </YStack>
-                </AnimatedButton>
+                settings.disableDifficulty !== 'hard' ? (
+                  <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
+                    <YStack
+                      paddingVertical={14}
+                      borderRadius={14}
+                      backgroundColor={isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2'}
+                      borderWidth={1}
+                      borderColor={isDark ? 'rgba(239,68,68,0.25)' : '#FECACA'}
+                      alignItems="center"
+                      marginBottom={12}
+                    >
+                      {scheduleLoading ? (
+                        <ActivityIndicator size="small" color="#DC2626" />
+                      ) : (
+                        <Text color="#DC2626" fontSize={15} fontWeight="700">
+                          Disable Schedule
+                        </Text>
+                      )}
+                    </YStack>
+                  </AnimatedButton>
+                ) : null
               ) : (
                 <AnimatedButton onPress={handleApplySchedule} disabled={scheduleLoading}>
                   <LinearGradient
@@ -677,6 +756,20 @@ export default function LockScreen() {
         onChange={(h) => updateSettings({ activeHoursEnd: h })}
         onClose={() => setPickerTarget(null)}
       />
+
+      {/* Countdown modal for medium difficulty */}
+      <Modal
+        visible={countdownActive}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+      >
+        <DisableCountdownScreen
+          remainingSeconds={countdownRemaining}
+          totalSeconds={COUNTDOWN_SECONDS}
+          onCancel={handleCancelCountdown}
+        />
+      </Modal>
     </YStack>
   );
 }

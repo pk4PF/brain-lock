@@ -9,9 +9,10 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Easing,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Check, Zap, Brain, Shield, TrendingUp } from 'lucide-react-native';
+import { Check, Zap, Brain, Shield, TrendingUp, Target } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { type PurchasesPackage } from 'react-native-purchases';
 import { FontSize, FontFamily } from '../../src/constants/theme';
@@ -25,7 +26,7 @@ import {
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
-// ── COLORS (Warm light) ──
+// ── COLORS ──
 const AMBER = '#F5A623';
 const AMBER_DARK = '#E09000';
 const BG = '#FBF7F2';
@@ -34,6 +35,7 @@ const TEXT = '#1A1A2E';
 const TEXT_DIM = '#6B7280';
 const TEXT_MUTED = '#9CA3AF';
 const BORDER = 'rgba(0,0,0,0.08)';
+const GREEN = '#22C55E';
 
 // ── STRUGGLE → PAYWALL PERSONALIZATION ──
 const STRUGGLE_HEADLINES: Record<string, string> = {
@@ -45,12 +47,50 @@ const STRUGGLE_HEADLINES: Record<string, string> = {
     brain_training: 'Get sharper every single day',
 };
 
-// ── COMPACT JOURNEY DATA ──
+// ── YOUR 4-WEEK JOURNEY ──
 const JOURNEY = [
-    { week: 1, title: 'Build the habit', outcome: 'Challenges before apps — effort becomes reward', icon: Zap },
-    { week: 2, title: 'Feel the friction', outcome: 'Mindless pickups drop, you notice impulses', icon: Shield },
-    { week: 3, title: 'Getting sharper', outcome: 'Memory and focus visibly improve', icon: Brain },
-    { week: 4, title: 'The new normal', outcome: 'Your phone is a tool again, not a crutch', icon: TrendingUp },
+    {
+        week: 1,
+        title: 'Build the habit',
+        outcome: 'One small challenge before your apps unlock. You start choosing when to use your phone instead of reacting on impulse.',
+        icon: Zap,
+        metric: 'Day 1',
+        metricLabel: 'results',
+    },
+    {
+        week: 2,
+        title: 'Sharper focus',
+        outcome: 'Fewer interruptions means longer, deeper focus sessions. You start getting more done without even trying.',
+        icon: Target,
+        metric: '+23min',
+        metricLabel: 'deep focus',
+    },
+    {
+        week: 3,
+        title: 'Better memory',
+        outcome: 'Daily cognitive training strengthens your working memory. You recall things faster and think more clearly.',
+        icon: Brain,
+        metric: '+25%',
+        metricLabel: 'memory',
+    },
+    {
+        week: 4,
+        title: 'The new normal',
+        outcome: 'No more losing evenings to mindless scrolling. You get that time back for sleep, hobbies, and people you care about.',
+        icon: TrendingUp,
+        metric: '-2h',
+        metricLabel: 'daily',
+    },
+];
+
+
+// ── VALUE PROPS ──
+const VALUE_PROPS = [
+    'Unlimited brain-training games',
+    'Personalized difficulty scaling',
+    'Detailed cognitive stats & trends',
+    'Full app-blocking controls',
+    'New game modes every month',
 ];
 
 interface PlanInfo {
@@ -60,6 +100,7 @@ interface PlanInfo {
     badge?: string;
     pkg: PurchasesPackage | null;
     price: string;
+    perDay?: string;
 }
 
 export default function PaywallScreen() {
@@ -74,28 +115,49 @@ export default function PaywallScreen() {
     const headerAnim = useRef(new Animated.Value(0)).current;
     const glowPulse = useRef(new Animated.Value(1)).current;
     const journeyAnim = useRef(new Animated.Value(0)).current;
+
+    const valuePropsAnim = useRef(new Animated.Value(0)).current;
     const plansSectionAnim = useRef(new Animated.Value(0)).current;
     const planCardAnims = useRef([new Animated.Value(0), new Animated.Value(0)]).current;
+    const ctaPulse = useRef(new Animated.Value(1)).current;
+    const shimmer = useRef(new Animated.Value(0)).current;
+    const metricAnims = useRef(JOURNEY.map(() => new Animated.Value(0))).current;
 
     useEffect(() => {
+        // Header entrance
         Animated.spring(headerAnim, {
             toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
         }).start();
 
-        // Pulsing glow on brain icon
+        // Brain icon glow pulse
         Animated.loop(
             Animated.sequence([
-                Animated.timing(glowPulse, { toValue: 1.18, duration: 1500, useNativeDriver: true }),
-                Animated.timing(glowPulse, { toValue: 1, duration: 1500, useNativeDriver: true }),
+                Animated.timing(glowPulse, { toValue: 1.25, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(glowPulse, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
             ])
         ).start();
 
+
+
+        // Journey section
         setTimeout(() => {
             Animated.spring(journeyAnim, {
                 toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
             }).start();
-        }, 300);
+            // Stagger metric badges
+            Animated.stagger(200, metricAnims.map((a) =>
+                Animated.spring(a, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true })
+            )).start();
+        }, 400);
 
+        // Value props
+        setTimeout(() => {
+            Animated.spring(valuePropsAnim, {
+                toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
+            }).start();
+        }, 600);
+
+        // Plans section
         setTimeout(() => {
             Animated.spring(plansSectionAnim, {
                 toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
@@ -103,7 +165,22 @@ export default function PaywallScreen() {
             Animated.stagger(150, planCardAnims.map((a) =>
                 Animated.spring(a, { toValue: 1, friction: 8, tension: 50, useNativeDriver: true })
             )).start();
-        }, 600);
+        }, 800);
+
+        // CTA button glow pulse
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(ctaPulse, { toValue: 1.03, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(ctaPulse, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            ])
+        ).start();
+
+        // Shimmer on selected plan
+        Animated.loop(
+            Animated.timing(shimmer, {
+                toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true,
+            })
+        ).start();
     }, []);
 
     // Fetch offerings
@@ -120,34 +197,36 @@ export default function PaywallScreen() {
         })();
     }, []);
 
-    const weeklyPkg = packages.find(
+    const monthlyPkg = packages.find(
         (p) => p.packageType === 'MONTHLY' || p.product.identifier.includes('monthly')
     ) ?? null;
-    const lifetimePkg = packages.find(
+    const yearlyPkg = packages.find(
         (p) => p.packageType === 'ANNUAL' || p.product.identifier.includes('yearly') || p.product.identifier.includes('annual')
     ) ?? null;
 
     const plans: PlanInfo[] = [
         {
+            id: 'yearly',
+            label: 'Yearly',
+            period: '/year',
+            badge: 'MOST POPULAR',
+            pkg: yearlyPkg,
+            price: yearlyPkg?.product.priceString ?? '$49.99',
+
+        },
+        {
             id: 'weekly',
             label: 'Monthly',
             period: '/mo',
-            pkg: weeklyPkg,
-            price: weeklyPkg?.product.priceString ?? '$9.99',
-        },
-        {
-            id: 'yearly',
-            label: 'Lifetime',
-            period: '/year',
-            badge: 'BEST VALUE',
-            pkg: lifetimePkg,
-            price: lifetimePkg?.product.priceString ?? '$49.99',
+            pkg: monthlyPkg,
+            price: monthlyPkg?.product.priceString ?? '$9.99',
         },
     ];
 
     const handlePurchase = async () => {
         const plan = plans.find((p) => p.id === selectedPlan);
         if (!plan?.pkg) {
+            // Fallback when RevenueCat not configured
             setSubscription(selectedPlan);
             router.push('/onboarding/letsgo');
             return;
@@ -191,6 +270,11 @@ export default function PaywallScreen() {
     const primaryStruggle = userStruggles?.[0];
     const personalizedHeadline = primaryStruggle ? STRUGGLE_HEADLINES[primaryStruggle] : null;
 
+    const shimmerTranslate = shimmer.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-SW, SW],
+    });
+
     return (
         <View style={styles.container}>
             {/* Ambient orbs */}
@@ -207,6 +291,7 @@ export default function PaywallScreen() {
                 <Animated.View style={[styles.header, anim(headerAnim)]}>
                     <View style={styles.brainHeroWrap}>
                         <Animated.View style={[styles.brainGlowRing, { transform: [{ scale: glowPulse }] }]} />
+                        <Animated.View style={[styles.brainGlowRing2, { transform: [{ scale: glowPulse }], opacity: glowPulse.interpolate({ inputRange: [1, 1.25], outputRange: [0.5, 0] }) }]} />
                         <LinearGradient
                             colors={[AMBER, '#FF6B35']}
                             style={styles.brainCircle}
@@ -223,10 +308,11 @@ export default function PaywallScreen() {
                         </Text>
                     ) : (
                         <Text style={styles.headerSub}>
-                            Here's what changes when you{'\n'}start training before scrolling
+                            Earn your screen time. Get sharper.{'\n'}Here's what happens in 4 weeks.
                         </Text>
                     )}
                 </Animated.View>
+
 
                 {/* ── JOURNEY TIMELINE ── */}
                 <Animated.View style={[styles.journeyCard, anim(journeyAnim)]}>
@@ -239,22 +325,56 @@ export default function PaywallScreen() {
                                 {/* Left column: icon + connector */}
                                 <View style={styles.timelineLeft}>
                                     <LinearGradient
-                                        colors={[`rgba(245,166,35,${0.25 + i * 0.08})`, `rgba(255,107,53,${0.15 + i * 0.06})`]}
+                                        colors={[`rgba(245,166,35,${0.25 + i * 0.1})`, `rgba(255,107,53,${0.15 + i * 0.08})`]}
                                         style={styles.timelineIcon}
                                     >
                                         <Icon size={16} color={AMBER} />
                                     </LinearGradient>
                                     {!isLast && <View style={styles.timelineLine} />}
                                 </View>
-                                {/* Right column: text */}
+                                {/* Right column: text + metric badge */}
                                 <View style={styles.timelineRight}>
-                                    <Text style={styles.timelineWeek}>Week {step.week}</Text>
-                                    <Text style={styles.timelineTitle}>{step.title}</Text>
+                                    <View style={styles.timelineHeaderRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.timelineWeek}>Week {step.week}</Text>
+                                            <Text style={styles.timelineTitle}>{step.title}</Text>
+                                        </View>
+                                        <Animated.View style={[{
+                                            transform: [{
+                                                scale: metricAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+                                            }],
+                                            opacity: metricAnims[i],
+                                            marginLeft: 8,
+                                        }]}>
+                                            <LinearGradient
+                                                colors={[AMBER, '#FF6B35']}
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 1 }}
+                                                style={styles.metricBadge}
+                                            >
+                                                <Text style={styles.metricValue}>{step.metric}</Text>
+                                                <Text style={styles.metricLabel}>{step.metricLabel}</Text>
+                                            </LinearGradient>
+                                        </Animated.View>
+                                    </View>
                                     <Text style={styles.timelineOutcome}>{step.outcome}</Text>
                                 </View>
                             </View>
                         );
                     })}
+                </Animated.View>
+
+                {/* ── VALUE PROPS ── */}
+                <Animated.View style={[styles.valuePropsCard, anim(valuePropsAnim)]}>
+                    <Text style={styles.valuePropsTitle}>Everything you get</Text>
+                    {VALUE_PROPS.map((prop, i) => (
+                        <View key={i} style={styles.valuePropRow}>
+                            <View style={styles.checkCircle}>
+                                <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                            </View>
+                            <Text style={styles.valuePropText}>{prop}</Text>
+                        </View>
+                    ))}
                 </Animated.View>
 
                 {/* ── PLANS ── */}
@@ -264,13 +384,19 @@ export default function PaywallScreen() {
                         <ActivityIndicator color={AMBER} style={{ paddingVertical: 40 }} />
                     ) : (
                         <View style={styles.plansStack}>
-                            {/* ── YEARLY ── */}
+                            {/* ── YEARLY (recommended) ── */}
                             <Animated.View style={anim(planCardAnims[0], 16)}>
                                 <TouchableOpacity
                                     style={[styles.planRow, selectedPlan === 'yearly' ? styles.planRowSel : styles.planRowDefault]}
                                     onPress={() => setSelectedPlan('yearly')}
                                     activeOpacity={0.8}
                                 >
+                                    {/* Shimmer overlay on selected */}
+                                    {selectedPlan === 'yearly' && (
+                                        <Animated.View style={[styles.planShimmer, {
+                                            transform: [{ translateX: shimmerTranslate }],
+                                        }]} />
+                                    )}
                                     <View style={[styles.planRadio, selectedPlan === 'yearly' && styles.planRadioSel]}>
                                         {selectedPlan === 'yearly' && <View style={styles.planRadioDot} />}
                                     </View>
@@ -293,6 +419,7 @@ export default function PaywallScreen() {
                                         <Text style={styles.planPricePeriod}>/mo</Text>
                                     </View>
                                 </TouchableOpacity>
+
                             </Animated.View>
 
                             {/* ── MONTHLY ── */}
@@ -310,7 +437,7 @@ export default function PaywallScreen() {
                                         <Text style={styles.planTrial}>3-day free trial</Text>
                                     </View>
                                     <View style={styles.planPriceWrap}>
-                                        <Text style={[styles.planPriceMain, selectedPlan === 'weekly' && styles.planPriceMainSel]}>$9.99</Text>
+                                        <Text style={[styles.planPriceMain, selectedPlan === 'weekly' && styles.planPriceMainSel]}>{plans[1].price}</Text>
                                         <Text style={styles.planPricePeriod}>/mo</Text>
                                     </View>
                                 </TouchableOpacity>
@@ -330,34 +457,31 @@ export default function PaywallScreen() {
                     pointerEvents="none"
                 />
                 <View style={styles.stickyInner}>
-                    <TouchableOpacity
-                        style={styles.ctaBtn}
-                        onPress={handlePurchase}
-                        activeOpacity={0.85}
-                    >
-                        <LinearGradient
-                            colors={[AMBER, '#FF6B35']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.ctaBtnInner}
+                    <Animated.View style={{ width: '100%', transform: [{ scale: ctaPulse }] }}>
+                        <TouchableOpacity
+                            style={styles.ctaBtn}
+                            onPress={handlePurchase}
+                            activeOpacity={0.85}
+                            disabled={purchasing}
                         >
-                            <Text style={styles.ctaBtnText}>
-                                {purchasing ? 'Processing...' : 'Start Your Free Trial'}
-                            </Text>
-                            {!purchasing && (
-                                <Text style={styles.ctaBtnSub}>No charge for 3 days. Cancel anytime.</Text>
-                            )}
-                        </LinearGradient>
+                            <LinearGradient
+                                colors={[AMBER, '#FF6B35']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.ctaBtnInner}
+                            >
+                                <Text style={styles.ctaBtnText}>
+                                    {purchasing ? 'Processing...' : 'Start Your Free Trial'}
+                                </Text>
+                                {!purchasing && (
+                                    <Text style={styles.ctaBtnSub}>No charge for 3 days · Cancel anytime</Text>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </Animated.View>
+                    <TouchableOpacity onPress={handleRestore} disabled={purchasing} style={styles.restoreBtn}>
+                        <Text style={styles.restoreText}>Restore purchase</Text>
                     </TouchableOpacity>
-                    <View style={styles.ctaLinksRow}>
-                        <TouchableOpacity onPress={handleRestore} disabled={purchasing} style={styles.ctaLink}>
-                            <Text style={styles.ctaLinkText}>Restore purchase</Text>
-                        </TouchableOpacity>
-                        <View style={styles.ctaDot} />
-                        <TouchableOpacity onPress={() => router.push('/onboarding/letsgo')} style={styles.ctaLink}>
-                            <Text style={styles.ctaLinkTextDim}>Maybe later</Text>
-                        </TouchableOpacity>
-                    </View>
                 </View>
             </View>
         </View>
@@ -370,7 +494,7 @@ const styles = StyleSheet.create({
         backgroundColor: BG,
     },
 
-    // Ambient orbs — warm and subtle on light
+    // Ambient orbs
     orb1: {
         position: 'absolute', top: -80, left: -100,
         width: 300, height: 300, borderRadius: 150,
@@ -388,7 +512,7 @@ const styles = StyleSheet.create({
     },
 
     scroll: { flex: 1 },
-    scrollContent: { paddingBottom: 160 },
+    scrollContent: { paddingBottom: 180 },
 
     // ── HEADER ──
     header: {
@@ -398,23 +522,28 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
     brainHeroWrap: {
-        width: 96, height: 96,
+        width: 100, height: 100,
         justifyContent: 'center', alignItems: 'center',
         marginBottom: 24,
     },
     brainGlowRing: {
         position: 'absolute',
-        width: 96, height: 96, borderRadius: 48,
-        backgroundColor: 'rgba(245,166,35,0.12)',
+        width: 100, height: 100, borderRadius: 50,
+        backgroundColor: 'rgba(245,166,35,0.15)',
+    },
+    brainGlowRing2: {
+        position: 'absolute',
+        width: 130, height: 130, borderRadius: 65,
+        backgroundColor: 'rgba(245,166,35,0.08)',
     },
     brainCircle: {
-        width: 68, height: 68, borderRadius: 34,
+        width: 70, height: 70, borderRadius: 35,
         justifyContent: 'center', alignItems: 'center',
         shadowColor: AMBER,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 18,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        elevation: 10,
     },
     headerTitle: {
         fontSize: 26,
@@ -433,16 +562,17 @@ const styles = StyleSheet.create({
         lineHeight: 22,
     },
 
+
     // ── JOURNEY TIMELINE ──
     journeyCard: {
-        marginTop: 32,
+        marginTop: 24,
         marginHorizontal: 20,
         backgroundColor: BG_CARD,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: BORDER,
         padding: 24,
-        marginBottom: 32,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -479,6 +609,11 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingBottom: 24,
     },
+    timelineHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+    },
     timelineWeek: {
         fontSize: 10,
         fontFamily: FontFamily.bold,
@@ -499,6 +634,66 @@ const styles = StyleSheet.create({
         fontFamily: FontFamily.regular,
         color: TEXT_DIM,
         lineHeight: 19,
+    },
+
+    // Metric badges
+    metricBadge: {
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        alignItems: 'center',
+        minWidth: 64,
+        shadowColor: AMBER,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    metricValue: {
+        fontSize: 15,
+        fontFamily: FontFamily.heavy,
+        color: '#FFFFFF',
+        letterSpacing: -0.3,
+    },
+    metricLabel: {
+        fontSize: 9,
+        fontFamily: FontFamily.semibold,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 1,
+    },
+
+    // ── VALUE PROPS ──
+    valuePropsCard: {
+        marginHorizontal: 20,
+        backgroundColor: BG_CARD,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: BORDER,
+        padding: 24,
+        marginBottom: 24,
+    },
+    valuePropsTitle: {
+        fontSize: 16,
+        fontFamily: FontFamily.bold,
+        color: TEXT,
+        marginBottom: 16,
+    },
+    valuePropRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 12,
+    },
+    checkCircle: {
+        width: 22, height: 22, borderRadius: 11,
+        backgroundColor: GREEN,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    valuePropText: {
+        fontSize: 14,
+        fontFamily: FontFamily.medium,
+        color: TEXT,
+        flex: 1,
     },
 
     // ── PLANS ──
@@ -524,6 +719,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 16,
         gap: 14,
+        overflow: 'hidden',
     },
     planRowDefault: {
         backgroundColor: BG_CARD,
@@ -535,28 +731,30 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: AMBER,
         shadowColor: AMBER,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 16,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.22,
+        shadowRadius: 20,
+        elevation: 6,
+    },
+    planShimmer: {
+        position: 'absolute',
+        top: 0, left: 0, bottom: 0,
+        width: 80,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        transform: [{ skewX: '-20deg' }],
     },
     planRadio: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 22, height: 22, borderRadius: 11,
         borderWidth: 2,
         borderColor: '#D1D5DB',
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'center', alignItems: 'center',
     },
     planRadioSel: {
         borderColor: AMBER,
         backgroundColor: AMBER,
     },
     planRadioDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 8, height: 8, borderRadius: 4,
         backgroundColor: '#FFFFFF',
     },
     planInfo: {
@@ -577,8 +775,7 @@ const styles = StyleSheet.create({
         color: TEXT,
     },
     planBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+        paddingHorizontal: 8, paddingVertical: 2,
         borderRadius: 6,
     },
     planBadgeText: {
@@ -611,6 +808,7 @@ const styles = StyleSheet.create({
         marginTop: -2,
     },
 
+
     // ── STICKY CTA ──
     stickyWrap: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -629,10 +827,10 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
         shadowColor: AMBER,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 18,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 22,
+        elevation: 12,
     },
     ctaBtnInner: {
         paddingVertical: 18,
@@ -652,30 +850,14 @@ const styles = StyleSheet.create({
         color: 'rgba(10,10,15,0.5)',
         marginTop: 2,
     },
-    ctaLinksRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 12,
-        gap: 8,
+    restoreBtn: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginTop: 6,
     },
-    ctaLink: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 4,
-        paddingHorizontal: 4,
-    },
-    ctaLinkText: {
+    restoreText: {
         fontSize: 13,
         fontFamily: FontFamily.medium,
         color: TEXT_MUTED,
-    },
-    ctaLinkTextDim: {
-        fontSize: 12,
-        fontFamily: FontFamily.regular,
-        color: '#C4C4C4',
-    },
-    ctaDot: {
-        width: 3, height: 3, borderRadius: 1.5,
-        backgroundColor: '#D1D5DB',
     },
 });

@@ -1,14 +1,10 @@
 import ExpoModulesCore
+import SwiftUI
 import FamilyControls
 import DeviceActivity
 import ManagedSettings
-import SwiftUI
 
-@available(iOS 16.0, *)
 public class ScreenTimeModule: Module {
-
-    private let store = SharedDataStore.shared
-    private let center = DeviceActivityCenter()
 
     public func definition() -> ModuleDefinition {
         Name("ScreenTimeModule")
@@ -18,15 +14,23 @@ public class ScreenTimeModule: Module {
         // MARK: - Authorization
 
         AsyncFunction("requestAuthorization") { () -> String in
+            guard #available(iOS 16.0, *) else {
+                return "denied:iOS 16+ required"
+            }
             do {
                 try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
                 return "approved"
             } catch {
-                return "denied"
+                print("[ScreenTimeModule] Authorization error: \(error)")
+                print("[ScreenTimeModule] Error localizedDescription: \(error.localizedDescription)")
+                return "denied:\(error.localizedDescription)"
             }
         }
 
         AsyncFunction("getAuthorizationStatus") { () -> String in
+            guard #available(iOS 16.0, *) else {
+                return "notDetermined"
+            }
             switch AuthorizationCenter.shared.authorizationStatus {
             case .approved:
                 return "approved"
@@ -42,7 +46,9 @@ public class ScreenTimeModule: Module {
         // MARK: - App Picker
 
         AsyncFunction("showAppPicker") { [weak self] () -> Void in
+            guard #available(iOS 16.0, *) else { return }
             guard let self = self else { return }
+            let store = SharedDataStore.shared
             await MainActor.run {
                 guard let scene = UIApplication.shared.connectedScenes
                     .compactMap({ $0 as? UIWindowScene })
@@ -50,16 +56,15 @@ public class ScreenTimeModule: Module {
                       let rootVC = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
                 else { return }
 
-                // Walk up to the topmost presented controller
                 var topVC = rootVC
                 while let presented = topVC.presentedViewController {
                     topVC = presented
                 }
 
-                let picker = ScreenTimeActivityPicker(store: self.store) { [weak self] in
+                let picker = ScreenTimeActivityPicker(store: store) { [weak self] in
                     topVC.dismiss(animated: true)
-                    let sel = self?.store.savedSelection
-                    let count = (sel?.applicationTokens.count ?? 0) + (sel?.categoryTokens.count ?? 0)
+                    let sel = store.savedSelection
+                    let count = sel.applicationTokens.count + sel.categoryTokens.count
                     self?.sendEvent("onSelectionChange", ["count": count])
                 }
                 let hostingController = UIHostingController(rootView: picker)
@@ -68,73 +73,132 @@ public class ScreenTimeModule: Module {
             }
         }
 
-        AsyncFunction("getSelectionCount") { [weak self] () -> Int in
-            guard let self = self else { return 0 }
-            let sel = self.store.savedSelection
+        AsyncFunction("getSelectionCount") { () -> Int in
+            guard #available(iOS 16.0, *) else { return 0 }
+            let sel = SharedDataStore.shared.savedSelection
             return sel.applicationTokens.count + sel.categoryTokens.count
         }
 
         // MARK: - Schedule
 
         AsyncFunction("setSchedule") { [weak self] (startHour: Int, startMin: Int, endHour: Int, endMin: Int) -> Void in
+            guard #available(iOS 16.0, *) else { return }
             guard let self = self else { return }
-            self.store.scheduleStartHour = startHour
-            self.store.scheduleStartMinute = startMin
-            self.store.scheduleEndHour = endHour
-            self.store.scheduleEndMinute = endMin
-            self.store.scheduleEnabled = true
-            try self.startMonitoring()
+            let store = SharedDataStore.shared
+            store.scheduleStartHour = startHour
+            store.scheduleStartMinute = startMin
+            store.scheduleEndHour = endHour
+            store.scheduleEndMinute = endMin
+            store.scheduleEnabled = true
+
+            // Apply shields IMMEDIATELY so blocking starts right now
+            self.applyShieldsFromStore()
+
+            // Also set up DeviceActivity monitoring for background schedule enforcement
+            try self.startMonitoringImpl()
         }
 
-        AsyncFunction("getSchedule") { [weak self] () -> [String: Any] in
-            guard let self = self else {
+        AsyncFunction("getSchedule") { () -> [String: Any] in
+            guard #available(iOS 16.0, *) else {
                 return ["startHour": 0, "startMinute": 0, "endHour": 23, "endMinute": 59, "enabled": false]
             }
+            let store = SharedDataStore.shared
             return [
-                "startHour": self.store.scheduleStartHour,
-                "startMinute": self.store.scheduleStartMinute,
-                "endHour": self.store.scheduleEndHour,
-                "endMinute": self.store.scheduleEndMinute,
-                "enabled": self.store.scheduleEnabled,
+                "startHour": store.scheduleStartHour,
+                "startMinute": store.scheduleStartMinute,
+                "endHour": store.scheduleEndHour,
+                "endMinute": store.scheduleEndMinute,
+                "enabled": store.scheduleEnabled,
             ]
         }
 
         AsyncFunction("setScheduleEnabled") { [weak self] (enabled: Bool) -> Void in
+            guard #available(iOS 16.0, *) else { return }
             guard let self = self else { return }
-            self.store.scheduleEnabled = enabled
+            let store = SharedDataStore.shared
+            store.scheduleEnabled = enabled
             if enabled {
-                try self.startMonitoring()
+                self.applyShieldsFromStore()
+                try self.startMonitoringImpl()
             } else {
-                self.center.stopMonitoring()
+                DeviceActivityCenter().stopMonitoring()
+                self.removeAllShields()
             }
         }
 
-        AsyncFunction("isScheduleEnabled") { [weak self] () -> Bool in
-            return self?.store.scheduleEnabled ?? false
+        AsyncFunction("isScheduleEnabled") { () -> Bool in
+            guard #available(iOS 16.0, *) else { return false }
+            return SharedDataStore.shared.scheduleEnabled
         }
 
-        // MARK: - Shield (immediate apply/remove for testing)
+        // MARK: - Shield (immediate apply/remove)
 
         AsyncFunction("applyShieldNow") { [weak self] () -> Void in
-            guard let self = self else { return }
-            let sel = self.store.savedSelection
-            let managedStore = ManagedSettingsStore()
-            managedStore.shield.applications = sel.applicationTokens
-            managedStore.shield.applicationCategories = .specific(sel.categoryTokens)
-            managedStore.shield.webDomains = sel.webDomainTokens
+            guard #available(iOS 16.0, *) else { return }
+            self?.applyShieldsFromStore()
         }
 
-        AsyncFunction("removeShieldNow") { () -> Void in
-            let managedStore = ManagedSettingsStore()
-            managedStore.shield.applications = nil
-            managedStore.shield.applicationCategories = nil
-            managedStore.shield.webDomains = nil
+        AsyncFunction("removeShieldNow") { [weak self] () -> Void in
+            guard #available(iOS 16.0, *) else { return }
+            self?.removeAllShields()
+        }
+
+        // MARK: - Unlock state (shared with DeviceActivity extension)
+
+        AsyncFunction("setAppsUnlocked") { (unlocked: Bool) -> Void in
+            guard #available(iOS 16.0, *) else { return }
+            SharedDataStore.shared.appsUnlocked = unlocked
+            print("[ScreenTimeModule] appsUnlocked set to \(unlocked)")
+        }
+
+        AsyncFunction("getAppsUnlocked") { () -> Bool in
+            guard #available(iOS 16.0, *) else { return false }
+            return SharedDataStore.shared.appsUnlocked
+        }
+
+        // MARK: - Ensure blocking on app launch
+
+        AsyncFunction("ensureBlocking") { [weak self] () -> Void in
+            guard #available(iOS 16.0, *) else { return }
+            guard let self = self else { return }
+            let store = SharedDataStore.shared
+            guard store.scheduleEnabled else { return }
+
+            if store.appsUnlocked {
+                print("[ScreenTimeModule] Apps unlocked for today — skipping shield re-apply")
+                return
+            }
+
+            print("[ScreenTimeModule] Re-applying shields on app launch")
+            self.applyShieldsFromStore()
+            try? self.startMonitoringImpl()
         }
     }
 
-    // MARK: - Private
+    // MARK: - Private Helpers
 
-    private func startMonitoring() throws {
+    @available(iOS 16.0, *)
+    private func applyShieldsFromStore() {
+        let sel = SharedDataStore.shared.savedSelection
+        let managedStore = ManagedSettingsStore()
+        managedStore.shield.applications = sel.applicationTokens
+        managedStore.shield.applicationCategories = .specific(sel.categoryTokens)
+        managedStore.shield.webDomains = sel.webDomainTokens
+        print("[ScreenTimeModule] Shields applied: \(sel.applicationTokens.count) apps, \(sel.categoryTokens.count) categories")
+    }
+
+    @available(iOS 16.0, *)
+    private func removeAllShields() {
+        let managedStore = ManagedSettingsStore()
+        managedStore.shield.applications = nil
+        managedStore.shield.applicationCategories = nil
+        managedStore.shield.webDomains = nil
+        print("[ScreenTimeModule] All shields removed")
+    }
+
+    @available(iOS 16.0, *)
+    private func startMonitoringImpl() throws {
+        let store = SharedDataStore.shared
         let schedule = DeviceActivitySchedule(
             intervalStart: DateComponents(
                 hour: store.scheduleStartHour,
@@ -146,8 +210,10 @@ public class ScreenTimeModule: Module {
             ),
             repeats: true
         )
+        let center = DeviceActivityCenter()
         center.stopMonitoring()
         try center.startMonitoring(.daily, during: schedule)
+        print("[ScreenTimeModule] Monitoring started: \(store.scheduleStartHour):\(store.scheduleStartMinute) - \(store.scheduleEndHour):\(store.scheduleEndMinute)")
     }
 }
 

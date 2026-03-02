@@ -23,6 +23,9 @@ interface ScreenTimeModuleNative {
   isScheduleEnabled(): Promise<boolean>;
   applyShieldNow(): Promise<void>;
   removeShieldNow(): Promise<void>;
+  ensureBlocking(): Promise<void>;
+  setAppsUnlocked(unlocked: boolean): Promise<void>;
+  getAppsUnlocked(): Promise<boolean>;
 }
 
 const NativeModule: ScreenTimeModuleNative | null = (() => {
@@ -110,9 +113,27 @@ export const ScreenTime = {
     await NativeModule.applyShieldNow();
   },
 
-  /** Immediately remove all shields (for testing). */
+  /** Immediately remove all shields. */
   async removeShieldNow(): Promise<void> {
     if (!NativeModule) throw new Error('Screen Time is only available on iOS');
     await NativeModule.removeShieldNow();
+  },
+
+  /** Re-apply shields on app launch if blocking was previously enabled. */
+  async ensureBlocking(): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.ensureBlocking();
+  },
+
+  /** Write unlock state to shared UserDefaults so native code + extension can read it. */
+  async setAppsUnlocked(unlocked: boolean): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.setAppsUnlocked(unlocked);
+  },
+
+  /** Read unlock state from shared UserDefaults. */
+  async getAppsUnlocked(): Promise<boolean> {
+    if (!NativeModule) return false;
+    return await NativeModule.getAppsUnlocked();
   },
 };
