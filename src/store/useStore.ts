@@ -55,6 +55,7 @@ interface AppState {
   dailyGamesCompleted: number;
   dailyDate: string;
   appsUnlocked: boolean;
+  setupGuideComplete: boolean;
 
   completeOnboarding: () => void;
   setUserName: (name: string) => void;
@@ -68,6 +69,7 @@ interface AppState {
   checkDailyReset: () => void;
   updateSettings: (partial: Partial<Settings>) => void;
   toggleAppLock: (appName: string, bundleId: string) => void;
+  completeSetupGuide: () => void;
 }
 
 const defaultGameStats: Record<GameType, GameStats> = {
@@ -103,6 +105,7 @@ export const useStore = create<AppState>()(
       dailyGamesCompleted: 0,
       dailyDate: '',
       appsUnlocked: false,
+      setupGuideComplete: false,
       settings: {
         enabledGames: ['math', 'memory', 'wordscramble', 'speedread', 'reaction', 'colormatch'],
         challengesRequired: 1,
@@ -207,6 +210,8 @@ export const useStore = create<AppState>()(
         const { settings } = get();
         set({ settings: { ...settings, ...partial } });
       },
+
+      completeSetupGuide: () => set({ setupGuideComplete: true }),
 
       toggleAppLock: (appName, bundleId) => {
         const { lockedApps } = get();

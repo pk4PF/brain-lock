@@ -23,7 +23,7 @@ export function GoldButton({
   style,
   fullWidth = false,
 }: GoldButtonProps) {
-  const { isDark } = useThemeColors();
+  const { isDark, colors } = useThemeColors();
   const height = size === 'sm' ? 36 : size === 'md' ? 48 : 56;
   const px = size === 'sm' ? 16 : size === 'md' ? 24 : 28;
   const fontSize = size === 'sm' ? 13 : size === 'md' ? 15 : 17;
@@ -39,7 +39,7 @@ export function GoldButton({
           overflow: 'hidden',
           opacity: disabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          shadowColor: '#F5A623',
+          shadowColor: colors.accent,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: isDark ? 0.15 : 0.3,
           shadowRadius: 16,
@@ -49,7 +49,7 @@ export function GoldButton({
       ]}
     >
       <LinearGradient
-        colors={['#F5A623', '#FF6B35']}
+        colors={[colors.accent, colors.accentDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -89,8 +89,8 @@ export function GhostButton({
           height: 48,
           borderRadius: 999,
           borderWidth: 1,
-          borderColor: 'rgba(245,166,35,0.25)',
-          backgroundColor: 'rgba(245,166,35,0.06)',
+          borderColor: `${colors.accent}40`,
+          backgroundColor: `${colors.accent}0A`,
           paddingHorizontal: 24,
           flexDirection: 'row',
           alignItems: 'center',

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { FontFamily } from '../../src/constants/theme';
 
 const { width, height } = Dimensions.get('window');
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 
 export default function SplashScreen() {
     // Logo animations
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
         width: width * 0.7,
         height: width * 0.7,
         borderRadius: width * 0.35,
-        backgroundColor: 'rgba(245,166,35,0.08)',
+        backgroundColor: 'rgba(232,133,12,0.08)',
     },
     orb2: {
         position: 'absolute',
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
         width: width * 0.4,
         height: width * 0.4,
         borderRadius: width * 0.2,
-        backgroundColor: 'rgba(245,166,35,0.04)',
+        backgroundColor: 'rgba(232,133,12,0.04)',
     },
 
     // Center

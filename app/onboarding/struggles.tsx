@@ -15,7 +15,7 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 
 interface Struggle {
     id: string;
@@ -226,16 +226,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         marginBottom: 10,
         borderWidth: 1.5,
-        borderColor: 'rgba(245,166,35,0.12)',
-        shadowColor: '#F5A623',
+        borderColor: 'rgba(232,133,12,0.12)',
+        shadowColor: '#E8850C',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
         elevation: 2,
     },
     itemRowSelected: {
-        backgroundColor: 'rgba(245,166,35,0.06)',
-        borderColor: 'rgba(245,166,35,0.35)',
+        backgroundColor: 'rgba(232,133,12,0.06)',
+        borderColor: 'rgba(232,133,12,0.35)',
         shadowColor: AMBER,
         shadowOpacity: 0.2,
         shadowRadius: 14,

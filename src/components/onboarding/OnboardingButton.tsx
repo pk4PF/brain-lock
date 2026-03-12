@@ -3,7 +3,7 @@ import { TouchableOpacity, Text, StyleSheet, ViewStyle, Animated } from 'react-n
 import { LinearGradient } from 'expo-linear-gradient';
 import { BorderRadius, FontSize, FontFamily } from '../../constants/theme';
 
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 const DARK = '#0A0A0F';
 
 interface OnboardingButtonProps {
@@ -61,7 +61,7 @@ export default function OnboardingButton({
                 activeOpacity={0.9}
             >
                 <LinearGradient
-                    colors={['#F5A623', '#FF6B35']}
+                    colors={['#E8850C', '#D4700A']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.buttonInner}

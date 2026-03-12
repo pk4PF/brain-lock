@@ -37,7 +37,7 @@ export default function OnboardingProgress({
                     ]}
                 >
                     <LinearGradient
-                        colors={['#F5A623', '#FF6B35']}
+                        colors={['#E8850C', '#D4700A']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.gradient}

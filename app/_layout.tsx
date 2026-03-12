@@ -5,7 +5,7 @@ import { TamaguiProvider } from 'tamagui';
 import tamaguiConfig from '../tamagui.config';
 import { useStore } from '../src/store/useStore';
 import { useThemeColors } from '../src/hooks/useThemeColors';
-import { initRevenueCat } from '../src/services/revenueCat';
+import { initRevenueCat, getCurrentCustomerInfo, checkPremiumStatus } from '../src/services/revenueCat';
 import { ScreenTime } from 'screen-time-module';
 import { preloadSounds } from '../src/utils/sounds';
 import {
@@ -40,10 +40,23 @@ export default function RootLayout() {
       setStoreReady(true);
     }
 
-    // Initialize RevenueCat
-    initRevenueCat().catch((err) =>
-      console.warn('RevenueCat init failed:', err)
-    );
+    // Initialize RevenueCat and re-validate subscription
+    initRevenueCat()
+      .then(async () => {
+        const { isPremium, clearSubscription } = useStore.getState();
+        if (isPremium) {
+          try {
+            const customerInfo = await getCurrentCustomerInfo();
+            if (!checkPremiumStatus(customerInfo)) {
+              clearSubscription();
+              console.log('Subscription expired or revoked — cleared premium status');
+            }
+          } catch (err) {
+            console.warn('Failed to validate subscription:', err);
+          }
+        }
+      })
+      .catch((err) => console.warn('RevenueCat init failed:', err));
 
     // Reset daily unlock if it's a new day
     useStore.getState().checkDailyReset();

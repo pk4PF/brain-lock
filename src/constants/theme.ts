@@ -1,17 +1,17 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export const LightColors = {
-  background: '#F8F9FB',
+  background: '#FBF5EC',
   card: '#FFFFFF',
-  cardAlt: '#F0F1F5',
-  border: '#E5E7EB',
-  muted: '#9CA3AF',
-  secondary: '#6B7280',
+  cardAlt: '#F5EFE6',
+  border: '#E8DFD3',
+  muted: '#9C9389',
+  secondary: '#6B6359',
   text: '#1A1A2E',
-  accent: '#F5A623',
-  accentDark: '#FF6B35',
-  accentLight: 'rgba(245,166,35,0.10)',
-  accentGlow: 'rgba(245,166,35,0.20)',
+  accent: '#E8850C',
+  accentDark: '#D4700A',
+  accentLight: 'rgba(232,133,12,0.10)',
+  accentGlow: 'rgba(232,133,12,0.20)',
   info: '#3B82F6',
   infoLight: 'rgba(59,130,246,0.10)',
   success: '#22C55E',
@@ -20,17 +20,17 @@ export const LightColors = {
 };
 
 export const DarkColors: typeof LightColors = {
-  background: '#0F0F14',
-  card: '#1A1A24',
-  cardAlt: '#22222E',
-  border: '#2E2E3A',
+  background: '#0B0B10',
+  card: '#141420',
+  cardAlt: '#1C1C2E',
+  border: '#2A2A3C',
   muted: '#6B7280',
   secondary: '#9CA3AF',
   text: '#F0F0F5',
-  accent: '#F5A623',
-  accentDark: '#FF6B35',
-  accentLight: 'rgba(245,166,35,0.12)',
-  accentGlow: 'rgba(245,166,35,0.25)',
+  accent: '#FFD54F',
+  accentDark: '#FFC107',
+  accentLight: 'rgba(255,213,79,0.12)',
+  accentGlow: 'rgba(255,213,79,0.25)',
   info: '#60A5FA',
   infoLight: 'rgba(96,165,250,0.12)',
   success: '#22C55E',
@@ -50,9 +50,15 @@ export function getColors(mode: 'light' | 'dark'): ThemeColors {
 export const Gradients = {
   light: {
     cardWarm: ['#FFFFFF', '#FFF8EE'] as [string, string],
+    heroGreen: ['#1B6B3C', '#145830', '#0D4025'] as [string, string, string],
+    heroPrimary: ['#1B6B3C', '#145830', '#0D4025'] as [string, string, string],
+    cardSurface: ['#FFFFFF', '#FDFAF5'] as [string, string],
   },
   dark: {
-    cardWarm: ['#1A1A24', '#1F1A14'] as [string, string],
+    cardWarm: ['#141420', '#1A1814'] as [string, string],
+    heroGreen: ['#0A2A1A', '#0D3520', '#082E18'] as [string, string, string],
+    heroPrimary: ['#1A1508', '#251C06', '#1A1508'] as [string, string, string],
+    cardSurface: ['#141420', '#18182A'] as [string, string],
   },
 };
 

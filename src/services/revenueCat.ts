@@ -32,21 +32,18 @@ export async function initRevenueCat(): Promise<void> {
 
 export async function getOfferings(): Promise<PurchasesOffering | null> {
     try {
-        console.log('[DEBUG] (IS $) Fetching RevenueCat offerings...');
+        if (__DEV__) console.log('[RevenueCat] Fetching offerings...');
         const offerings = await Purchases.getOfferings();
-        console.log('[DEBUG] (NO $) Offerings Response:', {
-            hasCurrentOffering: !!offerings.current,
-            offeringId: offerings.current?.identifier,
-            availablePackages: offerings.current?.availablePackages.map(p => ({
-                id: p.identifier,
-                storeProductId: p.product.identifier,
-                isStoreProductValid: !!p.product
-            })) || [],
-            allOfferingsCount: Object.keys(offerings.all).length
-        });
+        if (__DEV__) {
+            console.log('[RevenueCat] Offerings:', {
+                hasCurrentOffering: !!offerings.current,
+                offeringId: offerings.current?.identifier,
+                packageCount: offerings.current?.availablePackages.length ?? 0,
+            });
+        }
         return offerings.current;
     } catch (error) {
-        console.warn('[DEBUG] (NO $) Failed to fetch RevenueCat offerings:', error);
+        if (__DEV__) console.warn('[RevenueCat] Failed to fetch offerings:', error);
         return null;
     }
 }
@@ -65,4 +62,8 @@ export async function restorePurchases(): Promise<CustomerInfo> {
 
 export function checkPremiumStatus(customerInfo: CustomerInfo): boolean {
     return customerInfo.entitlements.active['premium'] !== undefined;
+}
+
+export async function getCurrentCustomerInfo(): Promise<CustomerInfo> {
+    return Purchases.getCustomerInfo();
 }

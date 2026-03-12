@@ -362,11 +362,11 @@ export default function LockScreen() {
           {/* Inline Toast */}
           <InlineToast message={toast ?? ''} visible={!!toast} />
 
-          {/* Status Card */}
+          {/* Status Card - green gradient */}
           <FadeInView delay={100}>
-            <GlowCard accent elevated marginBottom={16} padding={0} overflow="hidden">
+            <GlowCard elevated marginBottom={16} padding={0} overflow="hidden" borderWidth={0}>
               <LinearGradient
-                colors={gradients.cardWarm}
+                colors={gradients.heroGreen}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ padding: 24, alignItems: 'center' }}
@@ -374,14 +374,14 @@ export default function LockScreen() {
                 <PulsingIcon size={56}>
                   <Shield size={26} color="#FFFFFF" />
                 </PulsingIcon>
-                <Text color={colors.text} fontSize={20} fontWeight="700" marginTop={14}>
+                <Text color="#FFFFFF" fontSize={20} fontWeight="700" marginTop={14}>
                   {!isAuthorized
                     ? 'Set Up App Blocking'
                     : hasApps
                       ? 'App Blocking Active'
                       : 'Choose Apps to Block'}
                 </Text>
-                <Text color={colors.secondary} fontSize={14} marginTop={4} textAlign="center">
+                <Text color="rgba(255,255,255,0.65)" fontSize={14} marginTop={4} textAlign="center">
                   {!isAuthorized
                     ? 'Enable Screen Time to block distracting apps'
                     : hasApps
@@ -685,7 +685,7 @@ export default function LockScreen() {
               ) : (
                 <AnimatedButton onPress={handleApplySchedule} disabled={scheduleLoading}>
                   <LinearGradient
-                    colors={[colors.accent, '#FF6B35']}
+                    colors={[colors.accent, colors.accentDark]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}

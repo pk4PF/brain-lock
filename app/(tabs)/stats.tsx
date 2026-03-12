@@ -4,10 +4,17 @@ import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
 import { GAMES, GameType } from '../../src/constants/games';
-import { GlowCard, StatCard } from '../../src/components/ui/GlowCard';
+import { GlowCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+
+const STAT_CARDS = [
+  { key: 'streak', label: 'Current Streak', icon: Flame, bg: '#FEF3C7', color: '#D97706', iconColor: '#F59E0B' },
+  { key: 'best', label: 'Best Streak', icon: Target, bg: '#DBEAFE', color: '#2563EB', iconColor: '#3B82F6' },
+  { key: 'played', label: 'Games Played', icon: Gamepad2, bg: '#F3E8FF', color: '#7C3AED', iconColor: '#8B5CF6' },
+  { key: 'winrate', label: 'Win Rate', icon: TrendingUp, bg: '#DCFCE7', color: '#16A34A', iconColor: '#22C55E' },
+] as const;
 
 function ProgressChart({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
@@ -33,7 +40,7 @@ function ProgressChart({ data }: { data: number[] }) {
               <View
                 height={`${pct}%`}
                 borderRadius={6}
-                backgroundColor={isToday ? colors.accent : 'rgba(245,166,35,0.3)'}
+                backgroundColor={isToday ? colors.accent : 'rgba(232,133,12,0.25)'}
               />
             </YStack>
             <Text
@@ -53,10 +60,17 @@ function ProgressChart({ data }: { data: number[] }) {
 export default function StatsScreen() {
   const { progress } = useStore();
   const insets = useSafeAreaInsets();
-  const { colors } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const winRate = progress.gamesPlayed > 0
     ? Math.round((progress.gamesWon / progress.gamesPlayed) * 100)
     : 0;
+
+  const statValues: Record<string, string> = {
+    streak: `${progress.currentStreak}`,
+    best: `${progress.longestStreak}`,
+    played: `${progress.gamesPlayed}`,
+    winrate: `${winRate}%`,
+  };
 
   return (
     <YStack flex={1} backgroundColor={colors.background}>
@@ -82,47 +96,55 @@ export default function StatsScreen() {
           </Text>
         </FadeInView>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - colored badges */}
         <FadeInView delay={100}>
           <XStack gap={10} marginBottom={10}>
-            <StatCard highlighted>
-              <Flame size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={24} fontWeight="700">
-                {progress.currentStreak}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="500">
-                Current Streak
-              </Text>
-            </StatCard>
-            <StatCard>
-              <Target size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={24} fontWeight="700">
-                {progress.longestStreak}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="500">
-                Best Streak
-              </Text>
-            </StatCard>
+            {STAT_CARDS.slice(0, 2).map((card) => {
+              const Icon = card.icon;
+              return (
+                <YStack
+                  key={card.key}
+                  flex={1}
+                  backgroundColor={isDark ? colors.card : card.bg}
+                  borderRadius={16}
+                  padding={16}
+                  alignItems="center"
+                  gap={4}
+                >
+                  <Icon size={20} color={isDark ? colors.accent : card.iconColor} />
+                  <Text color={isDark ? colors.text : card.color} fontSize={24} fontWeight="700">
+                    {statValues[card.key]}
+                  </Text>
+                  <Text color={isDark ? colors.muted : card.iconColor} fontSize={11} fontWeight="500">
+                    {card.label}
+                  </Text>
+                </YStack>
+              );
+            })}
           </XStack>
           <XStack gap={10} marginBottom={28}>
-            <StatCard>
-              <Gamepad2 size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={24} fontWeight="700">
-                {progress.gamesPlayed}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="500">
-                Games Played
-              </Text>
-            </StatCard>
-            <StatCard>
-              <TrendingUp size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={24} fontWeight="700">
-                {winRate}%
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="500">
-                Win Rate
-              </Text>
-            </StatCard>
+            {STAT_CARDS.slice(2).map((card) => {
+              const Icon = card.icon;
+              return (
+                <YStack
+                  key={card.key}
+                  flex={1}
+                  backgroundColor={isDark ? colors.card : card.bg}
+                  borderRadius={16}
+                  padding={16}
+                  alignItems="center"
+                  gap={4}
+                >
+                  <Icon size={20} color={isDark ? colors.accent : card.iconColor} />
+                  <Text color={isDark ? colors.text : card.color} fontSize={24} fontWeight="700">
+                    {statValues[card.key]}
+                  </Text>
+                  <Text color={isDark ? colors.muted : card.iconColor} fontSize={11} fontWeight="500">
+                    {card.label}
+                  </Text>
+                </YStack>
+              );
+            })}
           </XStack>
         </FadeInView>
 
@@ -153,15 +175,15 @@ export default function StatsScreen() {
                     <YStack
                       width={40}
                       height={40}
-                      borderRadius={10}
-                      backgroundColor={`${game.color}12`}
+                      borderRadius={20}
+                      backgroundColor={`${game.color}15`}
                       justifyContent="center"
                       alignItems="center"
                     >
                       <View
                         width={18}
                         height={18}
-                        borderRadius={6}
+                        borderRadius={9}
                         backgroundColor={`${game.color}40`}
                       />
                     </YStack>

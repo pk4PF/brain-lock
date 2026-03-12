@@ -8,7 +8,7 @@ interface IconBadgeProps {
   glow?: boolean;
 }
 
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 
 export function IconBadge({
   children,

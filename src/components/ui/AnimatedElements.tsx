@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Zap } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 
 // -- Floating glow orb that drifts and pulses --
 export function FloatingGlowOrb({
@@ -179,7 +179,7 @@ export function PulsingIcon({
           width: size * 1.6,
           height: size * 1.6,
           borderRadius: size * 0.8,
-          backgroundColor: 'rgba(245,166,35,0.08)',
+          backgroundColor: 'rgba(232,133,12,0.08)',
           opacity: glowOpacity,
           transform: [{ scale: glowScale }],
         }}
@@ -199,7 +199,7 @@ export function PulsingIcon({
         }}
       >
         <LinearGradient
-          colors={[AMBER, '#FF6B35']}
+          colors={[AMBER, '#D4700A']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -292,7 +292,7 @@ export function ShimmerLine({ width = 100, delay = 0 }: { width?: number; delay?
         style={{
           width: 60,
           height: '100%',
-          backgroundColor: 'rgba(245,166,35,0.04)',
+          backgroundColor: 'rgba(232,133,12,0.04)',
           transform: [{ translateX }, { skewX: '-20deg' }],
         }}
       />

@@ -5,7 +5,7 @@ import { useStore } from '../src/store/useStore';
 import { Colors } from '../src/constants/theme';
 
 export default function Index() {
-  const { onboardingComplete } = useStore();
+  const { onboardingComplete, isPremium } = useStore();
 
   useEffect(() => {
     // DEV: always show onboarding on app start
@@ -26,8 +26,11 @@ export default function Index() {
       return;
     }
 
-    if (onboardingComplete) {
+    if (onboardingComplete && isPremium) {
       router.replace('/(tabs)');
+    } else if (onboardingComplete && !isPremium) {
+      // Subscription expired or was never completed — show paywall again
+      router.replace('/onboarding/paywall');
     } else {
       router.replace('/onboarding');
     }

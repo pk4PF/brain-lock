@@ -79,10 +79,10 @@ export default function ProfileScreen() {
           Profile
         </Text>
 
-        {/* Profile Card */}
-        <GlowCard accent elevated marginBottom={28} padding={0} overflow="hidden">
+        {/* Profile Card - green gradient */}
+        <GlowCard elevated marginBottom={28} padding={0} overflow="hidden" borderWidth={0}>
           <LinearGradient
-            colors={gradients.cardWarm}
+            colors={gradients.heroGreen}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ padding: 28, alignItems: 'center' }}
@@ -91,19 +91,12 @@ export default function ProfileScreen() {
               width={72}
               height={72}
               borderRadius={36}
-              backgroundColor={colors.cardAlt}
-              borderWidth={2}
-              borderColor={colors.accentGlow}
+              backgroundColor="rgba(255,255,255,0.15)"
               justifyContent="center"
               alignItems="center"
               marginBottom={14}
-              shadowColor={isDark ? 'transparent' : colors.accent}
-              shadowOffset={{ width: 0, height: 0 }}
-              shadowOpacity={isDark ? 0 : 0.15}
-              shadowRadius={16}
-              elevation={isDark ? 0 : 6}
             >
-              <User size={30} color={colors.accent} />
+              <User size={30} color="#FFFFFF" />
             </YStack>
 
             {editingName ? (
@@ -119,15 +112,15 @@ export default function ProfileScreen() {
                 style={{
                   fontSize: 22,
                   fontWeight: '700',
-                  color: colors.text,
+                  color: '#FFFFFF',
                   textAlign: 'center',
                   paddingVertical: 4,
                   paddingHorizontal: 16,
                   minWidth: 120,
                   borderBottomWidth: 2,
-                  borderBottomColor: colors.accent,
+                  borderBottomColor: 'rgba(255,255,255,0.5)',
                 }}
-                placeholderTextColor={colors.secondary}
+                placeholderTextColor="rgba(255,255,255,0.5)"
                 placeholder="Your name"
               />
             ) : (
@@ -136,14 +129,14 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
               >
-                <Text color={colors.text} fontSize={22} fontWeight="700">
+                <Text color="#FFFFFF" fontSize={22} fontWeight="700">
                   {userName || 'Tap to set name'}
                 </Text>
-                <Pencil size={14} color={colors.secondary} />
+                <Pencil size={14} color="rgba(255,255,255,0.6)" />
               </TouchableOpacity>
             )}
 
-            <Text color={colors.secondary} fontSize={14} marginTop={4}>
+            <Text color="rgba(255,255,255,0.6)" fontSize={14} marginTop={4}>
               {progress.gamesWon} challenges won
             </Text>
           </LinearGradient>
@@ -205,15 +198,15 @@ export default function ProfileScreen() {
                     <YStack
                       width={36}
                       height={36}
-                      borderRadius={10}
-                      backgroundColor={`${game.color}12`}
+                      borderRadius={18}
+                      backgroundColor={`${game.color}15`}
                       justifyContent="center"
                       alignItems="center"
                     >
                       <View
                         width={16}
                         height={16}
-                        borderRadius={5}
+                        borderRadius={8}
                         backgroundColor={`${game.color}40`}
                       />
                     </YStack>
@@ -224,7 +217,7 @@ export default function ProfileScreen() {
                   <Switch
                     value={enabled}
                     onValueChange={() => toggleGame(key)}
-                    trackColor={{ false: colors.border, true: 'rgba(245,166,35,0.35)' }}
+                    trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
                     thumbColor={enabled ? colors.accent : colors.muted}
                   />
                 </XStack>
@@ -381,7 +374,7 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.hapticFeedback}
                 onValueChange={(v) => updateSettings({ hapticFeedback: v })}
-                trackColor={{ false: colors.border, true: 'rgba(245,166,35,0.35)' }}
+                trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
                 thumbColor={settings.hapticFeedback ? colors.accent : colors.muted}
               />
             </XStack>
@@ -402,7 +395,7 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.soundEnabled}
                 onValueChange={(v) => updateSettings({ soundEnabled: v })}
-                trackColor={{ false: colors.border, true: 'rgba(245,166,35,0.35)' }}
+                trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
                 thumbColor={settings.soundEnabled ? colors.accent : colors.muted}
               />
             </XStack>

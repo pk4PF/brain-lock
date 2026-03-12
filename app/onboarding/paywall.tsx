@@ -27,7 +27,7 @@ import {
 const { width: SW, height: SH } = Dimensions.get('window');
 
 // ── COLORS ──
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 const AMBER_DARK = '#E09000';
 const BG = '#FBF7F2';
 const BG_CARD = '#FFFFFF';
@@ -215,7 +215,7 @@ export default function PaywallScreen() {
 
         },
         {
-            id: 'weekly',
+            id: 'monthly',
             label: 'Monthly',
             period: '/mo',
             pkg: monthlyPkg,
@@ -223,19 +223,48 @@ export default function PaywallScreen() {
         },
     ];
 
+    const retryLoadOfferings = async () => {
+        setLoading(true);
+        try {
+            const offering = await getOfferings();
+            if (offering) setPackages(offering.availablePackages);
+        } catch (err) {
+            console.warn('Failed to reload offerings:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handlePurchase = async () => {
-        const plan = plans.find((p) => p.id === selectedPlan);
-        if (!plan?.pkg) {
-            // Fallback when RevenueCat not configured
+        // Dev-only bypass — skip paywall in development builds
+        if (__DEV__) {
+            console.warn('⚠️ DEV MODE: Skipping paywall — this does NOT happen in production builds');
             setSubscription(selectedPlan);
             router.push('/onboarding/letsgo');
+            return;
+        }
+
+        const plan = plans.find((p) => p.id === selectedPlan);
+        if (!plan?.pkg) {
+            Alert.alert(
+                'Unable to load plans',
+                'Please check your internet connection and try again.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Retry', onPress: retryLoadOfferings },
+                ]
+            );
             return;
         }
         setPurchasing(true);
         try {
             const customerInfo = await purchasePackage(plan.pkg);
-            if (checkPremiumStatus(customerInfo)) setSubscription(plan.id);
-            router.push('/onboarding/letsgo');
+            if (checkPremiumStatus(customerInfo)) {
+                setSubscription(plan.id);
+                router.push('/onboarding/letsgo');
+            } else {
+                Alert.alert('Purchase issue', 'Your purchase could not be verified. Please try again or contact support.');
+            }
         } catch (err: any) {
             if (!err.userCancelled) Alert.alert('Purchase failed', 'Please try again later.');
         } finally {
@@ -293,7 +322,7 @@ export default function PaywallScreen() {
                         <Animated.View style={[styles.brainGlowRing, { transform: [{ scale: glowPulse }] }]} />
                         <Animated.View style={[styles.brainGlowRing2, { transform: [{ scale: glowPulse }], opacity: glowPulse.interpolate({ inputRange: [1, 1.25], outputRange: [0.5, 0] }) }]} />
                         <LinearGradient
-                            colors={[AMBER, '#FF6B35']}
+                            colors={[AMBER, '#D4700A']}
                             style={styles.brainCircle}
                         >
                             <Brain size={36} color="#FFFFFF" strokeWidth={2.2} />
@@ -325,7 +354,7 @@ export default function PaywallScreen() {
                                 {/* Left column: icon + connector */}
                                 <View style={styles.timelineLeft}>
                                     <LinearGradient
-                                        colors={[`rgba(245,166,35,${0.25 + i * 0.1})`, `rgba(255,107,53,${0.15 + i * 0.08})`]}
+                                        colors={[`rgba(232,133,12,${0.25 + i * 0.1})`, `rgba(255,107,53,${0.15 + i * 0.08})`]}
                                         style={styles.timelineIcon}
                                     >
                                         <Icon size={16} color={AMBER} />
@@ -347,7 +376,7 @@ export default function PaywallScreen() {
                                             marginLeft: 8,
                                         }]}>
                                             <LinearGradient
-                                                colors={[AMBER, '#FF6B35']}
+                                                colors={[AMBER, '#D4700A']}
                                                 start={{ x: 0, y: 0 }}
                                                 end={{ x: 1, y: 1 }}
                                                 style={styles.metricBadge}
@@ -415,8 +444,8 @@ export default function PaywallScreen() {
                                         <Text style={styles.planTrial}>3-day free trial</Text>
                                     </View>
                                     <View style={styles.planPriceWrap}>
-                                        <Text style={[styles.planPriceMain, selectedPlan === 'yearly' && styles.planPriceMainSel]}>$4.17</Text>
-                                        <Text style={styles.planPricePeriod}>/mo</Text>
+                                        <Text style={[styles.planPriceMain, selectedPlan === 'yearly' && styles.planPriceMainSel]}>{plans[0].price}</Text>
+                                        <Text style={styles.planPricePeriod}>/year</Text>
                                     </View>
                                 </TouchableOpacity>
 
@@ -425,19 +454,19 @@ export default function PaywallScreen() {
                             {/* ── MONTHLY ── */}
                             <Animated.View style={anim(planCardAnims[1], 16)}>
                                 <TouchableOpacity
-                                    style={[styles.planRow, selectedPlan === 'weekly' ? styles.planRowSel : styles.planRowDefault]}
-                                    onPress={() => setSelectedPlan('weekly')}
+                                    style={[styles.planRow, selectedPlan === 'monthly' ? styles.planRowSel : styles.planRowDefault]}
+                                    onPress={() => setSelectedPlan('monthly')}
                                     activeOpacity={0.8}
                                 >
-                                    <View style={[styles.planRadio, selectedPlan === 'weekly' && styles.planRadioSel]}>
-                                        {selectedPlan === 'weekly' && <View style={styles.planRadioDot} />}
+                                    <View style={[styles.planRadio, selectedPlan === 'monthly' && styles.planRadioSel]}>
+                                        {selectedPlan === 'monthly' && <View style={styles.planRadioDot} />}
                                     </View>
                                     <View style={styles.planInfo}>
-                                        <Text style={[styles.planName, selectedPlan === 'weekly' && styles.planNameSel]}>Monthly</Text>
+                                        <Text style={[styles.planName, selectedPlan === 'monthly' && styles.planNameSel]}>Monthly</Text>
                                         <Text style={styles.planTrial}>3-day free trial</Text>
                                     </View>
                                     <View style={styles.planPriceWrap}>
-                                        <Text style={[styles.planPriceMain, selectedPlan === 'weekly' && styles.planPriceMainSel]}>{plans[1].price}</Text>
+                                        <Text style={[styles.planPriceMain, selectedPlan === 'monthly' && styles.planPriceMainSel]}>{plans[1].price}</Text>
                                         <Text style={styles.planPricePeriod}>/mo</Text>
                                     </View>
                                 </TouchableOpacity>
@@ -465,7 +494,7 @@ export default function PaywallScreen() {
                             disabled={purchasing}
                         >
                             <LinearGradient
-                                colors={[AMBER, '#FF6B35']}
+                                colors={[AMBER, '#D4700A']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={styles.ctaBtnInner}
@@ -498,7 +527,7 @@ const styles = StyleSheet.create({
     orb1: {
         position: 'absolute', top: -80, left: -100,
         width: 300, height: 300, borderRadius: 150,
-        backgroundColor: 'rgba(245,166,35,0.10)',
+        backgroundColor: 'rgba(232,133,12,0.10)',
     },
     orb2: {
         position: 'absolute', bottom: SH * 0.15, right: -100,
@@ -508,7 +537,7 @@ const styles = StyleSheet.create({
     orb3: {
         position: 'absolute', top: SH * 0.4, left: -60,
         width: 220, height: 220, borderRadius: 110,
-        backgroundColor: 'rgba(245,166,35,0.07)',
+        backgroundColor: 'rgba(232,133,12,0.07)',
     },
 
     scroll: { flex: 1 },
@@ -529,12 +558,12 @@ const styles = StyleSheet.create({
     brainGlowRing: {
         position: 'absolute',
         width: 100, height: 100, borderRadius: 50,
-        backgroundColor: 'rgba(245,166,35,0.15)',
+        backgroundColor: 'rgba(232,133,12,0.15)',
     },
     brainGlowRing2: {
         position: 'absolute',
         width: 130, height: 130, borderRadius: 65,
-        backgroundColor: 'rgba(245,166,35,0.08)',
+        backgroundColor: 'rgba(232,133,12,0.08)',
     },
     brainCircle: {
         width: 70, height: 70, borderRadius: 35,
@@ -602,7 +631,7 @@ const styles = StyleSheet.create({
     timelineLine: {
         width: 2,
         flex: 1,
-        backgroundColor: 'rgba(245,166,35,0.18)',
+        backgroundColor: 'rgba(232,133,12,0.18)',
         marginVertical: 4,
     },
     timelineRight: {
@@ -727,7 +756,7 @@ const styles = StyleSheet.create({
         borderColor: BORDER,
     },
     planRowSel: {
-        backgroundColor: 'rgba(245,166,35,0.06)',
+        backgroundColor: 'rgba(232,133,12,0.06)',
         borderWidth: 2,
         borderColor: AMBER,
         shadowColor: AMBER,

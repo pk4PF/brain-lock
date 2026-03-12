@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
         width: 240,
         height: 240,
         borderRadius: 120,
-        backgroundColor: 'rgba(245,166,35,0.06)',
+        backgroundColor: 'rgba(232,133,12,0.06)',
     },
     glowOrb2: {
         position: 'absolute',
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
         width: 300,
         height: 300,
         borderRadius: 150,
-        backgroundColor: 'rgba(245,166,35,0.05)',
+        backgroundColor: 'rgba(232,133,12,0.05)',
     },
     glowOrb3: {
         position: 'absolute',

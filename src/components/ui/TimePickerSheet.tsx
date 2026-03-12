@@ -164,12 +164,12 @@ export function TimePickerSheet({
                   height: ITEM_H,
                   borderRadius: 12,
                   backgroundColor: isDark
-                    ? 'rgba(245,166,35,0.08)'
-                    : 'rgba(245,166,35,0.06)',
+                    ? 'rgba(232,133,12,0.08)'
+                    : 'rgba(232,133,12,0.06)',
                   borderWidth: 1,
                   borderColor: isDark
-                    ? 'rgba(245,166,35,0.15)'
-                    : 'rgba(245,166,35,0.12)',
+                    ? 'rgba(232,133,12,0.15)'
+                    : 'rgba(232,133,12,0.12)',
                 }}
               />
             </View>

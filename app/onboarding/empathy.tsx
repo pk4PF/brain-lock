@@ -7,7 +7,7 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#F5A623';
+const AMBER = '#E8850C';
 
 interface EmpathyContent {
     stat: string;
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 3,
         borderRadius: 2,
-        backgroundColor: 'rgba(245,166,35,0.3)',
+        backgroundColor: 'rgba(232,133,12,0.3)',
         marginBottom: 28,
     },
     hook: {

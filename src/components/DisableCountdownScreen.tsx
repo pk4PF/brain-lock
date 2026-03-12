@@ -81,7 +81,7 @@ export default function DisableCountdownScreen({
         borderRadius={3}
         overflow="hidden"
         backgroundColor={
-          isDark ? 'rgba(245,166,35,0.08)' : 'rgba(245,166,35,0.12)'
+          isDark ? 'rgba(232,133,12,0.08)' : 'rgba(232,133,12,0.12)'
         }
       >
         <LinearGradient
