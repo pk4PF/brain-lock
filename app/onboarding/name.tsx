@@ -18,7 +18,7 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 
 
-const AMBER = '#E8850C';
+const AMBER = '#F5A623';
 
 export default function NameScreen() {
     const [name, setName] = useState('');
@@ -80,7 +80,7 @@ export default function NameScreen() {
 
     const inputBorderColor = glowAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['rgba(232,133,12,0.15)', 'rgba(232,133,12,0.5)'],
+        outputRange: ['rgba(245,166,35,0.15)', 'rgba(245,166,35,0.5)'],
     });
 
     const inputShadowOpacity = glowAnim.interpolate({

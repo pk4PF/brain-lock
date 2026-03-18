@@ -5,7 +5,7 @@ import { TamaguiProvider } from 'tamagui';
 import tamaguiConfig from '../tamagui.config';
 import { useStore } from '../src/store/useStore';
 import { useThemeColors } from '../src/hooks/useThemeColors';
-import { initRevenueCat, getCurrentCustomerInfo, checkPremiumStatus } from '../src/services/revenueCat';
+import { initRevenueCat, getCurrentCustomerInfo, checkPremiumStatus, addSubscriptionListener } from '../src/services/revenueCat';
 import { ScreenTime } from 'screen-time-module';
 import { preloadSounds } from '../src/utils/sounds';
 import {
@@ -41,10 +41,12 @@ export default function RootLayout() {
     }
 
     // Initialize RevenueCat and re-validate subscription
+    let unsubListener: (() => void) | undefined;
     initRevenueCat()
       .then(async () => {
-        const { isPremium, clearSubscription } = useStore.getState();
-        if (isPremium) {
+        const { isPremium, subscriptionPlan, clearSubscription } = useStore.getState();
+        // Lifetime purchases never expire
+        if (isPremium && subscriptionPlan !== 'lifetime') {
           try {
             const customerInfo = await getCurrentCustomerInfo();
             if (!checkPremiumStatus(customerInfo)) {
@@ -55,6 +57,20 @@ export default function RootLayout() {
             console.warn('Failed to validate subscription:', err);
           }
         }
+
+        // Listen for real-time subscription state changes
+        unsubListener = addSubscriptionListener((customerInfo) => {
+          const state = useStore.getState();
+          if (state.subscriptionPlan === 'lifetime') return; // lifetime never expires
+          const isActive = checkPremiumStatus(customerInfo);
+          if (state.isPremium && !isActive) {
+            state.clearSubscription();
+            console.log('Subscription state changed — cleared premium');
+          } else if (!state.isPremium && isActive) {
+            state.setSubscription('restored');
+            console.log('Subscription state changed — restored premium');
+          }
+        });
       })
       .catch((err) => console.warn('RevenueCat init failed:', err));
 
@@ -67,7 +83,10 @@ export default function RootLayout() {
     // Preload sound effects (non-blocking)
     preloadSounds();
 
-    return () => unsub();
+    return () => {
+      unsub();
+      unsubListener?.();
+    };
   }, []);
 
   const ready = storeReady && fontsLoaded;

@@ -9,7 +9,7 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#E8850C';
+const AMBER = '#F5A623';
 
 export default function LetsGoScreen() {
     const { userName, completeOnboarding } = useStore();
@@ -117,7 +117,7 @@ export default function LetsGoScreen() {
                             },
                         ]}
                     >
-                        <Sparkles size={14} color="rgba(232,133,12,0.5)" />
+                        <Sparkles size={14} color="rgba(245,166,35,0.5)" />
                     </Animated.View>
 
                     {/* Animated rocket */}
@@ -242,9 +242,9 @@ const styles = StyleSheet.create({
         width: 180,
         height: 180,
         borderRadius: 90,
-        backgroundColor: 'rgba(232,133,12,0.06)',
+        backgroundColor: 'rgba(245,166,35,0.06)',
         borderWidth: 1,
-        borderColor: 'rgba(232,133,12,0.08)',
+        borderColor: 'rgba(245,166,35,0.08)',
     },
     rocketAnimation: {
         width: 140,
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 8,
         borderWidth: 1,
-        borderColor: 'rgba(232,133,12,0.12)',
-        shadowColor: '#E8850C',
+        borderColor: 'rgba(245,166,35,0.12)',
+        shadowColor: '#F5A623',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 16,

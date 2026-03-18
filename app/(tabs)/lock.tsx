@@ -16,7 +16,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Shield, Info, Clock, ChevronRight, CheckCircle, AlertTriangle, Check } from 'lucide-react-native';
+import { Shield, Info, Clock, ChevronRight, CheckCircle, AlertTriangle, Check, Minus, Plus, Brain } from 'lucide-react-native';
 import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
@@ -706,6 +706,154 @@ export default function LockScreen() {
           )}
 
 
+
+          {/* ── Challenges to Unlock ── */}
+          {isAuthorized && hasApps && (
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(400).springify().damping(16)}
+              exiting={FadeOutUp.duration(250)}
+            >
+              <SectionTitle title="Challenges to Unlock" />
+              <GlowCard marginBottom={12}>
+                <XStack alignItems="center" justifyContent="space-between">
+                  <YStack flex={1} marginRight={16}>
+                    <Text color={colors.text} fontSize={15} fontWeight="600">
+                      Games required
+                    </Text>
+                    <Text color={colors.muted} fontSize={12} marginTop={2}>
+                      Brain challenges needed to unlock apps
+                    </Text>
+                  </YStack>
+                  <XStack alignItems="center" gap={12}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        hapticLight();
+                        if (settings.challengesRequired > 1) {
+                          updateSettings({ challengesRequired: settings.challengesRequired - 1 });
+                        }
+                      }}
+                      activeOpacity={0.6}
+                      disabled={settings.challengesRequired <= 1}
+                    >
+                      <View
+                        width={36}
+                        height={36}
+                        borderRadius={18}
+                        backgroundColor={settings.challengesRequired <= 1 ? colors.cardAlt : colors.accentLight}
+                        justifyContent="center"
+                        alignItems="center"
+                        borderWidth={1}
+                        borderColor={settings.challengesRequired <= 1 ? colors.border : colors.accent}
+                        opacity={settings.challengesRequired <= 1 ? 0.4 : 1}
+                      >
+                        <Minus size={16} color={settings.challengesRequired <= 1 ? colors.muted : colors.accent} />
+                      </View>
+                    </TouchableOpacity>
+                    <Text color={colors.text} fontSize={22} fontWeight="700" width={32} textAlign="center">
+                      {settings.challengesRequired}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        hapticLight();
+                        if (settings.challengesRequired < 10) {
+                          updateSettings({ challengesRequired: settings.challengesRequired + 1 });
+                        }
+                      }}
+                      activeOpacity={0.6}
+                      disabled={settings.challengesRequired >= 10}
+                    >
+                      <View
+                        width={36}
+                        height={36}
+                        borderRadius={18}
+                        backgroundColor={settings.challengesRequired >= 10 ? colors.cardAlt : colors.accentLight}
+                        justifyContent="center"
+                        alignItems="center"
+                        borderWidth={1}
+                        borderColor={settings.challengesRequired >= 10 ? colors.border : colors.accent}
+                        opacity={settings.challengesRequired >= 10 ? 0.4 : 1}
+                      >
+                        <Plus size={16} color={settings.challengesRequired >= 10 ? colors.muted : colors.accent} />
+                      </View>
+                    </TouchableOpacity>
+                  </XStack>
+                </XStack>
+              </GlowCard>
+            </Animated.View>
+          )}
+
+          {/* ── Disable Difficulty ── */}
+          {isAuthorized && hasApps && (
+            <Animated.View
+              entering={FadeInDown.delay(300).duration(400).springify().damping(16)}
+              exiting={FadeOutUp.duration(250)}
+            >
+              <SectionTitle title="Disable Difficulty" />
+              <GlowCard marginBottom={20}>
+                <XStack gap={8} marginBottom={12}>
+                  {([
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'hard', label: 'Hard' },
+                  ] as const).map(({ value, label }) => {
+                    const active = settings.disableDifficulty === value;
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          hapticLight();
+                          updateSettings({ disableDifficulty: value });
+                        }}
+                        style={{
+                          flex: 1,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {active ? (
+                          <LinearGradient
+                            colors={[colors.accent, colors.accentDark]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{
+                              paddingVertical: 10,
+                              alignItems: 'center',
+                              borderRadius: 12,
+                            }}
+                          >
+                            <Text color="#FFFFFF" fontSize={14} fontWeight="600">
+                              {label}
+                            </Text>
+                          </LinearGradient>
+                        ) : (
+                          <YStack
+                            paddingVertical={10}
+                            alignItems="center"
+                            backgroundColor={colors.cardAlt}
+                            borderRadius={12}
+                            borderWidth={1}
+                            borderColor={colors.border}
+                          >
+                            <Text color={colors.secondary} fontSize={14} fontWeight="500">
+                              {label}
+                            </Text>
+                          </YStack>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </XStack>
+                <Text color={colors.muted} fontSize={12}>
+                  {settings.disableDifficulty === 'easy'
+                    ? 'Blocking can be disabled instantly'
+                    : settings.disableDifficulty === 'medium'
+                      ? '30-second wait before disabling'
+                      : 'Blocking cannot be disabled once activated'}
+                </Text>
+              </GlowCard>
+            </Animated.View>
+          )}
 
           {/* Info tip */}
           <FadeInView delay={isAuthorized && hasApps ? 600 : 300}>

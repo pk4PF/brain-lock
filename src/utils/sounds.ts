@@ -44,12 +44,21 @@ export async function preloadSounds(): Promise<void> {
       return;
     }
 
+    // Unload any previously loaded sounds (handles regeneration)
+    await Promise.all(
+      Object.values(sounds).map(async (s) => {
+        try { await s?.unloadAsync(); } catch { /* ignore */ }
+      })
+    );
+
     let loaded = 0;
     await Promise.all(
       (Object.entries(uris) as [SoundName, string][]).map(async ([name, uri]) => {
-        if (sounds[name]) return;
         try {
-          const { sound } = await AudioModule.Sound.createAsync({ uri });
+          const { sound } = await AudioModule.Sound.createAsync(
+            { uri },
+            { volume: 0.7 },
+          );
           sounds[name] = sound;
           loaded++;
         } catch (e) {

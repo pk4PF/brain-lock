@@ -18,11 +18,10 @@ const API_KEYS = {
 export async function initRevenueCat(): Promise<void> {
     if (API_KEYS.ios === 'appl_XXXXXXXXXXXXXXXXXXXXXXXX') {
         console.warn('REVENUECAT API KEY MISSING: Please replace API_KEYS.ios in src/services/revenueCat.ts with your actual Public App-Specific API Key from RevenueCat.');
-        // We do not return here, we just emit a huge warning. In development, it would be useful.
     }
 
     if (__DEV__) {
-        Purchases.setLogLevel(LOG_LEVEL.WARN);
+        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     }
 
     await Purchases.configure({
@@ -30,15 +29,29 @@ export async function initRevenueCat(): Promise<void> {
     });
 }
 
+/** Listen for real-time subscription state changes. Returns unsubscribe function. */
+export function addSubscriptionListener(
+    onUpdate: (customerInfo: CustomerInfo) => void,
+): () => void {
+    Purchases.addCustomerInfoUpdateListener(onUpdate);
+    return () => Purchases.removeCustomerInfoUpdateListener(onUpdate);
+}
+
 export async function getOfferings(): Promise<PurchasesOffering | null> {
     try {
         if (__DEV__) console.log('[RevenueCat] Fetching offerings...');
         const offerings = await Purchases.getOfferings();
         if (__DEV__) {
+            const pkgs = offerings.current?.availablePackages ?? [];
             console.log('[RevenueCat] Offerings:', {
                 hasCurrentOffering: !!offerings.current,
                 offeringId: offerings.current?.identifier,
-                packageCount: offerings.current?.availablePackages.length ?? 0,
+                packageCount: pkgs.length,
+                packages: pkgs.map((p) => ({
+                    type: p.packageType,
+                    id: p.product.identifier,
+                    price: p.product.priceString,
+                })),
             });
         }
         return offerings.current;
@@ -48,11 +61,29 @@ export async function getOfferings(): Promise<PurchasesOffering | null> {
     }
 }
 
+export interface PurchaseError {
+    userCancelled: boolean;
+    code: string;
+    message: string;
+}
+
 export async function purchasePackage(
     pkg: PurchasesPackage
 ): Promise<CustomerInfo> {
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
-    return customerInfo;
+    try {
+        const { customerInfo } = await Purchases.purchasePackage(pkg);
+        return customerInfo;
+    } catch (err: any) {
+        const purchaseError: PurchaseError = {
+            userCancelled: err.userCancelled === true,
+            code: err.code ?? 'UNKNOWN_ERROR',
+            message: err.message ?? 'Purchase failed',
+        };
+        if (__DEV__) {
+            console.log('[RevenueCat] Purchase error:', purchaseError);
+        }
+        throw purchaseError;
+    }
 }
 
 export async function restorePurchases(): Promise<CustomerInfo> {

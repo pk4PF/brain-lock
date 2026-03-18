@@ -1,7 +1,24 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Home, Shield, BarChart3, User } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+
+function TabIcon({ icon: Icon, color, focused }: { icon: typeof Home; color: string; focused: boolean }) {
+  return (
+    <View style={styles.iconContainer}>
+      {focused && (
+        <View
+          style={[
+            styles.activeIndicator,
+            { backgroundColor: color + '18' },
+          ]}
+        />
+      )}
+      <Icon size={21} color={color} strokeWidth={focused ? 2.2 : 1.8} />
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const { colors, isDark } = useThemeColors();
@@ -10,28 +27,37 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarBackground: () => (
+          Platform.OS === 'ios' ? (
+            <BlurView
+              tint={isDark ? 'dark' : 'light'}
+              intensity={80}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? '#0E0E15' : colors.card }]} />
+          )
+        ),
         tabBarStyle: {
-          backgroundColor: isDark ? '#0E0E15' : colors.card,
-          borderTopWidth: 1,
-          borderTopColor: isDark ? 'rgba(255,213,79,0.06)' : 'rgba(0,0,0,0.04)',
-          elevation: isDark ? 0 : 4,
-          shadowColor: isDark ? colors.accent : '#8B7355',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: isDark ? 0.05 : 0.06,
-          shadowRadius: isDark ? 16 : 10,
-          height: Platform.OS === 'ios' ? 88 : 68,
+          position: Platform.OS === 'ios' ? 'absolute' : 'relative',
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : (isDark ? '#0E0E15' : colors.card),
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          elevation: 0,
+          height: Platform.OS === 'ios' ? 84 : 64,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          paddingTop: 8,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: isDark ? '#4A4A5A' : colors.muted,
+        tabBarInactiveTintColor: isDark ? '#4A4A5A' : '#B0A99F',
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
+          marginTop: -2,
         },
         tabBarItemStyle: {
-          gap: 2,
+          gap: 1,
         },
       }}
     >
@@ -39,14 +65,14 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon icon={Home} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="lock"
         options={{
           title: 'Block',
-          tabBarIcon: ({ color }) => <Shield size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon icon={Shield} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -59,16 +85,31 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color }) => <BarChart3 size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon icon={BarChart3} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <User size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon icon={User} color={color} focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 36,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    width: 36,
+    height: 28,
+    borderRadius: 10,
+  },
+});

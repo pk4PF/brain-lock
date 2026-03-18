@@ -16,9 +16,9 @@ import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const AMBER = '#E8850C';
-const AMBER_DIM = 'rgba(232,133,12,0.08)';
-const AMBER_GLOW = 'rgba(232,133,12,0.25)';
+const AMBER = '#F5A623';
+const AMBER_DIM = 'rgba(245,166,35,0.08)';
+const AMBER_GLOW = 'rgba(245,166,35,0.25)';
 
 // Purple palette from reference
 const PURPLE = '#7B5EA7';
@@ -619,8 +619,8 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         paddingHorizontal: 32,
         borderWidth: 1,
-        borderColor: 'rgba(232,133,12,0.12)',
-        shadowColor: '#E8850C',
+        borderColor: 'rgba(245,166,35,0.12)',
+        shadowColor: '#F5A623',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.18,
         shadowRadius: 16,

@@ -1,4 +1,4 @@
-import { ScrollView } from 'react-native';
+import { ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import {
   ChevronRight, Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
@@ -7,7 +7,6 @@ import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAMES, GameType, CATEGORIES, GameCategory } from '../../src/constants/games';
 import { hapticLight } from '../../src/utils/haptics';
-import { GlowCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
@@ -67,18 +66,34 @@ export default function GamesScreen() {
                 const game = GAMES[key];
                 const iconConfig = GAME_ICONS[key];
                 return (
-                  <GlowCard
+                  <YStack
                     key={key}
                     marginBottom={10}
-                    interactive
+                    backgroundColor={colors.card}
+                    borderRadius={20}
+                    borderWidth={1.5}
+                    borderColor={isDark ? `${game.color}40` : `${game.color}30`}
+                    padding={20}
+                    overflow="hidden"
+                    pressStyle={{ scale: 0.98, opacity: 0.9 }}
                     onPress={() => handlePlayGame(key)}
+                    {...Platform.select({
+                      ios: {
+                        shadowColor: game.color,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: isDark ? 0.3 : 0.18,
+                        shadowRadius: 14,
+                      },
+                      android: { elevation: 4 },
+                      default: {},
+                    })}
                   >
                     <XStack alignItems="center" gap={16}>
                       <View
                         width={52}
                         height={52}
-                        borderRadius={26}
-                        backgroundColor={isDark ? `${game.color}15` : iconConfig.bg}
+                        borderRadius={16}
+                        backgroundColor={isDark ? `${game.color}18` : `${game.color}12`}
                         justifyContent="center"
                         alignItems="center"
                       >
@@ -92,9 +107,9 @@ export default function GamesScreen() {
                           {game.description}
                         </Text>
                       </YStack>
-                      <ChevronRight size={18} color={colors.border} />
+                      <ChevronRight size={18} color={`${game.color}60`} />
                     </XStack>
-                  </GlowCard>
+                  </YStack>
                 );
               })}
             </YStack>

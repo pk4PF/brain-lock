@@ -1,11 +1,11 @@
-import { TouchableOpacity, ScrollView } from 'react-native';
+import { TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import {
   ChevronRight, Shield, Brain,
   Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
-  Flame, Trophy, Play, CheckCircle2, Circle as CircleIcon, Gamepad2, X,
+  Flame, Trophy, Play, CheckCircle2, Circle as CircleIcon, Gamepad2, X, ArrowRight,
 } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { YStack, XStack, Text, View } from 'tamagui';
@@ -17,12 +17,12 @@ import { FadeInView } from '../../src/components/ui/AnimatedElements';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 
 // ── Progress Ring ────────────────────────────────────────────
-function ProgressRing({ percent, size = 100, accentColor }: { percent: number; size?: number; accentColor?: string }) {
-  const strokeWidth = 8;
+function ProgressRing({ percent, size = 64, accentColor }: { percent: number; size?: number; accentColor?: string }) {
+  const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percent / 100) * circumference;
-  const color = accentColor || '#FFD54F';
+  const color = accentColor || '#FFFFFF';
 
   return (
     <View width={size} height={size} alignItems="center" justifyContent="center">
@@ -31,7 +31,7 @@ function ProgressRing({ percent, size = 100, accentColor }: { percent: number; s
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.12)"
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -49,7 +49,7 @@ function ProgressRing({ percent, size = 100, accentColor }: { percent: number; s
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text color="#FFFFFF" fontSize={22} fontWeight="800">
+      <Text color="#FFFFFF" fontSize={15} fontWeight="700" letterSpacing={-0.3}>
         {percent}%
       </Text>
     </View>
@@ -78,6 +78,28 @@ const GAME_ICONS: Record<GameType, { icon: (s: number, c: string) => React.React
   colormatch: { icon: (s, c) => <Palette size={s} color={c} /> },
 };
 
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+  },
+  android: { elevation: 2 },
+  default: {},
+});
+
+const heroShadow = Platform.select({
+  ios: {
+    shadowColor: '#8B4205',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
+  android: { elevation: 8 },
+  default: {},
+});
+
 // ── Game Tile ────────────────────────────────────────────────
 function GameTile({
   gameKey,
@@ -95,59 +117,61 @@ function GameTile({
   return (
     <FadeInView delay={delay}>
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.7}
         onPress={onPress}
         style={{
           width: '100%',
           borderRadius: 20,
           overflow: 'hidden',
-          shadowColor: isDark ? game.color : '#8B7355',
-          shadowOffset: { width: 0, height: isDark ? 4 : 2 },
-          shadowOpacity: isDark ? 0.2 : 0.08,
-          shadowRadius: isDark ? 16 : 8,
-          elevation: isDark ? 4 : 2,
+          ...Platform.select({
+            ios: {
+              shadowColor: game.color,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: isDark ? 0.35 : 0.2,
+              shadowRadius: 12,
+            },
+            android: { elevation: 4 },
+            default: {},
+          }),
         }}
       >
         <LinearGradient
-          colors={isDark ? game.gradient : [colors.card, colors.cardAlt]}
+          colors={isDark ? [colors.card, colors.cardAlt] : ['#FFFFFF', '#FDFAF5']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 0, y: 1 }}
           style={{
             padding: 16,
+            minHeight: 100,
             borderRadius: 20,
-            borderWidth: 1,
-            borderColor: isDark ? `${game.color}20` : colors.border,
-            minHeight: 155,
-            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: isDark ? `${game.color}40` : `${game.color}30`,
           }}
         >
-          <YStack alignItems="center" gap={10}>
-            {/* Icon container with glow */}
+          <YStack gap={10}>
             <View
-              width={56}
-              height={56}
-              borderRadius={28}
-              backgroundColor={`${game.color}${isDark ? '20' : '15'}`}
+              width={40}
+              height={40}
+              borderRadius={12}
+              backgroundColor={`${game.color}14`}
               justifyContent="center"
               alignItems="center"
-              borderWidth={1}
-              borderColor={`${game.color}${isDark ? '30' : '10'}`}
             >
-              {iconConfig.icon(26, game.color)}
+              {iconConfig.icon(19, game.color)}
             </View>
-            <YStack alignItems="center" gap={2}>
+            <YStack gap={2}>
               <Text
-                color={isDark ? '#F0F0F5' : colors.text}
-                fontSize={15}
-                fontWeight="700"
-                textAlign="center"
+                color={colors.text}
+                fontSize={14}
+                fontWeight="600"
+                letterSpacing={-0.2}
               >
                 {game.title}
               </Text>
               <Text
-                color={isDark ? 'rgba(255,255,255,0.5)' : colors.muted}
+                color={colors.muted}
                 fontSize={11}
-                textAlign="center"
+                letterSpacing={-0.1}
+                numberOfLines={1}
               >
                 {game.description}
               </Text>
@@ -174,45 +198,54 @@ function StatBlock({
   const { colors, isDark } = useThemeColors();
 
   return (
-    <YStack
+    <View
       flex={1}
-      backgroundColor={isDark ? colors.card : undefined}
-      borderRadius={16}
-      padding={16}
-      alignItems="center"
-      gap={6}
-      borderWidth={isDark ? 1 : 0}
-      borderColor={isDark ? colors.border : undefined}
-      {...(!isDark && {
-        backgroundColor: `${color}15`,
-      })}
+      borderRadius={18}
+      overflow="hidden"
+      style={cardShadow}
     >
-      <View
-        width={32}
-        height={32}
-        borderRadius={16}
-        backgroundColor={`${color}${isDark ? '18' : '20'}`}
-        justifyContent="center"
-        alignItems="center"
+      <LinearGradient
+        colors={isDark ? [colors.card, colors.cardAlt] : ['#FFFFFF', '#FDFAF5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          padding: 14,
+          alignItems: 'center',
+          gap: 6,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: isDark ? colors.border : 'rgba(0,0,0,0.04)',
+        }}
       >
-        {icon}
-      </View>
-      <Text
-        color={isDark ? color : color}
-        fontSize={26}
-        fontWeight="800"
-        letterSpacing={-0.5}
-      >
-        {value}
-      </Text>
-      <Text
-        color={isDark ? colors.muted : `${color}CC`}
-        fontSize={11}
-        fontWeight="600"
-      >
-        {label}
-      </Text>
-    </YStack>
+        <View
+          width={32}
+          height={32}
+          borderRadius={10}
+          backgroundColor={`${color}12`}
+          justifyContent="center"
+          alignItems="center"
+        >
+          {icon}
+        </View>
+        <Text
+          color={colors.text}
+          fontSize={22}
+          fontWeight="700"
+          letterSpacing={-0.5}
+        >
+          {value}
+        </Text>
+        <Text
+          color={colors.muted}
+          fontSize={10}
+          fontWeight="600"
+          letterSpacing={0.8}
+          textTransform="uppercase"
+        >
+          {label}
+        </Text>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -266,7 +299,6 @@ function GettingStartedCard() {
   const completedCount = steps.filter((s) => s.done).length;
   const allDone = completedCount === steps.length;
 
-  // Auto-dismiss when all steps are complete
   useEffect(() => {
     if (allDone && !setupGuideComplete) {
       completeSetupGuide();
@@ -277,99 +309,130 @@ function GettingStartedCard() {
 
   return (
     <View
-      backgroundColor={isDark ? colors.card : colors.card}
       borderRadius={20}
-      padding={20}
+      overflow="hidden"
       marginBottom={20}
-      borderWidth={1}
-      borderColor={isDark ? colors.border : 'rgba(0,0,0,0.04)'}
-      shadowColor={isDark ? 'rgba(0,0,0,0.6)' : '#8B7355'}
-      shadowOffset={{ width: 0, height: 4 }}
-      shadowOpacity={isDark ? 0.3 : 0.06}
-      shadowRadius={12}
-      elevation={isDark ? 3 : 2}
+      style={cardShadow}
     >
-      {/* Header */}
-      <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
-        <XStack alignItems="center" gap={10}>
-          <View
-            width={32}
-            height={32}
-            borderRadius={10}
-            backgroundColor={`${colors.accent}15`}
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Gamepad2 size={16} color={colors.accent} />
-          </View>
-          <Text color={colors.text} fontSize={17} fontWeight="700">
-            Getting Started
-          </Text>
-        </XStack>
-        <XStack alignItems="center" gap={8}>
-          <View
-            backgroundColor={`${colors.accent}15`}
-            borderRadius={10}
-            paddingHorizontal={10}
-            paddingVertical={4}
-          >
-            <Text color={colors.accent} fontSize={12} fontWeight="700">
-              {completedCount} of {steps.length}
+      <LinearGradient
+        colors={isDark ? [colors.card, colors.cardAlt] : ['#FFFFFF', '#FDFAF5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          padding: 20,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: isDark ? colors.border : 'rgba(0,0,0,0.04)',
+        }}
+      >
+        <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
+          <XStack alignItems="center" gap={10}>
+            <View
+              width={32}
+              height={32}
+              borderRadius={10}
+              backgroundColor={`${colors.accent}12`}
+              justifyContent="center"
+              alignItems="center"
+            >
+              <Gamepad2 size={16} color={colors.accent} />
+            </View>
+            <Text color={colors.text} fontSize={16} fontWeight="600" letterSpacing={-0.2}>
+              Getting Started
             </Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              hapticLight();
-              completeSetupGuide();
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <X size={16} color={colors.muted} />
-          </TouchableOpacity>
-        </XStack>
-      </XStack>
-
-      {/* Steps */}
-      {steps.map((step, i) => (
-        <TouchableOpacity
-          key={i}
-          activeOpacity={0.7}
-          onPress={step.done ? undefined : step.onPress}
-          disabled={step.done}
-        >
-          <XStack
-            alignItems="center"
-            gap={12}
-            paddingVertical={12}
-            opacity={step.done ? 0.5 : 1}
-            {...(i < steps.length - 1 && {
-              borderBottomWidth: 1,
-              borderBottomColor: isDark ? colors.border : 'rgba(0,0,0,0.04)',
-            })}
-          >
-            {step.done ? (
-              <CheckCircle2 size={22} color={colors.success} fill={`${colors.success}30`} />
-            ) : (
-              <CircleIcon size={22} color={isDark ? colors.border : colors.muted} />
-            )}
-            <YStack flex={1}>
-              <Text
-                color={step.done ? colors.muted : colors.text}
-                fontSize={15}
-                fontWeight="600"
-                textDecorationLine={step.done ? 'line-through' : 'none'}
-              >
-                {step.title}
-              </Text>
-              <Text color={colors.muted} fontSize={12} marginTop={1}>
-                {step.description}
-              </Text>
-            </YStack>
-            {!step.done && <ChevronRight size={16} color={colors.muted} />}
           </XStack>
-        </TouchableOpacity>
-      ))}
+          <XStack alignItems="center" gap={8}>
+            <Text color={colors.muted} fontSize={12} fontWeight="600">
+              {completedCount}/{steps.length}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                hapticLight();
+                completeSetupGuide();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={16} color={colors.muted} />
+            </TouchableOpacity>
+          </XStack>
+        </XStack>
+
+        {steps.map((step, i) => (
+          <TouchableOpacity
+            key={i}
+            activeOpacity={0.7}
+            onPress={step.done ? undefined : step.onPress}
+            disabled={step.done}
+          >
+            <XStack
+              alignItems="center"
+              gap={12}
+              paddingVertical={12}
+              opacity={step.done ? 0.45 : 1}
+              {...(i < steps.length - 1 && {
+                borderBottomWidth: 1,
+                borderBottomColor: isDark ? colors.border : 'rgba(0,0,0,0.04)',
+              })}
+            >
+              {step.done ? (
+                <CheckCircle2 size={20} color={colors.success} fill={`${colors.success}30`} />
+              ) : (
+                <CircleIcon size={20} color={colors.border} />
+              )}
+              <YStack flex={1}>
+                <Text
+                  color={step.done ? colors.muted : colors.text}
+                  fontSize={14}
+                  fontWeight="600"
+                  letterSpacing={-0.1}
+                  textDecorationLine={step.done ? 'line-through' : 'none'}
+                >
+                  {step.title}
+                </Text>
+                <Text color={colors.muted} fontSize={12} marginTop={1}>
+                  {step.description}
+                </Text>
+              </YStack>
+              {!step.done && <ChevronRight size={16} color={colors.muted} />}
+            </XStack>
+          </TouchableOpacity>
+        ))}
+      </LinearGradient>
     </View>
+  );
+}
+
+// ── Hero Card ────────────────────────────────────────────────
+function renderHero({
+  gradientColors,
+  onPress,
+  children,
+}: {
+  gradientColors: string[];
+  onPress: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+      <View
+        borderRadius={24}
+        overflow="hidden"
+        marginBottom={20}
+        style={heroShadow}
+      >
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            padding: 24,
+            borderRadius: 24,
+          }}
+        >
+          {children}
+        </LinearGradient>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -389,8 +452,6 @@ export default function HomeScreen() {
     ? Math.round((dailyGamesCompleted / challengesRequired) * 100)
     : 0;
 
-  // ── Handlers ──
-
   const handleStartWorkout = () => {
     hapticLight();
     const games = settings.enabledGames;
@@ -408,7 +469,7 @@ export default function HomeScreen() {
     router.push('/(tabs)/lock');
   };
 
-  // ── Render ──
+  const heroColors = isDark ? gradients.heroDeep : gradients.heroPrimary;
 
   return (
     <YStack flex={1} backgroundColor={colors.background}>
@@ -425,16 +486,18 @@ export default function HomeScreen() {
         <FadeInView delay={0}>
           <Text
             color={colors.muted}
-            fontSize={14}
+            fontSize={13}
             fontWeight="500"
-            marginBottom={4}
+            letterSpacing={0.4}
+            textTransform="uppercase"
+            marginBottom={2}
           >
             {greeting}
           </Text>
           <Text
             color={colors.text}
-            fontSize={32}
-            fontWeight="800"
+            fontSize={30}
+            fontWeight="700"
             letterSpacing={-0.8}
             marginBottom={24}
           >
@@ -443,360 +506,193 @@ export default function HomeScreen() {
         </FadeInView>
 
         {/* ── Main Hero Card ── */}
-        <FadeInView delay={150}>
+        <FadeInView delay={100}>
           {isBlocking && appsUnlocked ? (
-            /* Apps unlocked — gold success hero */
-            <TouchableOpacity activeOpacity={0.9} onPress={handleStartWorkout}>
-              <View
-                borderRadius={24}
-                overflow="hidden"
-                marginBottom={20}
-                shadowColor={isDark ? colors.accent : '#C47A0A'}
-                shadowOffset={{ width: 0, height: isDark ? 8 : 4 }}
-                shadowOpacity={isDark ? 0.2 : 0.15}
-                shadowRadius={isDark ? 24 : 16}
-                elevation={isDark ? 6 : 4}
-              >
-                <LinearGradient
-                  colors={gradients.heroPrimary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    padding: 28,
-                    borderRadius: 24,
-                    borderWidth: 1,
-                    borderColor: isDark ? `${colors.accent}25` : 'rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {/* Decorative glow */}
-                  {isDark && (
-                    <View
-                      position="absolute"
-                      top={-40}
-                      right={-40}
-                      width={160}
-                      height={160}
-                      borderRadius={80}
-                      backgroundColor={`${colors.accent}06`}
-                    />
-                  )}
-                  <XStack alignItems="center" gap={20} width="100%">
-                    <ProgressRing percent={100} size={90} accentColor={colors.accent} />
-                    <YStack flex={1}>
-                      <Text
-                        color={isDark ? '#FFFFFF' : '#FFFFFF'}
-                        fontSize={24}
-                        fontWeight="800"
-                        letterSpacing={-0.3}
-                      >
-                        Apps Unlocked
-                      </Text>
-                      <Text
-                        color="rgba(255,255,255,0.6)"
-                        fontSize={13}
-                        lineHeight={18}
-                        marginTop={6}
-                      >
-                        All challenges completed for today
-                      </Text>
-                    </YStack>
-                  </XStack>
-                </LinearGradient>
-              </View>
-            </TouchableOpacity>
+            renderHero({
+              gradientColors: heroColors,
+              onPress: handleStartWorkout,
+              children: (
+                <XStack alignItems="center" gap={18} width="100%">
+                  <ProgressRing percent={100} size={64} accentColor="#FFFFFF" />
+                  <YStack flex={1}>
+                    <Text color="#FFFFFF" fontSize={21} fontWeight="700" letterSpacing={-0.4}>
+                      Apps Unlocked
+                    </Text>
+                    <Text color="rgba(255,255,255,0.55)" fontSize={13} marginTop={4} letterSpacing={-0.1}>
+                      All challenges done for today
+                    </Text>
+                  </YStack>
+                </XStack>
+              ),
+            })
           ) : isBlocking ? (
-            /* Blocking active — play games to unlock */
-            <TouchableOpacity activeOpacity={0.9} onPress={handleStartWorkout}>
-              <View
-                borderRadius={24}
-                overflow="hidden"
-                marginBottom={20}
-                shadowColor={isDark ? colors.accent : '#C47A0A'}
-                shadowOffset={{ width: 0, height: isDark ? 8 : 4 }}
-                shadowOpacity={isDark ? 0.2 : 0.15}
-                shadowRadius={isDark ? 24 : 16}
-                elevation={isDark ? 6 : 4}
-              >
-                <LinearGradient
-                  colors={gradients.heroPrimary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    padding: 28,
-                    borderRadius: 24,
-                    borderWidth: 1,
-                    borderColor: isDark ? `${colors.accent}25` : 'rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {isDark && (
-                    <View
-                      position="absolute"
-                      top={-40}
-                      right={-40}
-                      width={160}
-                      height={160}
-                      borderRadius={80}
-                      backgroundColor={`${colors.accent}06`}
-                    />
-                  )}
-                  <XStack alignItems="center" gap={20} width="100%">
-                    <ProgressRing percent={progressPercent} size={90} accentColor={colors.accent} />
+            renderHero({
+              gradientColors: heroColors,
+              onPress: handleStartWorkout,
+              children: (
+                <>
+                  <XStack alignItems="center" gap={18} width="100%">
+                    <ProgressRing percent={progressPercent} size={64} accentColor="#FFFFFF" />
                     <YStack flex={1}>
-                      <Text
-                        color="#FFFFFF"
-                        fontSize={24}
-                        fontWeight="800"
-                        letterSpacing={-0.3}
-                      >
+                      <Text color="#FFFFFF" fontSize={21} fontWeight="700" letterSpacing={-0.4}>
                         Apps Locked
                       </Text>
-                      <Text
-                        color="rgba(255,255,255,0.6)"
-                        fontSize={13}
-                        lineHeight={18}
-                        marginTop={6}
-                      >
+                      <Text color="rgba(255,255,255,0.55)" fontSize={13} marginTop={4} letterSpacing={-0.1}>
                         {remaining} more game{remaining > 1 ? 's' : ''} to unlock
                       </Text>
                     </YStack>
                   </XStack>
 
-                  {/* Integrated CTA */}
                   <View
-                    marginTop={20}
-                    backgroundColor={`${colors.accent}18`}
+                    marginTop={18}
+                    backgroundColor="rgba(255,255,255,0.12)"
                     borderRadius={14}
                     paddingVertical={12}
-                    paddingHorizontal={20}
                     alignItems="center"
-                    borderWidth={1}
-                    borderColor={`${colors.accent}25`}
                   >
-                    <XStack alignItems="center" gap={8}>
-                      <Play size={16} color={colors.accent} fill={colors.accent} />
-                      <Text color={colors.accent} fontSize={14} fontWeight="700">
+                    <XStack alignItems="center" gap={6}>
+                      <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
+                      <Text color="#FFFFFF" fontSize={14} fontWeight="600" letterSpacing={-0.1}>
                         Start Challenge
                       </Text>
                     </XStack>
                   </View>
-                </LinearGradient>
-              </View>
-            </TouchableOpacity>
+                </>
+              ),
+            })
           ) : (
-            /* No blocking — train your brain freely */
-            <TouchableOpacity activeOpacity={0.9} onPress={handleStartWorkout}>
-              <View
-                borderRadius={24}
-                overflow="hidden"
-                marginBottom={20}
-                shadowColor={isDark ? colors.accent : '#C47A0A'}
-                shadowOffset={{ width: 0, height: isDark ? 8 : 4 }}
-                shadowOpacity={isDark ? 0.2 : 0.15}
-                shadowRadius={isDark ? 24 : 16}
-                elevation={isDark ? 6 : 4}
-              >
-                <LinearGradient
-                  colors={gradients.heroPrimary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    padding: 28,
-                    borderRadius: 24,
-                    borderWidth: 1,
-                    borderColor: isDark ? `${colors.accent}25` : 'rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {/* Decorative glow orbs */}
-                  {isDark && (
-                    <>
-                      <View
-                        position="absolute"
-                        top={-30}
-                        right={-30}
-                        width={140}
-                        height={140}
-                        borderRadius={70}
-                        backgroundColor={`${colors.accent}06`}
-                      />
-                      <View
-                        position="absolute"
-                        bottom={-20}
-                        left={-20}
-                        width={100}
-                        height={100}
-                        borderRadius={50}
-                        backgroundColor={`${colors.accent}04`}
-                      />
-                    </>
-                  )}
-                  <XStack alignItems="center" gap={20} width="100%">
-                    {/* Brain icon with glow ring */}
+            renderHero({
+              gradientColors: heroColors,
+              onPress: handleStartWorkout,
+              children: (
+                <>
+                  <XStack alignItems="center" gap={18} width="100%">
                     <View
-                      width={80}
-                      height={80}
-                      borderRadius={40}
+                      width={56}
+                      height={56}
+                      borderRadius={18}
+                      backgroundColor="rgba(255,255,255,0.12)"
                       justifyContent="center"
                       alignItems="center"
                     >
-                      {/* Outer glow ring */}
-                      <View
-                        position="absolute"
-                        width={80}
-                        height={80}
-                        borderRadius={40}
-                        backgroundColor={`${colors.accent}10`}
-                        borderWidth={1}
-                        borderColor={`${colors.accent}20`}
-                      />
-                      {/* Inner icon */}
-                      <View
-                        width={56}
-                        height={56}
-                        borderRadius={28}
-                        backgroundColor={`${colors.accent}20`}
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <Brain size={28} color={colors.accent} />
-                      </View>
+                      <Brain size={26} color="#FFFFFF" />
                     </View>
                     <YStack flex={1}>
-                      <Text
-                        color="#FFFFFF"
-                        fontSize={24}
-                        fontWeight="800"
-                        letterSpacing={-0.3}
-                      >
+                      <Text color="#FFFFFF" fontSize={21} fontWeight="700" letterSpacing={-0.4}>
                         Train Your Brain
                       </Text>
-                      <Text
-                        color="rgba(255,255,255,0.55)"
-                        fontSize={13}
-                        lineHeight={18}
-                        marginTop={6}
-                      >
+                      <Text color="rgba(255,255,255,0.5)" fontSize={13} marginTop={4} letterSpacing={-0.1}>
                         Sharpen your focus & memory
                       </Text>
                     </YStack>
                   </XStack>
 
-                  {/* Integrated CTA */}
                   <View
-                    marginTop={20}
-                    backgroundColor={`${colors.accent}18`}
+                    marginTop={18}
+                    backgroundColor="rgba(255,255,255,0.12)"
                     borderRadius={14}
                     paddingVertical={12}
-                    paddingHorizontal={20}
                     alignItems="center"
-                    borderWidth={1}
-                    borderColor={`${colors.accent}25`}
                   >
-                    <XStack alignItems="center" gap={8}>
-                      <Play size={16} color={colors.accent} fill={colors.accent} />
-                      <Text color={colors.accent} fontSize={14} fontWeight="700">
-                        Start Workout
+                    <XStack alignItems="center" gap={6}>
+                      <Play size={14} color="#FFFFFF" fill="#FFFFFF" />
+                      <Text color="#FFFFFF" fontSize={14} fontWeight="600" letterSpacing={-0.1}>
+                        Play Now
                       </Text>
                     </XStack>
                   </View>
-                </LinearGradient>
-              </View>
-            </TouchableOpacity>
+                </>
+              ),
+            })
           )}
         </FadeInView>
 
         {/* ── Getting Started Guide ── */}
         {!setupGuideComplete && (
-          <FadeInView delay={250}>
+          <FadeInView delay={200}>
             <GettingStartedCard />
           </FadeInView>
         )}
 
         {/* ── Quick Stats ── */}
-        <FadeInView delay={setupGuideComplete ? 300 : 400}>
+        <FadeInView delay={setupGuideComplete ? 200 : 300}>
           <XStack gap={10} marginBottom={20}>
             {isBlocking && (
               <StatBlock
                 value={settings.screenTimeAppCount}
-                label="Apps Blocked"
-                icon={<Shield size={16} color={colors.info} />}
+                label="Blocked"
+                icon={<Shield size={15} color={colors.info} />}
                 color={colors.info}
               />
             )}
             <StatBlock
               value={progress.currentStreak}
-              label="Day Streak"
-              icon={<Flame size={16} color={colors.accent} />}
+              label="Streak"
+              icon={<Flame size={15} color={colors.accent} />}
               color={colors.accent}
             />
             <StatBlock
               value={progress.gamesWon}
-              label="Games Won"
-              icon={<Trophy size={16} color="#A78BFA" />}
+              label="Won"
+              icon={<Trophy size={15} color="#A78BFA" />}
               color="#A78BFA"
             />
           </XStack>
         </FadeInView>
 
-        {/* ── Block apps nudge (only when not blocking) ── */}
+        {/* ── Block apps nudge ── */}
         {!isBlocking && (
-          <FadeInView delay={400}>
-            <TouchableOpacity activeOpacity={0.85} onPress={handleGoToBlockApps}>
-              <View
-                backgroundColor={isDark ? colors.card : colors.card}
-                borderRadius={18}
-                padding={16}
-                marginBottom={20}
-                borderWidth={1}
-                borderColor={isDark ? colors.border : 'rgba(0,0,0,0.04)'}
-                borderLeftWidth={3}
-                borderLeftColor={colors.accent}
-                shadowColor={isDark ? colors.accent : '#8B7355'}
-                shadowOffset={{ width: 0, height: 2 }}
-                shadowOpacity={isDark ? 0.08 : 0.06}
-                shadowRadius={isDark ? 12 : 8}
-                elevation={isDark ? 2 : 2}
-              >
-                <XStack alignItems="center" gap={14}>
-                  <View
-                    width={44}
-                    height={44}
-                    borderRadius={14}
-                    backgroundColor={`${colors.accent}15`}
-                    justifyContent="center"
-                    alignItems="center"
-                    borderWidth={1}
-                    borderColor={`${colors.accent}20`}
-                  >
-                    <Shield size={22} color={colors.accent} />
-                  </View>
-                  <YStack flex={1}>
-                    <Text color={colors.text} fontSize={15} fontWeight="700">
-                      Block distracting apps
-                    </Text>
-                    <Text color={colors.muted} fontSize={12} lineHeight={17} marginTop={2}>
-                      Earn screen time by training your brain
-                    </Text>
-                  </YStack>
-                  <ChevronRight size={18} color={colors.muted} />
-                </XStack>
+          <FadeInView delay={350}>
+            <TouchableOpacity activeOpacity={0.7} onPress={handleGoToBlockApps}>
+              <View borderRadius={18} overflow="hidden" marginBottom={20} style={cardShadow}>
+                <LinearGradient
+                  colors={isDark ? [colors.card, colors.cardAlt] : ['#FFFFFF', '#FDFAF5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{
+                    padding: 16,
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: isDark ? colors.border : 'rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <XStack alignItems="center" gap={14}>
+                    <View
+                      width={40}
+                      height={40}
+                      borderRadius={13}
+                      backgroundColor={`${colors.accent}12`}
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Shield size={18} color={colors.accent} />
+                    </View>
+                    <YStack flex={1}>
+                      <Text color={colors.text} fontSize={15} fontWeight="600" letterSpacing={-0.2}>
+                        Block distracting apps
+                      </Text>
+                      <Text color={colors.muted} fontSize={12} marginTop={2} letterSpacing={-0.1}>
+                        Earn screen time by training
+                      </Text>
+                    </YStack>
+                    <ArrowRight size={16} color={colors.muted} />
+                  </XStack>
+                </LinearGradient>
               </View>
             </TouchableOpacity>
           </FadeInView>
         )}
 
-        {/* ── Quick Play Grid ── */}
-        <FadeInView delay={isBlocking ? 450 : 500}>
-          <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
-            <Text color={colors.text} fontSize={22} fontWeight="800" letterSpacing={-0.3}>
+        {/* ── Quick Play ── */}
+        <FadeInView delay={isBlocking ? 350 : 400}>
+          <XStack justifyContent="space-between" alignItems="center" marginBottom={14}>
+            <Text color={colors.text} fontSize={19} fontWeight="700" letterSpacing={-0.4}>
               Quick Play
             </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/games')}>
-              <XStack alignItems="center" gap={4}>
-                <Text color={colors.accent} fontSize={13} fontWeight="600">
-                  see all
-                </Text>
-                <ChevronRight size={14} color={colors.accent} />
-              </XStack>
+              <Text color={colors.muted} fontSize={13} fontWeight="500">
+                See all
+              </Text>
             </TouchableOpacity>
           </XStack>
         </FadeInView>
@@ -804,7 +700,7 @@ export default function HomeScreen() {
         <View
           flexDirection="row"
           flexWrap="wrap"
-          gap={12}
+          gap={10}
           marginBottom={20}
         >
           {(Object.keys(GAMES) as GameType[]).map((key, i) => (
@@ -812,13 +708,11 @@ export default function HomeScreen() {
               <GameTile
                 gameKey={key}
                 onPress={() => handlePlayGame(key)}
-                delay={(isBlocking ? 550 : 600) + i * 60}
+                delay={(isBlocking ? 400 : 450) + i * 50}
               />
             </View>
           ))}
         </View>
-
-        <View height={20} />
       </ScrollView>
     </YStack>
   );

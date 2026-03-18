@@ -2,6 +2,7 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface OnboardingBackButtonProps {
     onPress?: () => void;
@@ -9,6 +10,7 @@ interface OnboardingBackButtonProps {
 
 export default function OnboardingBackButton({ onPress }: OnboardingBackButtonProps) {
     const insets = useSafeAreaInsets();
+    const { colors } = useThemeColors();
 
     const handlePress = () => {
         if (onPress) {
@@ -25,7 +27,7 @@ export default function OnboardingBackButton({ onPress }: OnboardingBackButtonPr
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-            <ArrowLeft size={24} color="#1A1A2E" strokeWidth={2} />
+            <ArrowLeft size={24} color={colors.text} strokeWidth={2} />
         </TouchableOpacity>
     );
 }

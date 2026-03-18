@@ -7,9 +7,9 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#E8850C';
-const AMBER_DIM = 'rgba(232,133,12,0.08)';
-const AMBER_GLOW = 'rgba(232,133,12,0.25)';
+const AMBER = '#F5A623';
+const AMBER_DIM = 'rgba(245,166,35,0.08)';
+const AMBER_GLOW = 'rgba(245,166,35,0.25)';
 
 const STEPS = [
     {
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 14,
         borderWidth: 1,
-        borderColor: 'rgba(232,133,12,0.12)',
-        shadowColor: '#E8850C',
+        borderColor: 'rgba(245,166,35,0.12)',
+        shadowColor: '#F5A623',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 16,

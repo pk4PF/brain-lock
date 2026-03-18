@@ -157,7 +157,7 @@ export default function GameShell({ title, color, score, timeLeft, maxTime = 30,
   }, [score]);
 
   useEffect(() => {
-    if (timeLeft !== undefined && timeLeft <= 5 && timeLeft > 0) {
+    if (timeLeft !== undefined && timeLeft <= 3 && timeLeft > 0) {
       soundCountdown();
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.03, duration: 120, useNativeDriver: true }),

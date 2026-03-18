@@ -9,6 +9,7 @@ export interface GameConfig {
   category: GameCategory;
   color: string;
   gradient: [string, string];
+  lightGradient: [string, string];
 }
 
 export const CATEGORIES: Record<GameCategory, { label: string }> = {
@@ -26,6 +27,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'speed',
     color: '#00F0FF',
     gradient: ['#0D0221', '#2D1B69'],
+    lightGradient: ['#E6FDFF', '#C0F5FF'],
   },
   memory: {
     id: 'memory',
@@ -34,6 +36,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'memory',
     color: '#00D4AA',
     gradient: ['#020B2E', '#0F2847'],
+    lightGradient: ['#E4FFF6', '#BFF5E5'],
   },
 
   wordscramble: {
@@ -43,6 +46,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'problem_solving',
     color: '#E8B84B',
     gradient: ['#1A1207', '#3D2B14'],
+    lightGradient: ['#FFF8E6', '#FFEEBB'],
   },
   speedread: {
     id: 'speedread',
@@ -51,6 +55,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'focus',
     color: '#FF6B35',
     gradient: ['#1A0A0A', '#3D1414'],
+    lightGradient: ['#FFF0E8', '#FFDBC5'],
   },
   reaction: {
     id: 'reaction',
@@ -59,6 +64,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'speed',
     color: '#FFD600',
     gradient: ['#0A0A1A', '#1E1E4D'],
+    lightGradient: ['#FFFDE6', '#FFF5B0'],
   },
   colormatch: {
     id: 'colormatch',
@@ -67,6 +73,7 @@ export const GAMES: Record<GameType, GameConfig> = {
     category: 'problem_solving',
     color: '#FF69B4',
     gradient: ['#1A0A2E', '#3F1676'],
+    lightGradient: ['#FFE8F3', '#FFCCE3'],
   },
 };
 

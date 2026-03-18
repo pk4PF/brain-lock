@@ -7,7 +7,7 @@ import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#E8850C';
+const AMBER = '#F5A623';
 
 interface EmpathyContent {
     stat: string;
@@ -18,10 +18,10 @@ interface EmpathyContent {
 
 const EMPATHY_MAP: Record<string, EmpathyContent> = {
     screen_time: {
-        stat: '4 hrs 37 min',
-        context: 'That\'s how long the average person stares at their phone every single day.',
-        hook: 'That\'s 70 full days a year lost to a screen. Days you\'ll never get back.',
-        source: 'eMarketer, 2024',
+        stat: '5 hrs 16 min',
+        context: 'That\'s how long the average person spends looking down at their phone every single day.',
+        hook: 'That\'s 80 full days a year lost to a screen. Days you\'ll never get back.',
+        source: 'Harmony Healthcare IT, 2025',
     },
     social_media: {
         stat: '2 hrs 23 min',
@@ -56,10 +56,10 @@ const EMPATHY_MAP: Record<string, EmpathyContent> = {
 };
 
 const DEFAULT_CONTENT: EmpathyContent = {
-    stat: '4 hrs 37 min',
-    context: 'That\'s how long the average person stares at their phone every single day.',
-    hook: 'That\'s 70 full days a year lost to a screen. Days you\'ll never get back.',
-    source: 'eMarketer, 2024',
+    stat: '5 hrs 16 min',
+    context: 'That\'s how long the average person spends looking down at their phone every single day.',
+    hook: 'That\'s 80 full days a year lost to a screen. Days you\'ll never get back.',
+    source: 'Harmony Healthcare IT, 2025',
 };
 
 export default function EmpathyScreen() {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 3,
         borderRadius: 2,
-        backgroundColor: 'rgba(232,133,12,0.3)',
+        backgroundColor: 'rgba(245,166,35,0.3)',
         marginBottom: 28,
     },
     hook: {

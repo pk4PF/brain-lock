@@ -51,13 +51,15 @@ export const Gradients = {
   light: {
     cardWarm: ['#FFFFFF', '#FFF8EE'] as [string, string],
     heroGreen: ['#1B6B3C', '#145830', '#0D4025'] as [string, string, string],
-    heroPrimary: ['#1B6B3C', '#145830', '#0D4025'] as [string, string, string],
+    heroPrimary: ['#C46A08', '#A85506', '#8B4205'] as [string, string, string],
+    heroDeep: ['#2C1810', '#4A2812', '#2C1810'] as [string, string, string],
     cardSurface: ['#FFFFFF', '#FDFAF5'] as [string, string],
   },
   dark: {
     cardWarm: ['#141420', '#1A1814'] as [string, string],
     heroGreen: ['#0A2A1A', '#0D3520', '#082E18'] as [string, string, string],
     heroPrimary: ['#1A1508', '#251C06', '#1A1508'] as [string, string, string],
+    heroDeep: ['#1A1508', '#251C06', '#1A1508'] as [string, string, string],
     cardSurface: ['#141420', '#18182A'] as [string, string],
   },
 };

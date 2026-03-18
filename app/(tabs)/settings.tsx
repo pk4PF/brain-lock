@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { ScrollView, Switch, TouchableOpacity, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil } from 'lucide-react-native';
+// LinearGradient still used for profile card gradient
 import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
@@ -45,10 +46,6 @@ export default function ProfileScreen() {
       ? settings.enabledGames.filter((g) => g !== game)
       : [...settings.enabledGames, game];
     updateSettings({ enabledGames: next });
-  };
-
-  const setChallenges = (n: number) => {
-    updateSettings({ challengesRequired: n });
   };
 
   const themeModes: { mode: ThemeMode; label: string; icon: React.ReactNode }[] = [
@@ -223,131 +220,6 @@ export default function ProfileScreen() {
                 </XStack>
               );
             })}
-          </GlowCard>
-        </YStack>
-
-        {/* Challenges Required */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Challenges to Unlock" />
-          <GlowCard>
-            <XStack gap={8} marginBottom={14}>
-              {[1, 2, 3].map((n) => {
-                const active = settings.challengesRequired === n;
-                return (
-                  <TouchableOpacity
-                    key={n}
-                    activeOpacity={0.8}
-                    onPress={() => setChallenges(n)}
-                    style={{
-                      flex: 1,
-                      borderRadius: 12,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {active ? (
-                      <LinearGradient
-                        colors={[colors.accent, colors.accentDark]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={{
-                          paddingVertical: 12,
-                          alignItems: 'center',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text color="#FFFFFF" fontSize={14} fontWeight="700">
-                          {n} game{n > 1 ? 's' : ''}
-                        </Text>
-                      </LinearGradient>
-                    ) : (
-                      <YStack
-                        paddingVertical={12}
-                        alignItems="center"
-                        backgroundColor={colors.cardAlt}
-                        borderRadius={12}
-                        borderWidth={1}
-                        borderColor={colors.border}
-                      >
-                        <Text color={colors.secondary} fontSize={14} fontWeight="600">
-                          {n} game{n > 1 ? 's' : ''}
-                        </Text>
-                      </YStack>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </XStack>
-            <Text color={colors.muted} fontSize={13}>
-              Number of brain challenges required to unlock apps
-            </Text>
-          </GlowCard>
-        </YStack>
-
-        {/* Disable Difficulty */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Disable Difficulty" />
-          <GlowCard>
-            <XStack gap={8} marginBottom={14}>
-              {([
-                { value: 'easy', label: 'Easy' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'hard', label: 'Hard' },
-              ] as const).map(({ value, label }) => {
-                const active = settings.disableDifficulty === value;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      hapticLight();
-                      updateSettings({ disableDifficulty: value });
-                    }}
-                    style={{
-                      flex: 1,
-                      borderRadius: 12,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {active ? (
-                      <LinearGradient
-                        colors={[colors.accent, colors.accentDark]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={{
-                          paddingVertical: 12,
-                          alignItems: 'center',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text color="#FFFFFF" fontSize={14} fontWeight="700">
-                          {label}
-                        </Text>
-                      </LinearGradient>
-                    ) : (
-                      <YStack
-                        paddingVertical={12}
-                        alignItems="center"
-                        backgroundColor={colors.cardAlt}
-                        borderRadius={12}
-                        borderWidth={1}
-                        borderColor={colors.border}
-                      >
-                        <Text color={colors.secondary} fontSize={14} fontWeight="600">
-                          {label}
-                        </Text>
-                      </YStack>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </XStack>
-            <Text color={colors.muted} fontSize={13}>
-              {settings.disableDifficulty === 'easy'
-                ? 'Blocking can be disabled instantly'
-                : settings.disableDifficulty === 'medium'
-                  ? '30-second wait before blocking can be disabled'
-                  : 'Blocking cannot be disabled once activated'}
-            </Text>
           </GlowCard>
         </YStack>
 
