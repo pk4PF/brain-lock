@@ -356,11 +356,11 @@ export default function PaywallScreen() {
                     7 days free, then {yearlyPlan.price} per year ({yearlyPlan.perMonth}/mo)
                 </Text>
                 <View style={styles.legalRow}>
-                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com/terms')}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com')}>
                         <Text style={styles.legalLink}>Terms of Use</Text>
                     </TouchableOpacity>
                     <Text style={styles.legalDot}> · </Text>
-                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com/privacy')}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com')}>
                         <Text style={styles.legalLink}>Privacy Policy</Text>
                     </TouchableOpacity>
                 </View>
