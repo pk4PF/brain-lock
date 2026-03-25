@@ -1,5 +1,6 @@
 import { ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ChevronRight, Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
 } from 'lucide-react-native';
@@ -66,14 +67,10 @@ export default function GamesScreen() {
                 const game = GAMES[key];
                 const iconConfig = GAME_ICONS[key];
                 return (
-                  <YStack
+                  <View
                     key={key}
                     marginBottom={10}
-                    backgroundColor={colors.card}
                     borderRadius={20}
-                    borderWidth={1.5}
-                    borderColor={isDark ? `${game.color}40` : `${game.color}30`}
-                    padding={20}
                     overflow="hidden"
                     pressStyle={{ scale: 0.98, opacity: 0.9 }}
                     onPress={() => handlePlayGame(key)}
@@ -88,28 +85,40 @@ export default function GamesScreen() {
                       default: {},
                     })}
                   >
-                    <XStack alignItems="center" gap={16}>
-                      <View
-                        width={52}
-                        height={52}
-                        borderRadius={16}
-                        backgroundColor={isDark ? `${game.color}18` : `${game.color}12`}
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        {iconConfig.icon(24, game.color)}
-                      </View>
-                      <YStack flex={1}>
-                        <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
-                          {game.title}
-                        </Text>
-                        <Text color={colors.muted} fontSize={13}>
-                          {game.description}
-                        </Text>
-                      </YStack>
-                      <ChevronRight size={18} color={`${game.color}60`} />
-                    </XStack>
-                  </YStack>
+                    <LinearGradient
+                      colors={isDark ? [colors.card, colors.cardAlt] : game.lightGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={{
+                        padding: 20,
+                        borderRadius: 20,
+                        borderWidth: 1.5,
+                        borderColor: isDark ? `${game.color}40` : `${game.color}30`,
+                      }}
+                    >
+                      <XStack alignItems="center" gap={16}>
+                        <View
+                          width={52}
+                          height={52}
+                          borderRadius={16}
+                          backgroundColor={isDark ? `${game.color}18` : `${game.color}12`}
+                          justifyContent="center"
+                          alignItems="center"
+                        >
+                          {iconConfig.icon(24, game.color)}
+                        </View>
+                        <YStack flex={1}>
+                          <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
+                            {game.title}
+                          </Text>
+                          <Text color={colors.muted} fontSize={13}>
+                            {game.description}
+                          </Text>
+                        </YStack>
+                        <ChevronRight size={18} color={`${game.color}60`} />
+                      </XStack>
+                    </LinearGradient>
+                  </View>
                 );
               })}
             </YStack>

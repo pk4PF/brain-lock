@@ -25,11 +25,9 @@ interface Struggle {
 
 const STRUGGLES: Struggle[] = [
     { id: 'screen_time', emoji: '📱', label: 'Too much screen time' },
-    { id: 'social_media', emoji: '📜', label: 'Doomscrolling / Social media' },
-    { id: 'focus', emoji: '🎯', label: "Can't focus / Easily distracted" },
-    { id: 'procrastination', emoji: '⏰', label: 'Procrastination' },
-    { id: 'habits', emoji: '🔄', label: 'Want to build better habits' },
+    { id: 'attention_span', emoji: '🎯', label: 'Short attention span' },
     { id: 'brain_training', emoji: '🧠', label: 'Want to train my brain' },
+    { id: 'all_above', emoji: '✅', label: 'All of the above' },
 ];
 
 export default function StrugglesScreen() {
@@ -69,6 +67,8 @@ export default function StrugglesScreen() {
         }, 150 + STRUGGLES.length * 80 + 100);
     }, []);
 
+    const individualIds = STRUGGLES.filter((s) => s.id !== 'all_above').map((s) => s.id);
+
     const toggleItem = (id: string, index: number) => {
         // Bounce animation on toggle
         Animated.sequence([
@@ -82,11 +82,29 @@ export default function StrugglesScreen() {
 
         setSelected((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
+
+            if (id === 'all_above') {
+                // Toggle all on or all off
+                if (next.has('all_above')) {
+                    next.clear();
+                } else {
+                    individualIds.forEach((i) => next.add(i));
+                    next.add('all_above');
+                }
             } else {
-                next.add(id);
+                // Toggle individual item
+                if (next.has(id)) {
+                    next.delete(id);
+                    next.delete('all_above');
+                } else {
+                    next.add(id);
+                    // Auto-select "all_above" if all individuals are now selected
+                    if (individualIds.every((i) => next.has(i))) {
+                        next.add('all_above');
+                    }
+                }
             }
+
             return next;
         });
     };

@@ -51,10 +51,10 @@ export default function RootLayout() {
             const customerInfo = await getCurrentCustomerInfo();
             if (!checkPremiumStatus(customerInfo)) {
               clearSubscription();
-              console.log('Subscription expired or revoked — cleared premium status');
+              if (__DEV__) console.log('Subscription expired or revoked — cleared premium status');
             }
           } catch (err) {
-            console.warn('Failed to validate subscription:', err);
+            if (__DEV__) console.warn('Failed to validate subscription:', err);
           }
         }
 
@@ -65,14 +65,14 @@ export default function RootLayout() {
           const isActive = checkPremiumStatus(customerInfo);
           if (state.isPremium && !isActive) {
             state.clearSubscription();
-            console.log('Subscription state changed — cleared premium');
+            if (__DEV__) console.log('Subscription state changed — cleared premium');
           } else if (!state.isPremium && isActive) {
             state.setSubscription('restored');
-            console.log('Subscription state changed — restored premium');
+            if (__DEV__) console.log('Subscription state changed — restored premium');
           }
         });
       })
-      .catch((err) => console.warn('RevenueCat init failed:', err));
+      .catch((err) => { if (__DEV__) console.warn('RevenueCat init failed:', err); });
 
     // Reset daily unlock if it's a new day
     useStore.getState().checkDailyReset();

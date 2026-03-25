@@ -39,7 +39,7 @@ export interface Settings {
   screenTimeScheduleEnabled: boolean;
   activeDays: boolean[]; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
   theme: ThemeMode;
-  disableDifficulty: 'easy' | 'medium' | 'hard';
+  disableDifficulty: 'easy' | 'medium' | 'hard' | 'hardest';
 }
 
 interface AppState {
@@ -117,7 +117,7 @@ export const useStore = create<AppState>()(
         screenTimeAppCount: 0,
         screenTimeScheduleEnabled: false,
         activeDays: [true, true, true, true, true, true, true],
-        theme: 'system',
+        theme: 'light',
         disableDifficulty: 'easy',
       },
 

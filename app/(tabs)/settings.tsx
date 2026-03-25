@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import { ScrollView, Switch, TouchableOpacity, TextInput } from 'react-native';
+import { ScrollView, Switch, TouchableOpacity, TextInput, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil } from 'lucide-react-native';
+import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield } from 'lucide-react-native';
 // LinearGradient still used for profile card gradient
 import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -271,6 +271,55 @@ export default function ProfileScreen() {
                 thumbColor={settings.soundEnabled ? colors.accent : colors.muted}
               />
             </XStack>
+          </GlowCard>
+        </YStack>
+
+        {/* Legal */}
+        <YStack marginBottom={28}>
+          <SectionTitle title="Legal" />
+          <GlowCard padding={0}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://brainlockapp.com/terms')}
+            >
+              <XStack
+                alignItems="center"
+                justifyContent="space-between"
+                paddingVertical={14}
+                paddingHorizontal={20}
+                borderBottomWidth={1}
+                borderBottomColor={colors.border}
+              >
+                <XStack alignItems="center" gap={14}>
+                  <IconBadge size={36}>
+                    <FileText size={16} color={colors.accent} />
+                  </IconBadge>
+                  <Text color={colors.text} fontSize={16} fontWeight="500">
+                    Terms of Use
+                  </Text>
+                </XStack>
+              </XStack>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://brainlockapp.com/privacy')}
+            >
+              <XStack
+                alignItems="center"
+                justifyContent="space-between"
+                paddingVertical={14}
+                paddingHorizontal={20}
+              >
+                <XStack alignItems="center" gap={14}>
+                  <IconBadge size={36}>
+                    <Shield size={16} color={colors.accent} />
+                  </IconBadge>
+                  <Text color={colors.text} fontSize={16} fontWeight="500">
+                    Privacy Policy
+                  </Text>
+                </XStack>
+              </XStack>
+            </TouchableOpacity>
           </GlowCard>
         </YStack>
       </ScrollView>

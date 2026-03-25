@@ -136,7 +136,7 @@ function GameTile({
         }}
       >
         <LinearGradient
-          colors={isDark ? [colors.card, colors.cardAlt] : ['#FFFFFF', '#FDFAF5']}
+          colors={isDark ? [colors.card, colors.cardAlt] : game.lightGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={{

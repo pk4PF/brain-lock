@@ -138,8 +138,7 @@ export default function LockScreen() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
 
-  // Countdown state (medium difficulty)
-  const COUNTDOWN_SECONDS = 30;
+  // Countdown state
   const [countdownActive, setCountdownActive] = useState(false);
   const [countdownRemaining, setCountdownRemaining] = useState(0);
   const countdownStartTime = useRef<number>(0);
@@ -193,9 +192,9 @@ export default function LockScreen() {
     setLoading(true);
     hapticLight();
     try {
-      console.log('[LockScreen] Requesting Screen Time authorization...');
+      if (__DEV__) console.log('[LockScreen] Requesting Screen Time authorization...');
       const result = await ScreenTime.requestAuthorization();
-      console.log('[LockScreen] Authorization result:', result);
+      if (__DEV__) console.log('[LockScreen] Authorization result:', result);
 
       // Handle "denied:reason" format from native module
       const status = result.startsWith('denied') ? 'denied' : result;
@@ -212,7 +211,7 @@ export default function LockScreen() {
         );
       }
     } catch (e: any) {
-      console.log('[LockScreen] Screen Time authorization error:', e?.message || e);
+      if (__DEV__) console.log('[LockScreen] Screen Time authorization error:', e?.message || e);
       Alert.alert('Error', `Could not request Screen Time permission.\n\nDetails: ${e?.message || String(e)}`);
     } finally {
       setLoading(false);
@@ -268,18 +267,32 @@ export default function LockScreen() {
     }
   }, []);
 
+  const getCountdownSeconds = useCallback((difficulty: string) => {
+    switch (difficulty) {
+      case 'medium': return 30;
+      case 'hard': return 60;
+      case 'hardest': return 300; // 5 minutes
+      default: return 0;
+    }
+  }, []);
+
   const handleDisableSchedule = useCallback(() => {
-    if (settings.disableDifficulty === 'medium') {
+    const seconds = getCountdownSeconds(settings.disableDifficulty);
+    if (seconds > 0) {
       hapticMedium();
       countdownStartTime.current = Date.now();
-      setCountdownRemaining(COUNTDOWN_SECONDS);
+      countdownTotalRef.current = seconds;
+      setCountdownRemaining(seconds);
       setCountdownActive(true);
       return;
     }
     // Easy mode — instant disable
     hapticLight();
     performDisable();
-  }, [settings.disableDifficulty, performDisable]);
+  }, [settings.disableDifficulty, performDisable, getCountdownSeconds]);
+
+  // Track the total seconds for the current countdown
+  const countdownTotalRef = useRef<number>(0);
 
   // Countdown interval — wall-clock based for accuracy after backgrounding
   useEffect(() => {
@@ -287,7 +300,8 @@ export default function LockScreen() {
 
     countdownInterval.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - countdownStartTime.current) / 1000);
-      const remaining = Math.max(0, COUNTDOWN_SECONDS - elapsed);
+      const total = countdownTotalRef.current;
+      const remaining = Math.max(0, total - elapsed);
       setCountdownRemaining(remaining);
 
       if (remaining <= 0) {
@@ -659,29 +673,194 @@ export default function LockScreen() {
                 </GlowCard>
               </AnimatedButton>
 
+              {/* ── Disable Difficulty (shown when schedule is active, LOCKED) ── */}
+              {settings.screenTimeScheduleEnabled && (
+                <GlowCard marginBottom={12}>
+                  <XStack alignItems="center" justifyContent="space-between" marginBottom={10}>
+                    <Text color={colors.text} fontSize={15} fontWeight="600">
+                      Disable Difficulty
+                    </Text>
+                    <Text color={colors.muted} fontSize={11} fontWeight="500">
+                      Locked while active
+                    </Text>
+                  </XStack>
+                  <XStack gap={6} marginBottom={10} opacity={0.5}>
+                    {([
+                      { value: 'easy' as const, label: 'Easy' },
+                      { value: 'medium' as const, label: 'Medium' },
+                      { value: 'hard' as const, label: 'Hard' },
+                      { value: 'hardest' as const, label: 'Hardest' },
+                    ]).map(({ value, label }) => {
+                      const active = settings.disableDifficulty === value;
+                      return (
+                        <TouchableOpacity
+                          key={value}
+                          activeOpacity={1}
+                          disabled
+                          style={{
+                            flex: 1,
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {active ? (
+                            <LinearGradient
+                              colors={[colors.accent, colors.accentDark]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={{
+                                paddingVertical: 10,
+                                alignItems: 'center',
+                                borderRadius: 12,
+                              }}
+                            >
+                              <Text color="#FFFFFF" fontSize={13} fontWeight="600">
+                                {label}
+                              </Text>
+                            </LinearGradient>
+                          ) : (
+                            <YStack
+                              paddingVertical={10}
+                              alignItems="center"
+                              backgroundColor={colors.cardAlt}
+                              borderRadius={12}
+                              borderWidth={1}
+                              borderColor={colors.border}
+                            >
+                              <Text color={colors.secondary} fontSize={13} fontWeight="500">
+                                {label}
+                              </Text>
+                            </YStack>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </XStack>
+                  <Text color={colors.muted} fontSize={12}>
+                    {settings.disableDifficulty === 'easy'
+                      ? 'Blocking can be disabled instantly'
+                      : settings.disableDifficulty === 'medium'
+                        ? '30-second wait before disabling'
+                        : settings.disableDifficulty === 'hard'
+                          ? '60-second wait before disabling'
+                          : '5-minute wait before disabling'}
+                  </Text>
+                </GlowCard>
+              )}
+
+              {/* ── Disable Difficulty (setup mode, shown when schedule is NOT active) ── */}
+              {!settings.screenTimeScheduleEnabled && (
+                <GlowCard marginBottom={12}>
+                  <Text color={colors.text} fontSize={15} fontWeight="600" marginBottom={10}>
+                    Disable Difficulty
+                  </Text>
+                  <XStack gap={6} marginBottom={10}>
+                    {([
+                      { value: 'easy' as const, label: 'Easy' },
+                      { value: 'medium' as const, label: 'Medium' },
+                      { value: 'hard' as const, label: 'Hard' },
+                      { value: 'hardest' as const, label: 'Hardest' },
+                    ]).map(({ value, label }) => {
+                      const active = settings.disableDifficulty === value;
+                      return (
+                        <TouchableOpacity
+                          key={value}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            if (value === 'hard' || value === 'hardest') {
+                              const waitText = value === 'hard' ? '60 seconds' : '5 minutes';
+                              Alert.alert(
+                                `Set to ${label}?`,
+                                `You will need to wait ${waitText} before you can disable the schedule. This cannot be changed once the schedule is active.`,
+                                [
+                                  { text: 'Cancel', style: 'cancel' },
+                                  {
+                                    text: `Set ${label}`,
+                                    style: 'destructive',
+                                    onPress: () => {
+                                      hapticMedium();
+                                      updateSettings({ disableDifficulty: value });
+                                    },
+                                  },
+                                ]
+                              );
+                            } else {
+                              hapticLight();
+                              updateSettings({ disableDifficulty: value });
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {active ? (
+                            <LinearGradient
+                              colors={[colors.accent, colors.accentDark]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={{
+                                paddingVertical: 10,
+                                alignItems: 'center',
+                                borderRadius: 12,
+                              }}
+                            >
+                              <Text color="#FFFFFF" fontSize={13} fontWeight="600">
+                                {label}
+                              </Text>
+                            </LinearGradient>
+                          ) : (
+                            <YStack
+                              paddingVertical={10}
+                              alignItems="center"
+                              backgroundColor={colors.cardAlt}
+                              borderRadius={12}
+                              borderWidth={1}
+                              borderColor={colors.border}
+                            >
+                              <Text color={colors.secondary} fontSize={13} fontWeight="500">
+                                {label}
+                              </Text>
+                            </YStack>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </XStack>
+                  <Text color={colors.muted} fontSize={12}>
+                    {settings.disableDifficulty === 'easy'
+                      ? 'Blocking can be disabled instantly'
+                      : settings.disableDifficulty === 'medium'
+                        ? '30-second wait before disabling'
+                        : settings.disableDifficulty === 'hard'
+                          ? '60-second wait before disabling'
+                          : '5-minute wait before disabling'}
+                  </Text>
+                </GlowCard>
+              )}
+
               {/* ── Activate / Disable Button ── */}
               {settings.screenTimeScheduleEnabled ? (
-                settings.disableDifficulty !== 'hard' ? (
-                  <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
-                    <YStack
-                      paddingVertical={14}
-                      borderRadius={14}
-                      backgroundColor={isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2'}
-                      borderWidth={1}
-                      borderColor={isDark ? 'rgba(239,68,68,0.25)' : '#FECACA'}
-                      alignItems="center"
-                      marginBottom={12}
-                    >
-                      {scheduleLoading ? (
-                        <ActivityIndicator size="small" color="#DC2626" />
-                      ) : (
-                        <Text color="#DC2626" fontSize={15} fontWeight="700">
-                          Disable Schedule
-                        </Text>
-                      )}
-                    </YStack>
-                  </AnimatedButton>
-                ) : null
+                <AnimatedButton onPress={handleDisableSchedule} disabled={scheduleLoading}>
+                  <YStack
+                    paddingVertical={14}
+                    borderRadius={14}
+                    backgroundColor={isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2'}
+                    borderWidth={1}
+                    borderColor={isDark ? 'rgba(239,68,68,0.25)' : '#FECACA'}
+                    alignItems="center"
+                    marginBottom={12}
+                  >
+                    {scheduleLoading ? (
+                      <ActivityIndicator size="small" color="#DC2626" />
+                    ) : (
+                      <Text color="#DC2626" fontSize={15} fontWeight="700">
+                        Disable Schedule
+                      </Text>
+                    )}
+                  </YStack>
+                </AnimatedButton>
               ) : (
                 <AnimatedButton onPress={handleApplySchedule} disabled={scheduleLoading}>
                   <LinearGradient
@@ -782,79 +961,6 @@ export default function LockScreen() {
             </Animated.View>
           )}
 
-          {/* ── Disable Difficulty ── */}
-          {isAuthorized && hasApps && (
-            <Animated.View
-              entering={FadeInDown.delay(300).duration(400).springify().damping(16)}
-              exiting={FadeOutUp.duration(250)}
-            >
-              <SectionTitle title="Disable Difficulty" />
-              <GlowCard marginBottom={20}>
-                <XStack gap={8} marginBottom={12}>
-                  {([
-                    { value: 'easy', label: 'Easy' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'hard', label: 'Hard' },
-                  ] as const).map(({ value, label }) => {
-                    const active = settings.disableDifficulty === value;
-                    return (
-                      <TouchableOpacity
-                        key={value}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          hapticLight();
-                          updateSettings({ disableDifficulty: value });
-                        }}
-                        style={{
-                          flex: 1,
-                          borderRadius: 12,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {active ? (
-                          <LinearGradient
-                            colors={[colors.accent, colors.accentDark]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={{
-                              paddingVertical: 10,
-                              alignItems: 'center',
-                              borderRadius: 12,
-                            }}
-                          >
-                            <Text color="#FFFFFF" fontSize={14} fontWeight="600">
-                              {label}
-                            </Text>
-                          </LinearGradient>
-                        ) : (
-                          <YStack
-                            paddingVertical={10}
-                            alignItems="center"
-                            backgroundColor={colors.cardAlt}
-                            borderRadius={12}
-                            borderWidth={1}
-                            borderColor={colors.border}
-                          >
-                            <Text color={colors.secondary} fontSize={14} fontWeight="500">
-                              {label}
-                            </Text>
-                          </YStack>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </XStack>
-                <Text color={colors.muted} fontSize={12}>
-                  {settings.disableDifficulty === 'easy'
-                    ? 'Blocking can be disabled instantly'
-                    : settings.disableDifficulty === 'medium'
-                      ? '30-second wait before disabling'
-                      : 'Blocking cannot be disabled once activated'}
-                </Text>
-              </GlowCard>
-            </Animated.View>
-          )}
-
           {/* Info tip */}
           <FadeInView delay={isAuthorized && hasApps ? 600 : 300}>
             <GlowCard glass size="sm" marginBottom={16}>
@@ -914,7 +1020,7 @@ export default function LockScreen() {
       >
         <DisableCountdownScreen
           remainingSeconds={countdownRemaining}
-          totalSeconds={COUNTDOWN_SECONDS}
+          totalSeconds={countdownTotalRef.current}
           onCancel={handleCancelCountdown}
         />
       </Modal>
