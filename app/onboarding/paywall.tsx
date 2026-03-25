@@ -44,13 +44,16 @@ interface PlanInfo {
     perMonth: string;
 }
 
+// Single plan — yearly with 7-day free trial
+const YEARLY_PRICE = '$29.99';
+const YEARLY_PER_MONTH = '$2.50';
+
 export default function PaywallScreen() {
     const { setSubscription, userName } = useStore();
     const insets = useSafeAreaInsets();
 
     const [step, setStep] = useState(0);
     const [packages, setPackages] = useState<PurchasesPackage[]>([]);
-    const [selectedPlan, setSelectedPlan] = useState<string>('annual');
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
 
@@ -101,35 +104,22 @@ export default function PaywallScreen() {
         });
     };
 
-    const monthlyPkg = packages.find(
-        (p) => p.packageType === 'MONTHLY' || p.product.identifier.includes('monthly')
-    ) ?? null;
     const annualPkg = packages.find(
         (p) => p.packageType === 'ANNUAL' || p.product.identifier.includes('yearly') || p.product.identifier.includes('annual')
     ) ?? null;
 
-    const plans: PlanInfo[] = [
-        {
-            id: 'monthly',
-            label: 'Monthly',
-            pkg: monthlyPkg,
-            price: monthlyPkg?.product.priceString ?? '$4.99',
-            perMonth: monthlyPkg?.product.priceString ?? '$4.99',
-        },
-        {
-            id: 'annual',
-            label: 'Yearly',
-            pkg: annualPkg,
-            price: annualPkg?.product.priceString ?? '$29.99',
-            perMonth: '$2.50',
-        },
-    ];
+    const yearlyPlan: PlanInfo = {
+        id: 'annual',
+        label: 'Yearly',
+        pkg: annualPkg,
+        price: annualPkg?.product.priceString ?? YEARLY_PRICE,
+        perMonth: YEARLY_PER_MONTH,
+    };
 
     const handlePurchase = async () => {
-        const plan = plans.find((p) => p.id === selectedPlan);
-        if (!plan?.pkg) {
+        if (!yearlyPlan.pkg) {
             if (__DEV__) {
-                setSubscription(selectedPlan);
+                setSubscription('annual');
                 router.push('/onboarding/letsgo');
             } else {
                 Alert.alert('Unable to load plans', 'Please check your connection and try again.');
@@ -138,9 +128,9 @@ export default function PaywallScreen() {
         }
         setPurchasing(true);
         try {
-            const customerInfo = await purchasePackage(plan.pkg);
+            const customerInfo = await purchasePackage(yearlyPlan.pkg);
             if (checkPremiumStatus(customerInfo)) {
-                setSubscription(plan.id);
+                setSubscription('annual');
                 router.push('/onboarding/letsgo');
             } else {
                 Alert.alert('Purchase issue', 'Your purchase could not be verified. Please try again or contact support.');
@@ -234,7 +224,7 @@ export default function PaywallScreen() {
                 </View>
                 <OnboardingButton label="Try for $0.00" onPress={() => animateToStep(1)} />
                 <Text style={styles.priceNote}>
-                    7 days free, then {plans[1].price} per year ({plans[1].perMonth}/mo)
+                    7 days free, then {yearlyPlan.price} per year ({yearlyPlan.perMonth}/mo)
                 </Text>
             </Animated.View>
         </View>
@@ -273,7 +263,7 @@ export default function PaywallScreen() {
                 </View>
                 <OnboardingButton label="Continue for free" onPress={() => animateToStep(2)} />
                 <Text style={styles.priceNote}>
-                    7 days free, then {plans[1].price} per year ({plans[1].perMonth}/mo)
+                    7 days free, then {yearlyPlan.price} per year ({yearlyPlan.perMonth}/mo)
                 </Text>
             </View>
         </View>
@@ -333,38 +323,22 @@ export default function PaywallScreen() {
                     </View>
                 </View>
 
-                {/* Plan selector */}
+                {/* Yearly plan summary */}
                 {loading ? (
                     <ActivityIndicator color={AMBER} style={{ marginTop: 20 }} />
                 ) : (
-                    <View style={styles.planRow}>
-                        {plans.map((plan) => {
-                            const selected = selectedPlan === plan.id;
-                            return (
-                                <TouchableOpacity
-                                    key={plan.id}
-                                    style={[styles.planCard, selected && styles.planCardSelected]}
-                                    onPress={() => setSelectedPlan(plan.id)}
-                                    activeOpacity={0.7}
-                                >
-                                    {plan.id === 'annual' && (
-                                        <View style={styles.planBadge}>
-                                            <Text style={styles.planBadgeText}>7 DAYS FREE</Text>
-                                        </View>
-                                    )}
-                                    <Text style={[styles.planLabel, selected && styles.planLabelActive]}>{plan.label}</Text>
-                                    <Text style={[styles.planPrice, selected && styles.planPriceActive]}>
-                                        {plan.id === 'annual' ? plan.perMonth : plan.price}
-                                    </Text>
-                                    <Text style={styles.planPeriod}>/mo</Text>
-                                    {selected && (
-                                        <View style={styles.planCheck}>
-                                            <CheckCircle size={16} color={AMBER} />
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
+                    <View style={[styles.planCard, styles.planCardSelected]}>
+                        <View style={styles.planBadge}>
+                            <Text style={styles.planBadgeText}>7 DAYS FREE</Text>
+                        </View>
+                        <Text style={[styles.planLabel, styles.planLabelActive]}>{yearlyPlan.label}</Text>
+                        <Text style={[styles.planPrice, styles.planPriceActive]}>
+                            {yearlyPlan.perMonth}
+                        </Text>
+                        <Text style={styles.planPeriod}>/mo</Text>
+                        <View style={styles.planCheck}>
+                            <CheckCircle size={16} color={AMBER} />
+                        </View>
                     </View>
                 )}
             </View>
@@ -379,14 +353,14 @@ export default function PaywallScreen() {
                     onPress={handlePurchase}
                 />
                 <Text style={styles.priceNote}>
-                    7 days free, then {plans[1].price} per year ({plans[1].perMonth}/mo)
+                    7 days free, then {yearlyPlan.price} per year ({yearlyPlan.perMonth}/mo)
                 </Text>
                 <View style={styles.legalRow}>
-                    <TouchableOpacity onPress={() => Linking.openURL('https://brainlockapp.com/terms')}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com/terms')}>
                         <Text style={styles.legalLink}>Terms of Use</Text>
                     </TouchableOpacity>
                     <Text style={styles.legalDot}> · </Text>
-                    <TouchableOpacity onPress={() => Linking.openURL('https://brainlockapp.com/privacy')}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://plbtk.com/privacy')}>
                         <Text style={styles.legalLink}>Privacy Policy</Text>
                     </TouchableOpacity>
                 </View>
@@ -677,14 +651,9 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
 
-    // ── Step 3: Plan selector ──
-    planRow: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
+    // ── Step 3: Plan card ──
     planCard: {
-        flex: 1,
+        width: '100%',
         backgroundColor: '#FFFFFF',
         borderRadius: BorderRadius.lg,
         borderWidth: 1.5,

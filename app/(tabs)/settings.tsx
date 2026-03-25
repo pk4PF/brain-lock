@@ -280,7 +280,7 @@ export default function ProfileScreen() {
           <GlowCard padding={0}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://brainlockapp.com/terms')}
+              onPress={() => Linking.openURL('https://plbtk.com/terms')}
             >
               <XStack
                 alignItems="center"
@@ -302,7 +302,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://brainlockapp.com/privacy')}
+              onPress={() => Linking.openURL('https://plbtk.com/privacy')}
             >
               <XStack
                 alignItems="center"
