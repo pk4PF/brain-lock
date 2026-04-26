@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1024px;
+    height: 1024px;
+    overflow: hidden;
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: #FBF5EC;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Subtle warm radial glow behind content */
+  .bg-glow {
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,133,12,0.12) 0%, rgba(232,133,12,0) 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+  }
+
+  .content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+  }
+
+  /* Top section: brain icon + title */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .brain-circle {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #E8850C, #D4700A);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 40px rgba(232,133,12,0.25);
+  }
+
+  .brain-icon {
+    font-size: 80px;
+    filter: none;
+  }
+
+  .title {
+    font-size: 64px;
+    font-weight: 700;
+    color: #1A1A2E;
+    text-align: center;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .title span {
+    color: #E8850C;
+  }
+
+  .subtitle {
+    font-size: 26px;
+    font-weight: 400;
+    color: #6B6359;
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-top: -12px;
+  }
+
+  /* Feature pills */
+  .features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    max-width: 720px;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #FFFFFF;
+    border: 1.5px solid #E8DFD3;
+    border-radius: 56px;
+    padding: 16px 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+
+  .pill-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(232,133,12,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .pill-text {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1A1A2E;
+    white-space: nowrap;
+  }
+
+  /* Bottom badge */
+  .badge {
+    background: linear-gradient(135deg, #E8850C, #C46A08);
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 16px 48px;
+    border-radius: 56px;
+    text-transform: uppercase;
+    box-shadow: 0 8px 24px rgba(232,133,12,0.3);
+  }
+</style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="content">
+    <div class="hero">
+      <div class="brain-circle">
+        <div class="brain-icon">🧠</div>
+      </div>
+      <div class="title">Brain Lock<br><span>Premium</span></div>
+      <div class="subtitle">Train your brain. Earn your screen time.</div>
+    </div>
+
+    <div class="features">
+      <div class="pill">
+        <div class="pill-icon">🔒</div>
+        <div class="pill-text">Smart App Lock</div>
+      </div>
+      <div class="pill">
+        <div class="pill-icon">🧩</div>
+        <div class="pill-text">Brain Games</div>
+      </div>
+      <div class="pill">
+        <div class="pill-icon">⚡</div>
+        <div class="pill-text">Daily Streaks</div>
+      </div>
+      <div class="pill">
+        <div class="pill-icon">📊</div>
+        <div class="pill-text">Progress Stats</div>
+      </div>
+    </div>
+
+    <div class="badge">Unlock Everything</div>
+  </div>
+</body>
+</html>

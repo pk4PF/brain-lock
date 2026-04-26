@@ -2,10 +2,10 @@
   "expo": {
     "name": "BrainLock",
     "slug": "brain-lock",
-    "version": "1.0.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "brainlock",
     "newArchEnabled": true,
     "splash": {
@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pk4pf.brain-lock",
+      "buildNumber": "200",
       "deploymentTarget": "16.0",
       "entitlements": {
         "com.apple.developer.family-controls": true

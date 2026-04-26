@@ -1,8 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Home, Shield, BarChart3, User } from 'lucide-react-native';
+import { Home, Shield, Gamepad2, BarChart3, User } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { hapticLight } from '../../src/utils/haptics';
+import { useStore } from '../../src/store/useStore';
+import PaywallModal from '../../src/components/PaywallModal';
 
 function TabIcon({ icon: Icon, color, focused }: { icon: typeof Home; color: string; focused: boolean }) {
   return (
@@ -11,19 +14,22 @@ function TabIcon({ icon: Icon, color, focused }: { icon: typeof Home; color: str
         <View
           style={[
             styles.activeIndicator,
-            { backgroundColor: color + '18' },
+            { backgroundColor: color + '25' },
           ]}
         />
       )}
-      <Icon size={21} color={color} strokeWidth={focused ? 2.2 : 1.8} />
+      <Icon size={22} color={color} strokeWidth={2} />
     </View>
   );
 }
 
 export default function TabLayout() {
   const { colors, isDark } = useThemeColors();
+  const { showPaywall, setShowPaywall } = useStore();
 
   return (
+    <>
+    <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -46,18 +52,18 @@ export default function TabLayout() {
           elevation: 0,
           height: Platform.OS === 'ios' ? 84 : 64,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          paddingTop: 6,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: isDark ? '#4A4A5A' : '#B0A99F',
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.2,
           marginTop: -2,
         },
         tabBarItemStyle: {
-          gap: 1,
+          gap: 2,
         },
       }}
     >
@@ -67,6 +73,7 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={Home} color={color} focused={focused} />,
         }}
+        listeners={{ tabPress: () => hapticLight() }}
       />
       <Tabs.Screen
         name="lock"
@@ -74,12 +81,15 @@ export default function TabLayout() {
           title: 'Block',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={Shield} color={color} focused={focused} />,
         }}
+        listeners={{ tabPress: () => hapticLight() }}
       />
       <Tabs.Screen
         name="games"
         options={{
-          href: null,
+          title: 'Games',
+          tabBarIcon: ({ color, focused }) => <TabIcon icon={Gamepad2} color={color} focused={focused} />,
         }}
+        listeners={{ tabPress: () => hapticLight() }}
       />
       <Tabs.Screen
         name="stats"
@@ -87,6 +97,7 @@ export default function TabLayout() {
           title: 'Stats',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={BarChart3} color={color} focused={focused} />,
         }}
+        listeners={{ tabPress: () => hapticLight() }}
       />
       <Tabs.Screen
         name="settings"
@@ -94,22 +105,24 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={User} color={color} focused={focused} />,
         }}
+        listeners={{ tabPress: () => hapticLight() }}
       />
     </Tabs>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   iconContainer: {
-    width: 36,
-    height: 28,
+    width: 48,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeIndicator: {
     position: 'absolute',
-    width: 36,
-    height: 28,
-    borderRadius: 10,
+    width: 48,
+    height: 32,
+    borderRadius: 12,
   },
 });

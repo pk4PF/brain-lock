@@ -13,17 +13,17 @@ import {
 import { router } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { FontSize, FontFamily, Spacing, BorderRadius } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
+import { track, Events, identify } from '../../src/services/analytics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
-
-
-const AMBER = '#F5A623';
 
 export default function NameScreen() {
     const [name, setName] = useState('');
     const [isFocused, setIsFocused] = useState(false);
     const { setUserName } = useStore();
+    const { colors } = useThemeColors();
 
     // Entrance animations
     const lottieAnim = useRef(new Animated.Value(0)).current;
@@ -55,7 +55,7 @@ export default function NameScreen() {
     useEffect(() => {
         Animated.timing(glowAnim, {
             toValue: isFocused ? 1 : 0,
-            duration: 300,
+            duration: 200,
             useNativeDriver: false,
         }).start();
     }, [isFocused]);
@@ -64,11 +64,13 @@ export default function NameScreen() {
         const trimmed = name.trim();
         if (trimmed.length > 0) {
             setUserName(trimmed);
+            track(Events.NameEntered, { length: trimmed.length });
+            identify(trimmed, { userName: trimmed });
         }
-        router.push('/onboarding/struggles');
+        router.push('/onboarding/age');
     };
 
-    const animStyle = (anim: Animated.Value, translateY = 30) => ({
+    const animStyle = (anim: Animated.Value, translateY = 32) => ({
         opacity: anim,
         transform: [{
             translateY: anim.interpolate({
@@ -80,7 +82,7 @@ export default function NameScreen() {
 
     const inputBorderColor = glowAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['rgba(245,166,35,0.15)', 'rgba(245,166,35,0.5)'],
+        outputRange: [colors.accentLight, colors.accentGlow],
     });
 
     const inputShadowOpacity = glowAnim.interpolate({
@@ -97,7 +99,7 @@ export default function NameScreen() {
                 >
                     <View style={styles.topSection}>
                         {/* Brain Lottie animation */}
-                        <Animated.View style={[styles.lottieContainer, animStyle(lottieAnim, 20)]}>
+                        <Animated.View style={[styles.lottieContainer, animStyle(lottieAnim, 24)]}>
                             <LottieView
                                 source={require('../../assets/animations/brain.json')}
                                 autoPlay
@@ -108,8 +110,8 @@ export default function NameScreen() {
                         </Animated.View>
 
                         <Animated.View style={animStyle(titleAnim)}>
-                            <Text style={styles.title}>What should we{'\n'}call you?</Text>
-                            <Text style={styles.subtitle}>
+                            <Text style={[styles.title, { color: colors.text }]}>What should we{'\n'}call you?</Text>
+                            <Text style={[styles.subtitle, { color: colors.muted }]}>
                                 We'll use this to personalize your experience
                             </Text>
                         </Animated.View>
@@ -123,12 +125,14 @@ export default function NameScreen() {
                                 {
                                     borderColor: inputBorderColor,
                                     shadowOpacity: inputShadowOpacity,
+                                    shadowColor: colors.accent,
+                                    backgroundColor: colors.card,
                                 },
                             ]}>
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, { color: colors.text }]}
                                     placeholder="Enter your name"
-                                    placeholderTextColor="#9CA3AF"
+                                    placeholderTextColor={colors.muted}
                                     value={name}
                                     onChangeText={setName}
                                     autoCapitalize="words"
@@ -176,7 +180,6 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontFamily: FontFamily.bold,
-        color: '#1A1A2E',
         textAlign: 'center',
         marginBottom: 8,
         letterSpacing: -0.3,
@@ -185,7 +188,6 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.regular,
-        color: '#9CA3AF',
         textAlign: 'center',
         marginBottom: 32,
         lineHeight: 22,
@@ -194,27 +196,24 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     inputGlow: {
-        borderRadius: BorderRadius.xl,
+        borderRadius: 12,
         borderWidth: 1.5,
-        shadowColor: AMBER,
         shadowOffset: { width: 0, height: 0 },
         shadowRadius: 16,
         elevation: 4,
-        backgroundColor: '#FFFFFF',
     },
     input: {
         width: '100%',
-        height: 56,
-        borderRadius: BorderRadius.xl,
+        height: 48,
+        borderRadius: 12,
         paddingHorizontal: Spacing.xl,
         fontSize: FontSize.lg,
         fontFamily: FontFamily.semibold,
-        color: '#1A1A2E',
         textAlign: 'center',
     },
     bottomContainer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: 56,
+        paddingBottom: 48,
         alignItems: 'center',
     },
 });

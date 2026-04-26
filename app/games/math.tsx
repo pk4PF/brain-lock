@@ -1,26 +1,36 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, BorderRadius } from '../../src/constants/theme';
 import { useStore } from '../../src/store/useStore';
 import GameShell, { GAME_THEMES } from '../../src/components/GameShell';
 import GameComplete from '../../src/components/GameComplete';
+import DifficultyPicker, { type Difficulty, DIFFICULTY_CREDITS } from '../../src/components/DifficultyPicker';
 import { generateProblem, type Problem } from '../../src/utils/mathProblem';
 import { soundTap, soundCorrect, soundWrong, soundRound } from '../../src/utils/sounds';
+import { track, Events } from '../../src/services/analytics';
 
 const TOTAL_ROUNDS = 10;
 const T = GAME_THEMES.math;
-const TIME_STAGES = [15, 15, 12, 12, 10, 10, 8, 8, 7, 6];
+
+const DIFFICULTY_CONFIG = {
+  easy:   { timeStages: [22, 22, 20, 20, 18, 18, 16, 16, 14, 12] },
+  medium: { timeStages: [15, 15, 12, 12, 10, 10,  8,  8,  7,  6] },
+  hard:   { timeStages: [10,  9,  8,  7,  6,  5,  5,  4,  4,  3] },
+};
 const MULT_STAGES = [1, 1, 1, 1.2, 1.2, 1.5, 1.5, 1.8, 2, 2];
 
 export default function MathGame() {
   const { addPoints, recordGame, completeDailyGame } = useStore();
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
 
-  const [problem, setProblem] = useState<Problem>(generateProblem(1));
+  const getTimeStages = () => DIFFICULTY_CONFIG[difficulty ?? 'medium'].timeStages;
+
+  const [problem, setProblem] = useState<Problem>(generateProblem(1, 'medium'));
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
   const [correct, setCorrect] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(TIME_STAGES[0]);
+  const [timeLeft, setTimeLeft] = useState(DIFFICULTY_CONFIG.medium.timeStages[0]);
   const [gameOver, setGameOver] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
@@ -33,6 +43,7 @@ export default function MathGame() {
   scoreRef.current = score;
   roundRef.current = round;
 
+  const advancing = useRef(false);
   const flashAnim = useRef(new Animated.Value(0)).current;
   const problemScale = useRef(new Animated.Value(1)).current;
 
@@ -43,37 +54,51 @@ export default function MathGame() {
     ]).start();
   }, [round]);
 
+  // Timer only counts down — never call handlers from inside updater
   useEffect(() => {
+    if (!difficulty || gameOver || selectedAnswer !== null) return;
     startTime.current = Date.now();
     timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) { handleTimeout(); return 0; }
-        return t - 1;
-      });
+      setTimeLeft((t) => (t <= 1 ? 0 : t - 1));
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [round]);
+  }, [round, gameOver, selectedAnswer, difficulty]);
 
-  const handleTimeout = useCallback(() => {
+  // Handle timeout separately when timeLeft hits 0
+  useEffect(() => {
+    if (timeLeft !== 0 || advancing.current || selectedAnswer !== null || gameOver) return;
+    advancing.current = true;
     clearInterval(timerRef.current);
     if (roundRef.current >= TOTAL_ROUNDS) {
       finishGame(correctRef.current, scoreRef.current);
     } else {
       const nextRound = roundRef.current + 1;
       setRound(nextRound);
-      setProblem(generateProblem(nextRound));
-      setTimeLeft(TIME_STAGES[Math.min(nextRound - 1, TIME_STAGES.length - 1)]);
+      setProblem(generateProblem(nextRound, difficulty ?? 'medium'));
+      setTimeLeft(getTimeStages()[Math.min(nextRound - 1, getTimeStages().length - 1)]);
       setSelectedAnswer(null);
       setIsCorrectAnswer(null);
+      setTimeout(() => { advancing.current = false; }, 50);
     }
-  }, []);
+  }, [timeLeft]);
 
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
     const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
     recordGame('math', won, timeTaken);
-    completeDailyGame();
+    const credits = DIFFICULTY_CREDITS[difficulty ?? 'medium'];
+    completeDailyGame(credits);
+    track(Events.GameCompleted, {
+      game: 'math',
+      difficulty: difficulty ?? 'medium',
+      score: finalScore,
+      correct: finalCorrect,
+      total: TOTAL_ROUNDS,
+      won,
+      credits_earned: credits,
+      time_taken_seconds: Math.round(timeTaken),
+    });
     setGameOver(true);
   };
 
@@ -107,8 +132,8 @@ export default function MathGame() {
         soundRound();
         const nextR = round + 1;
         setRound(nextR);
-        setProblem(generateProblem(nextR));
-        setTimeLeft(TIME_STAGES[Math.min(nextR - 1, TIME_STAGES.length - 1)]);
+        setProblem(generateProblem(nextR, difficulty ?? 'medium'));
+        setTimeLeft(getTimeStages()[Math.min(nextR - 1, getTimeStages().length - 1)]);
         setSelectedAnswer(null);
         setIsCorrectAnswer(null);
       }
@@ -116,13 +141,31 @@ export default function MathGame() {
   };
 
   const resetGame = () => {
-    setScore(0); setRound(1); setCorrect(0); setTimeLeft(TIME_STAGES[0]);
+    advancing.current = false;
+    setScore(0); setRound(1); setCorrect(0);
+    setTimeLeft(getTimeStages()[0]);
     setGameOver(false); setSelectedAnswer(null); setIsCorrectAnswer(null);
-    setProblem(generateProblem(1));
+    setProblem(generateProblem(1, difficulty ?? 'medium'));
   };
 
+  if (!difficulty) {
+    return (
+      <DifficultyPicker
+        gameTitle="Math Blitz"
+        accentColor="#00F0FF"
+        gradient={['#0A1628', '#0D2035', '#0A1628']}
+        onSelect={(d) => {
+          setDifficulty(d);
+          setTimeLeft(DIFFICULTY_CONFIG[d].timeStages[0]);
+          setProblem(generateProblem(1, d));
+          track(Events.GameStarted, { game: 'math', difficulty: d });
+        }}
+      />
+    );
+  }
+
   if (gameOver) {
-    return <GameComplete score={score} correct={correct} total={TOTAL_ROUNDS} gameTitle="Math Blitz" onPlayAgain={resetGame} gameId="math" />;
+    return <GameComplete creditsEarned={DIFFICULTY_CREDITS[difficulty]} correct={correct} total={TOTAL_ROUNDS} gameTitle="Math Blitz" onPlayAgain={resetGame} gameId="math" />;
   }
 
   return (
@@ -194,7 +237,7 @@ const styles = StyleSheet.create({
   glowOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,240,255,0.04)',
-    borderRadius: 20,
+    borderRadius: 12,
   },
   pips: {
     flexDirection: 'row',
@@ -218,7 +261,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 36,
     paddingHorizontal: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(0,240,255,0.1)',
   },
@@ -252,7 +295,7 @@ const styles = StyleSheet.create({
   optionTouch: { width: '46%' },
   optionCard: {
     paddingVertical: 20,
-    borderRadius: 18,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
   },

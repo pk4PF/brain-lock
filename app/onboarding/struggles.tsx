@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { FontSize, FontFamily, Spacing, BorderRadius } from '../../src/constants/theme';
+import { FontSize, FontFamily, Spacing } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
+import { track, Events, setPersonProperties } from '../../src/services/analytics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
-
-const AMBER = '#F5A623';
 
 interface Struggle {
     id: string;
@@ -24,15 +24,17 @@ interface Struggle {
 }
 
 const STRUGGLES: Struggle[] = [
-    { id: 'screen_time', emoji: '📱', label: 'Too much screen time' },
-    { id: 'attention_span', emoji: '🎯', label: 'Short attention span' },
-    { id: 'brain_training', emoji: '🧠', label: 'Want to train my brain' },
-    { id: 'all_above', emoji: '✅', label: 'All of the above' },
+    { id: 'screen_time', emoji: '\u{1F4F1}', label: 'Too much screen time' },
+    { id: 'attention_span', emoji: '\u{1F3AF}', label: 'Short attention span' },
+    { id: 'sharpen_mind', emoji: '\u{1F9E0}', label: 'Want to sharpen my mind' },
+    { id: 'better_habits', emoji: '\u{1F3C3}', label: 'Want to build better habits' },
+    { id: 'all_above', emoji: '\u2705', label: 'All of the above' },
 ];
 
 export default function StrugglesScreen() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const { setUserStruggles } = useStore();
+    const { colors, isDark } = useThemeColors();
 
     // Entrance animations
     const headerAnim = useRef(new Animated.Value(0)).current;
@@ -73,7 +75,7 @@ export default function StrugglesScreen() {
         // Bounce animation on toggle
         Animated.sequence([
             Animated.timing(scaleAnims[index], {
-                toValue: 0.95, duration: 80, useNativeDriver: true,
+                toValue: 0.97, duration: 80, useNativeDriver: true,
             }),
             Animated.spring(scaleAnims[index], {
                 toValue: 1, friction: 4, tension: 100, useNativeDriver: true,
@@ -84,7 +86,6 @@ export default function StrugglesScreen() {
             const next = new Set(prev);
 
             if (id === 'all_above') {
-                // Toggle all on or all off
                 if (next.has('all_above')) {
                     next.clear();
                 } else {
@@ -92,13 +93,11 @@ export default function StrugglesScreen() {
                     next.add('all_above');
                 }
             } else {
-                // Toggle individual item
                 if (next.has(id)) {
                     next.delete(id);
                     next.delete('all_above');
                 } else {
                     next.add(id);
-                    // Auto-select "all_above" if all individuals are now selected
                     if (individualIds.every((i) => next.has(i))) {
                         next.add('all_above');
                     }
@@ -110,11 +109,14 @@ export default function StrugglesScreen() {
     };
 
     const handleContinue = () => {
-        setUserStruggles([...selected]);
+        const arr = [...selected];
+        setUserStruggles(arr);
+        track(Events.StrugglesSelected, { struggles: arr });
+        setPersonProperties({ userStruggles: arr });
         router.push('/onboarding/empathy');
     };
 
-    const animStyle = (anim: Animated.Value, translateY = 30) => ({
+    const animStyle = (anim: Animated.Value, translateY = 32) => ({
         opacity: anim,
         transform: [{
             translateY: anim.interpolate({
@@ -130,8 +132,8 @@ export default function StrugglesScreen() {
 
             <View style={styles.content}>
                 <Animated.View style={[styles.headerSection, animStyle(headerAnim)]}>
-                    <Text style={styles.title}>What do you{'\n'}struggle with?</Text>
-                    <Text style={styles.subtitle}>
+                    <Text style={[styles.title, { color: colors.text }]}>What do you{'\n'}struggle with?</Text>
+                    <Text style={[styles.subtitle, { color: colors.muted }]}>
                         Select all that apply. This helps us personalize your games.
                     </Text>
                 </Animated.View>
@@ -147,14 +149,19 @@ export default function StrugglesScreen() {
                                 <Animated.View
                                     key={item.id}
                                     style={[
-                                        animStyle(itemAnims[index], 20),
-                                        { transform: [...(animStyle(itemAnims[index], 20).transform), { scale: scaleAnims[index] }] },
+                                        animStyle(itemAnims[index], 24),
+                                        { transform: [...(animStyle(itemAnims[index], 24).transform), { scale: scaleAnims[index] }] },
                                     ]}
                                 >
                                     <TouchableOpacity
                                         style={[
                                             styles.itemRow,
-                                            isSelected && styles.itemRowSelected,
+                                            {
+                                                backgroundColor: isSelected
+                                                    ? (isDark ? colors.accentLight : 'rgba(245,166,35,0.06)')
+                                                    : colors.card,
+                                                borderColor: isSelected ? colors.accentGlow : colors.accentLight,
+                                            },
                                         ]}
                                         onPress={() => toggleItem(item.id, index)}
                                         activeOpacity={0.7}
@@ -164,7 +171,7 @@ export default function StrugglesScreen() {
                                             <Text
                                                 style={[
                                                     styles.itemLabel,
-                                                    isSelected && styles.itemLabelSelected,
+                                                    { color: isSelected ? colors.text : colors.secondary },
                                                 ]}
                                             >
                                                 {item.label}
@@ -173,7 +180,10 @@ export default function StrugglesScreen() {
                                         <View
                                             style={[
                                                 styles.checkbox,
-                                                isSelected && styles.checkboxSelected,
+                                                {
+                                                    backgroundColor: isSelected ? colors.accent : 'transparent',
+                                                    borderColor: isSelected ? colors.accent : colors.border,
+                                                },
                                             ]}
                                         >
                                             {isSelected && (
@@ -191,7 +201,7 @@ export default function StrugglesScreen() {
                     <OnboardingButton
                         label={
                             selected.size > 0
-                                ? `Continue`
+                                ? 'Continue'
                                 : 'Select at least one'
                         }
                         onPress={handleContinue}
@@ -214,7 +224,6 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontFamily: FontFamily.bold,
-        color: '#1A1A2E',
         marginBottom: 8,
         letterSpacing: -0.3,
         lineHeight: 34,
@@ -222,13 +231,12 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.regular,
-        color: '#9CA3AF',
         lineHeight: 22,
         marginBottom: 0,
     },
     listSection: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
     },
     listContent: {
         paddingTop: 24,
@@ -238,26 +246,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 14,
+        paddingVertical: 16,
         paddingHorizontal: 16,
-        borderRadius: BorderRadius.lg,
-        backgroundColor: '#FFFFFF',
-        marginBottom: 10,
+        borderRadius: 12,
+        marginBottom: 12,
         borderWidth: 1.5,
-        borderColor: 'rgba(245,166,35,0.12)',
-        shadowColor: '#F5A623',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 2,
-    },
-    itemRowSelected: {
-        backgroundColor: 'rgba(245,166,35,0.06)',
-        borderColor: 'rgba(245,166,35,0.35)',
-        shadowColor: AMBER,
-        shadowOpacity: 0.2,
-        shadowRadius: 14,
-        elevation: 4,
+        ...({
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2,
+        }),
     },
     itemLeft: {
         flexDirection: 'row',
@@ -265,34 +265,25 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     itemEmoji: {
-        fontSize: 26,
-        marginRight: 14,
+        fontSize: 24,
+        marginRight: 16,
     },
     itemLabel: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.semibold,
-        color: '#6B7280',
         flex: 1,
     },
-    itemLabelSelected: {
-        color: '#1A1A2E',
-    },
     checkbox: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         borderWidth: 2,
-        borderColor: '#D1D5DB',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    checkboxSelected: {
-        backgroundColor: AMBER,
-        borderColor: AMBER,
-    },
     bottomContainer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: 56,
+        paddingBottom: 48,
         alignItems: 'center',
     },
 });

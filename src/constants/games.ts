@@ -1,4 +1,4 @@
-export type GameType = 'math' | 'memory' | 'wordscramble' | 'speedread' | 'reaction' | 'colormatch';
+export type GameType = 'math';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameCategory = 'speed' | 'memory' | 'focus' | 'problem_solving';
 
@@ -28,52 +28,6 @@ export const GAMES: Record<GameType, GameConfig> = {
     color: '#00F0FF',
     gradient: ['#0D0221', '#2D1B69'],
     lightGradient: ['#E6FDFF', '#C0F5FF'],
-  },
-  memory: {
-    id: 'memory',
-    title: 'Memory Sequence',
-    description: 'Pattern recall training',
-    category: 'memory',
-    color: '#00D4AA',
-    gradient: ['#020B2E', '#0F2847'],
-    lightGradient: ['#E4FFF6', '#BFF5E5'],
-  },
-
-  wordscramble: {
-    id: 'wordscramble',
-    title: 'Word Scramble',
-    description: 'Vocabulary & speed',
-    category: 'problem_solving',
-    color: '#E8B84B',
-    gradient: ['#1A1207', '#3D2B14'],
-    lightGradient: ['#FFF8E6', '#FFEEBB'],
-  },
-  speedread: {
-    id: 'speedread',
-    title: 'Speed Reader',
-    description: 'RSVP reading & comprehension',
-    category: 'focus',
-    color: '#FF6B35',
-    gradient: ['#1A0A0A', '#3D1414'],
-    lightGradient: ['#FFF0E8', '#FFDBC5'],
-  },
-  reaction: {
-    id: 'reaction',
-    title: 'Reaction Time',
-    description: 'Test your reflexes',
-    category: 'speed',
-    color: '#FFD600',
-    gradient: ['#0A0A1A', '#1E1E4D'],
-    lightGradient: ['#FFFDE6', '#FFF5B0'],
-  },
-  colormatch: {
-    id: 'colormatch',
-    title: 'Color Match',
-    description: 'Stroop effect challenge',
-    category: 'problem_solving',
-    color: '#FF69B4',
-    gradient: ['#1A0A2E', '#3F1676'],
-    lightGradient: ['#FFE8F3', '#FFCCE3'],
   },
 };
 

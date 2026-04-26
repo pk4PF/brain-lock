@@ -92,7 +92,17 @@ export async function restorePurchases(): Promise<CustomerInfo> {
 }
 
 export function checkPremiumStatus(customerInfo: CustomerInfo): boolean {
-    return customerInfo.entitlements.active['premium'] !== undefined;
+    const hasEntitlement = customerInfo.entitlements.active['premium'] !== undefined;
+
+    if (__DEV__) {
+        console.log('[RevenueCat] checkPremiumStatus:', {
+            hasEntitlement,
+            activeEntitlements: Object.keys(customerInfo.entitlements.active),
+            activeSubscriptions: customerInfo.activeSubscriptions,
+        });
+    }
+
+    return hasEntitlement;
 }
 
 export async function getCurrentCustomerInfo(): Promise<CustomerInfo> {

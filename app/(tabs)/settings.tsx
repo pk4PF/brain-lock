@@ -1,21 +1,19 @@
 import { useState, useRef } from 'react';
 import { ScrollView, Switch, TouchableOpacity, TextInput, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield } from 'lucide-react-native';
+import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield, Crown } from 'lucide-react-native';
 // LinearGradient still used for profile card gradient
-import { YStack, XStack, Text, View } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
-import { GAMES, GameType } from '../../src/constants/games';
 import { GlowCard } from '../../src/components/ui/GlowCard';
 import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { IconBadge } from '../../src/components/ui/IconBadge';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
-import { hapticLight } from '../../src/utils/haptics';
 import type { ThemeMode } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
-  const { progress, settings, updateSettings, userName, setUserName } = useStore();
+  const { progress, settings, updateSettings, userName, setUserName, isPremium, setShowPaywall } = useStore();
   const insets = useSafeAreaInsets();
   const { colors, isDark, gradients } = useThemeColors();
 
@@ -37,15 +35,6 @@ export default function ProfileScreen() {
     setNameInput(userName);
     setEditingName(true);
     setTimeout(() => nameInputRef.current?.focus(), 100);
-  };
-
-  const toggleGame = (game: GameType) => {
-    const enabled = settings.enabledGames.includes(game);
-    if (enabled && settings.enabledGames.length <= 1) return;
-    const next = enabled
-      ? settings.enabledGames.filter((g) => g !== game)
-      : [...settings.enabledGames, game];
-    updateSettings({ enabledGames: next });
   };
 
   const themeModes: { mode: ThemeMode; label: string; icon: React.ReactNode }[] = [
@@ -129,7 +118,7 @@ export default function ProfileScreen() {
                 <Text color="#FFFFFF" fontSize={22} fontWeight="700">
                   {userName || 'Tap to set name'}
                 </Text>
-                <Pencil size={14} color="rgba(255,255,255,0.6)" />
+                <Pencil size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             )}
 
@@ -169,55 +158,6 @@ export default function ProfileScreen() {
                     {active && <Check size={18} color={colors.accent} />}
                   </XStack>
                 </TouchableOpacity>
-              );
-            })}
-          </GlowCard>
-        </YStack>
-
-        {/* Game Types */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Game Types" />
-          <GlowCard padding={0}>
-            {(Object.keys(GAMES) as GameType[]).map((key, i, arr) => {
-              const game = GAMES[key];
-              const enabled = settings.enabledGames.includes(key);
-              return (
-                <XStack
-                  key={key}
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingVertical={14}
-                  paddingHorizontal={20}
-                  borderBottomWidth={i < arr.length - 1 ? 1 : 0}
-                  borderBottomColor={colors.border}
-                >
-                  <XStack alignItems="center" gap={14}>
-                    <YStack
-                      width={36}
-                      height={36}
-                      borderRadius={18}
-                      backgroundColor={`${game.color}15`}
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <View
-                        width={16}
-                        height={16}
-                        borderRadius={8}
-                        backgroundColor={`${game.color}40`}
-                      />
-                    </YStack>
-                    <Text color={colors.text} fontSize={16} fontWeight="500">
-                      {game.title}
-                    </Text>
-                  </XStack>
-                  <Switch
-                    value={enabled}
-                    onValueChange={() => toggleGame(key)}
-                    trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
-                    thumbColor={enabled ? colors.accent : colors.muted}
-                  />
-                </XStack>
               );
             })}
           </GlowCard>
@@ -274,13 +214,44 @@ export default function ProfileScreen() {
           </GlowCard>
         </YStack>
 
+        {/* Upgrade to Premium */}
+        {!isPremium && (
+          <YStack marginBottom={28}>
+            <SectionTitle title="Subscription" />
+            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowPaywall(true)}>
+              <GlowCard padding={0}>
+                <XStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  paddingVertical={14}
+                  paddingHorizontal={20}
+                >
+                  <XStack alignItems="center" gap={14}>
+                    <IconBadge size={36}>
+                      <Crown size={16} color="#F59E0B" />
+                    </IconBadge>
+                    <YStack>
+                      <Text color={colors.text} fontSize={16} fontWeight="600">
+                        Upgrade to Premium
+                      </Text>
+                      <Text color={colors.muted} fontSize={13}>
+                        Unlimited games & app blocking
+                      </Text>
+                    </YStack>
+                  </XStack>
+                </XStack>
+              </GlowCard>
+            </TouchableOpacity>
+          </YStack>
+        )}
+
         {/* Legal */}
         <YStack marginBottom={28}>
           <SectionTitle title="Legal" />
           <GlowCard padding={0}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://plbtk.com')}
+              onPress={() => Linking.openURL('https://plbtk.com#terms')}
             >
               <XStack
                 alignItems="center"
@@ -302,7 +273,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://plbtk.com')}
+              onPress={() => Linking.openURL('https://plbtk.com#privacy')}
             >
               <XStack
                 alignItems="center"

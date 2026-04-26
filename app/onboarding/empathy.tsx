@@ -2,12 +2,11 @@ import { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { FontSize, FontFamily, Spacing } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
-
-const AMBER = '#F5A623';
 
 interface EmpathyContent {
     stat: string;
@@ -20,7 +19,7 @@ const EMPATHY_MAP: Record<string, EmpathyContent> = {
     screen_time: {
         stat: '5 hrs 16 min',
         context: 'That\'s how long the average person spends looking down at their phone every single day.',
-        hook: 'That\'s 80 full days a year lost to a screen. Days you\'ll never get back.',
+        hook: '80 full days a year lost to a screen. Days you\'ll never get back.',
         source: 'Harmony Healthcare IT, 2025',
     },
     social_media: {
@@ -32,13 +31,13 @@ const EMPATHY_MAP: Record<string, EmpathyContent> = {
     focus: {
         stat: '47%',
         context: 'of your waking hours are spent with a wandering mind, according to Harvard researchers.',
-        hook: 'Almost half your life on autopilot. Your brain isn\'t broken — it just hasn\'t been trained.',
+        hook: 'Almost half your life on autopilot. Your brain isn\'t broken. It just hasn\'t been trained.',
         source: 'Killingsworth & Gilbert, Harvard, Science',
     },
     procrastination: {
         stat: '218 min',
         context: 'That\'s how much time the average worker loses to procrastination every single day.',
-        hook: 'Over 3.5 hours a day — gone. Not from laziness, but from your brain chasing easy dopamine.',
+        hook: '3.5 hours a day, gone. Not from laziness. Your brain is just chasing easy dopamine.',
         source: 'Salary.com Workplace Study',
     },
     habits: {
@@ -64,6 +63,7 @@ const DEFAULT_CONTENT: EmpathyContent = {
 
 export default function EmpathyScreen() {
     const { userStruggles } = useStore();
+    const { colors } = useThemeColors();
 
     const primaryStruggle = userStruggles[0];
     const content = primaryStruggle
@@ -97,7 +97,7 @@ export default function EmpathyScreen() {
         ]).start();
     }, []);
 
-    const animStyle = (anim: Animated.Value, translateY = 30) => ({
+    const animStyle = (anim: Animated.Value, translateY = 32) => ({
         opacity: anim,
         transform: [{
             translateY: anim.interpolate({
@@ -114,26 +114,26 @@ export default function EmpathyScreen() {
             <View style={styles.content}>
                 <View style={styles.centerSection}>
                     {/* Big stat */}
-                    <Animated.View style={animStyle(statAnim, 20)}>
-                        <Text style={styles.stat}>{content.stat}</Text>
+                    <Animated.View style={animStyle(statAnim, 24)}>
+                        <Text style={[styles.stat, { color: colors.accent }]}>{content.stat}</Text>
                     </Animated.View>
 
                     {/* Context */}
                     <Animated.View style={animStyle(contextAnim)}>
-                        <Text style={styles.context}>{content.context}</Text>
+                        <Text style={[styles.context, { color: colors.text }]}>{content.context}</Text>
                     </Animated.View>
 
                     {/* Divider */}
-                    <Animated.View style={[styles.divider, { opacity: hookAnim }]} />
+                    <Animated.View style={[styles.divider, { opacity: hookAnim, backgroundColor: colors.accentGlow }]} />
 
                     {/* Emotional hook */}
                     <Animated.View style={animStyle(hookAnim)}>
-                        <Text style={styles.hook}>{content.hook}</Text>
+                        <Text style={[styles.hook, { color: colors.secondary }]}>{content.hook}</Text>
                     </Animated.View>
 
                     {/* Source */}
-                    <Animated.View style={animStyle(sourceAnim, 10)}>
-                        <Text style={styles.source}>{content.source}</Text>
+                    <Animated.View style={animStyle(sourceAnim, 12)}>
+                        <Text style={[styles.source, { color: colors.muted }]}>{content.source}</Text>
                     </Animated.View>
                 </View>
 
@@ -157,49 +157,44 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 36,
+        paddingHorizontal: 32,
     },
     stat: {
-        fontSize: 52,
-        fontFamily: FontFamily.heavy,
-        color: AMBER,
+        fontSize: 48,
+        fontFamily: FontFamily.bold,
         textAlign: 'center',
         marginBottom: 16,
         letterSpacing: -1,
     },
     context: {
-        fontSize: 18,
-        fontFamily: FontFamily.medium,
-        color: '#1A1A2E',
+        fontSize: 16,
+        fontFamily: FontFamily.regular,
         textAlign: 'center',
-        lineHeight: 28,
-        marginBottom: 28,
+        lineHeight: 24,
+        marginBottom: 32,
     },
     divider: {
-        width: 40,
+        width: 48,
         height: 3,
         borderRadius: 2,
-        backgroundColor: 'rgba(245,166,35,0.3)',
-        marginBottom: 28,
+        marginBottom: 32,
     },
     hook: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.regular,
-        color: '#6B7280',
         textAlign: 'center',
         lineHeight: 24,
-        marginBottom: 20,
+        marginBottom: 24,
     },
     source: {
         fontSize: 12,
-        fontFamily: FontFamily.medium,
-        color: '#C4C4C4',
+        fontFamily: FontFamily.regular,
         textAlign: 'center',
         letterSpacing: 0.3,
     },
     bottomContainer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: 56,
+        paddingBottom: 48,
         alignItems: 'center',
     },
 });

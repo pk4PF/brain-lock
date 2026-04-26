@@ -285,7 +285,7 @@ export function ShimmerLine({ width = 100, delay = 0 }: { width?: number; delay?
         right: 0,
         bottom: 0,
         overflow: 'hidden',
-        borderRadius: 20,
+        borderRadius: 12,
       }}
     >
       <Animated.View

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrainLock App Store Screenshots</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0A0A0A; padding: 40px 20px; }
+
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 { color: #fff; font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+  .header p { color: #666; font-size: 14px; }
+
+  .grid { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .card { text-align: center; }
+  .card .label {
+    color: #888; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;
+  }
+
+  /* Preview container scaled down */
+  .preview-wrap {
+    width: 250px;
+    height: 541px;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid #222;
+    position: relative;
+    background: #1a1a1a;
+  }
+
+  /* Full size screenshot frame at 1284x2778 scaled to preview */
+  .ss {
+    width: 1284px;
+    height: 2778px;
+    transform: scale(0.1947); /* 250/1284 */
+    transform-origin: top left;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Top text area */
+  .top-area {
+    padding: 160px 100px 60px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .top-area h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 112px;
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -3px;
+  }
+  .top-area p {
+    font-family: 'Inter', sans-serif;
+    font-size: 44px;
+    font-weight: 500;
+    margin-top: 20px;
+    opacity: 0.55;
+  }
+
+  /* Phone mockup area */
+  .phone-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0 100px;
+    overflow: hidden;
+  }
+  .phone-frame {
+    width: 1084px;
+    height: 2000px;
+    background: #1A1A2E;
+    border-radius: 64px 64px 0 0;
+    border: 5px solid rgba(255,255,255,0.15);
+    border-bottom: none;
+    overflow: hidden;
+    box-shadow: 0 -12px 80px rgba(0,0,0,0.25);
+    position: relative;
+  }
+  .phone-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+  }
+  .phone-frame .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #FBF5EC;
+    color: #9C9389;
+    font-size: 48px;
+    font-weight: 600;
+    gap: 20px;
+  }
+  .phone-frame .placeholder .upload-icon {
+    font-size: 80px;
+    opacity: 0.4;
+  }
+
+  /* BG color themes */
+  .bg-green { background: linear-gradient(180deg, #A8D5BA 0%, #7DC49A 100%); }
+  .bg-green .top-area h2 { color: #0D4025; }
+  .bg-green .top-area p { color: #0D4025; }
+
+  .bg-orange { background: linear-gradient(180deg, #FDDCB5 0%, #F5C68A 100%); }
+  .bg-orange .top-area h2 { color: #5C2E08; }
+  .bg-orange .top-area p { color: #5C2E08; }
+
+  .bg-cream { background: linear-gradient(180deg, #F5EFE6 0%, #E8DFD3 100%); }
+  .bg-cream .top-area h2 { color: #1A1A2E; }
+  .bg-cream .top-area p { color: #1A1A2E; }
+
+  .bg-purple { background: linear-gradient(180deg, #D4C4F0 0%, #B8A5E0 100%); }
+  .bg-purple .top-area h2 { color: #2E1A5E; }
+  .bg-purple .top-area p { color: #2E1A5E; }
+
+  /* Buttons */
+  .btn-row { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+
+  .dl-btn {
+    background: #E8850C;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s;
+  }
+  .dl-btn:hover { background: #D4700A; }
+  .dl-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .upload-btn {
+    background: #222;
+    color: #aaa;
+    border: 1px solid #333;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+  .upload-btn:hover { background: #333; color: #fff; border-color: #555; }
+
+  .upload-input { display: none; }
+
+  /* Download all button */
+  .download-all-wrap { text-align: center; margin-top: 36px; }
+  .download-all {
+    background: linear-gradient(135deg, #E8850C, #D4700A);
+    color: #fff;
+    border: none;
+    padding: 16px 48px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.5px;
+    transition: transform 0.15s;
+  }
+  .download-all:hover { transform: scale(1.03); }
+  .download-all:disabled { opacity: 0.5; cursor: wait; transform: none; }
+
+  /* Status */
+  .status {
+    text-align: center;
+    margin-top: 16px;
+    color: #555;
+    font-size: 13px;
+    min-height: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BrainLock App Store Screenshots</h1>
+  <p>Upload your iPhone screenshots, then download marketing-ready PNGs (1284 x 2778px)</p>
+</div>
+
+<div class="grid">
+
+<!-- ══════ 1: HOME ══════ -->
+<div class="card">
+  <div class="label">1 &mdash; Home</div>
+  <div class="preview-wrap">
+    <div class="ss bg-green" id="ss1">
+      <div class="top-area">
+        <h2>Train Your Brain,<br>Unlock Your Apps</h2>
+        <p>Earn screen time with quick brain games</p>
+      </div>
+      <div class="phone-area">
+        <div class="phone-frame" id="phone1">
+          <div class="placeholder" id="ph1">
+            <div class="upload-icon">📱</div>
+            <span>Upload Screenshot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="upload-btn" onclick="document.getElementById('file1').click()">Choose Image</button>
+    <input type="file" class="upload-input" id="file1" accept="image/*" onchange="loadImage(1, this)">
+    <button class="dl-btn" onclick="download('ss1','BrainLock-Home.png', this)">Download PNG</button>
+  </div>
+</div>
+
+<!-- ══════ 2: BLOCK ══════ -->
+<div class="card">
+  <div class="label">2 &mdash; Block Apps</div>
+  <div class="preview-wrap">
+    <div class="ss bg-orange" id="ss2">
+      <div class="top-area">
+        <h2>Block Distracting<br>Apps Easily</h2>
+        <p>Set schedules and earn your screen time</p>
+      </div>
+      <div class="phone-area">
+        <div class="phone-frame" id="phone2">
+          <div class="placeholder" id="ph2">
+            <div class="upload-icon">📱</div>
+            <span>Upload Screenshot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="upload-btn" onclick="document.getElementById('file2').click()">Choose Image</button>
+    <input type="file" class="upload-input" id="file2" accept="image/*" onchange="loadImage(2, this)">
+    <button class="dl-btn" onclick="download('ss2','BrainLock-Block.png', this)">Download PNG</button>
+  </div>
+</div>
+
+<!-- ══════ 3: SETTINGS ══════ -->
+<div class="card">
+  <div class="label">3 &mdash; Customize</div>
+  <div class="preview-wrap">
+    <div class="ss bg-cream" id="ss3">
+      <div class="top-area">
+        <h2>Customize<br>Your Experience</h2>
+        <p>Tailor difficulty, games, and preferences</p>
+      </div>
+      <div class="phone-area">
+        <div class="phone-frame" id="phone3">
+          <div class="placeholder" id="ph3">
+            <div class="upload-icon">📱</div>
+            <span>Upload Screenshot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="upload-btn" onclick="document.getElementById('file3').click()">Choose Image</button>
+    <input type="file" class="upload-input" id="file3" accept="image/*" onchange="loadImage(3, this)">
+    <button class="dl-btn" onclick="download('ss3','BrainLock-Settings.png', this)">Download PNG</button>
+  </div>
+</div>
+
+<!-- ══════ 4: PROFILE ══════ -->
+<div class="card">
+  <div class="label">4 &mdash; Profile</div>
+  <div class="preview-wrap">
+    <div class="ss bg-purple" id="ss4">
+      <div class="top-area">
+        <h2>Track Your<br>Progress</h2>
+        <p>Streaks, stats, and growth over time</p>
+      </div>
+      <div class="phone-area">
+        <div class="phone-frame" id="phone4">
+          <div class="placeholder" id="ph4">
+            <div class="upload-icon">📱</div>
+            <span>Upload Screenshot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="upload-btn" onclick="document.getElementById('file4').click()">Choose Image</button>
+    <input type="file" class="upload-input" id="file4" accept="image/*" onchange="loadImage(4, this)">
+    <button class="dl-btn" onclick="download('ss4','BrainLock-Profile.png', this)">Download PNG</button>
+  </div>
+</div>
+
+</div>
+
+<div class="download-all-wrap">
+  <button class="download-all" id="dlAllBtn" onclick="downloadAll()">Download All PNGs</button>
+</div>
+<div class="status" id="status"></div>
+
+<script>
+function loadImage(num, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const phone = document.getElementById('phone' + num);
+    const placeholder = document.getElementById('ph' + num);
+
+    // Remove placeholder
+    if (placeholder) placeholder.remove();
+
+    // Remove existing image if any
+    const existingImg = phone.querySelector('img');
+    if (existingImg) existingImg.remove();
+
+    // Create and add image
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.objectPosition = 'top center';
+    img.style.display = 'block';
+    phone.appendChild(img);
+
+    setStatus('Screenshot ' + num + ' loaded!');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function download(id, filename, btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+  }
+  setStatus('Rendering ' + filename + '...');
+
+  const el = document.getElementById(id);
+  const origTransform = el.style.transform;
+  const origWidth = el.parentElement.style.width;
+  const origHeight = el.parentElement.style.height;
+  const origOverflow = el.parentElement.style.overflow;
+
+  // Temporarily remove scale for rendering
+  el.style.transform = 'none';
+  el.parentElement.style.width = '1284px';
+  el.parentElement.style.height = '2778px';
+  el.parentElement.style.overflow = 'visible';
+
+  try {
+    const canvas = await html2canvas(el, {
+      width: 1284,
+      height: 2778,
+      scale: 1,
+      useCORS: true,
+      backgroundColor: null,
+      logging: false,
+    });
+
+    // Strip alpha channel — App Store rejects PNGs with transparency
+    const opaqueCanvas = document.createElement('canvas');
+    opaqueCanvas.width = 1284;
+    opaqueCanvas.height = 2778;
+    const ctx = opaqueCanvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1284, 2778);
+    ctx.drawImage(canvas, 0, 0);
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = opaqueCanvas.toDataURL('image/png');
+    link.click();
+    setStatus(filename + ' saved!');
+  } catch(e) {
+    alert('Error generating ' + filename + ': ' + e.message);
+    setStatus('Error: ' + e.message);
+  }
+
+  // Restore preview scaling
+  el.style.transform = origTransform;
+  el.parentElement.style.width = origWidth;
+  el.parentElement.style.height = origHeight;
+  el.parentElement.style.overflow = origOverflow;
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Download PNG';
+  }
+}
+
+async function downloadAll() {
+  const btn = document.getElementById('dlAllBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  const items = [
+    ['ss1', 'BrainLock-Home.png'],
+    ['ss2', 'BrainLock-Block.png'],
+    ['ss3', 'BrainLock-Settings.png'],
+    ['ss4', 'BrainLock-Profile.png'],
+  ];
+
+  for (let i = 0; i < items.length; i++) {
+    setStatus('Downloading ' + (i + 1) + ' of 4...');
+    await download(items[i][0], items[i][1], null);
+    // Small delay between downloads so browser doesn't block them
+    if (i < items.length - 1) await new Promise(r => setTimeout(r, 600));
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Download All PNGs';
+  setStatus('All 4 screenshots downloaded!');
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+</script>
+
+</body>
+</html>

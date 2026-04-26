@@ -14,9 +14,8 @@ const { height: SCREEN_H } = Dimensions.get('window');
 const ITEM_H = 52;
 const VISIBLE_ITEMS = 5;
 const WHEEL_H = ITEM_H * VISIBLE_ITEMS;
-const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
-
 const formatHour = (h: number) => {
+  if (h === 24) return '12:00 AM';
   const period = h >= 12 ? 'PM' : 'AM';
   const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${display}:00 ${period}`;
@@ -29,6 +28,7 @@ interface TimePickerSheetProps {
   value: number;
   onChange: (hour: number) => void;
   onClose: () => void;
+  maxHour?: number; // 23 for start time, 24 for end time (24 = midnight next day)
 }
 
 export function TimePickerSheet({
@@ -38,6 +38,7 @@ export function TimePickerSheet({
   value,
   onChange,
   onClose,
+  maxHour = 23,
 }: TimePickerSheetProps) {
   const { colors, isDark } = useThemeColors();
   const scrollRef = useRef<ScrollView>(null);
@@ -122,14 +123,14 @@ export function TimePickerSheet({
                 contentContainerStyle={{ paddingVertical: ITEM_H * 2 }}
                 onMomentumScrollEnd={(e) => {
                   const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-                  const clamped = Math.max(0, Math.min(23, idx));
+                  const clamped = Math.max(0, Math.min(maxHour, idx));
                   if (clamped !== localValue) {
                     hapticLight();
                     setLocalValue(clamped);
                   }
                 }}
               >
-                {HOURS_24.map((h) => {
+                {Array.from({ length: maxHour + 1 }, (_, i) => i).map((h) => {
                   const isSelected = h === localValue;
                   return (
                     <View

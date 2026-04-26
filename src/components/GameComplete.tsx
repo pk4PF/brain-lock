@@ -10,7 +10,7 @@ import { useStore } from '../store/useStore';
 import { GameType } from '../constants/games';
 
 interface GameCompleteProps {
-  score: number;
+  creditsEarned: number;
   correct: number;
   total: number;
   gameTitle: string;
@@ -18,15 +18,16 @@ interface GameCompleteProps {
   gameId?: string;
 }
 
-export default function GameComplete({ score, correct, total, gameTitle, onPlayAgain, gameId }: GameCompleteProps) {
+export default function GameComplete({ creditsEarned, correct, total, gameTitle, onPlayAgain, gameId }: GameCompleteProps) {
   const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
   const isGood = percentage >= 70;
   const theme = GAME_THEMES[gameId || ''] || GAME_THEMES.math;
 
-  const { progress, dailyGamesCompleted, settings } = useStore();
+  const { progress, canPlayGame, gamesRemainingToday, isPremium, setShowPaywall } = useStore();
   const gameStats = gameId ? progress.gameStats[gameId as GameType] : null;
-  const isNewBest = gameStats && score > 0 && gameStats.played <= 1;
-  const hasGamesRemaining = dailyGamesCompleted < settings.challengesRequired;
+  const isNewBest = gameStats && creditsEarned > 0 && gameStats.played <= 1;
+  const canPlay = canPlayGame();
+  const gamesLeft = gamesRemainingToday();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -88,7 +89,7 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {isGood
             ? gameTitle
-            : `You got ${correct} right${total - correct <= 2 ? ' — so close!' : '. Keep practicing!'}`}
+            : `You got ${correct} right${total - correct <= 2 ? ', so close!' : '. Keep practicing!'}`}
         </Text>
 
         {isNewBest && score > 0 && (
@@ -99,7 +100,7 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
 
         <View style={[styles.statsRow, { backgroundColor: `${theme.accent}08` }]}>
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: theme.accent }]}>{score}</Text>
+            <Text style={[styles.statValue, { color: theme.accent }]}>+{creditsEarned}</Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Credits</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
@@ -116,18 +117,27 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
       </Animated.View>
 
       <Animated.View style={[styles.actions, { opacity: fadeAnim }]}>
-        <TouchableOpacity activeOpacity={0.8} onPress={onPlayAgain} style={styles.buttonWrapper}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            if (!canPlay) { setShowPaywall(true); return; }
+            onPlayAgain();
+          }}
+          style={styles.buttonWrapper}
+        >
           <LinearGradient
             colors={[theme.accent, `${theme.accent}CC`]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.primaryButton}
           >
-            <Text style={styles.primaryButtonText}>Play Again</Text>
+            <Text style={styles.primaryButtonText}>
+              {canPlay ? 'Play Again' : 'Upgrade for More Games'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        {hasGamesRemaining && (
+        {canPlay && gamesLeft > 0 && (
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.replace('/(tabs)/games')}
@@ -138,7 +148,7 @@ export default function GameComplete({ score, correct, total, gameTitle, onPlayA
               style={styles.primaryButton}
             >
               <Text style={[styles.primaryButtonText, { color: theme.textPrimary }]}>
-                Next Game ({settings.challengesRequired - dailyGamesCompleted} left)
+                Next Game ({isPremium ? '∞' : `${gamesLeft}`} left)
               </Text>
             </LinearGradient>
           </TouchableOpacity>

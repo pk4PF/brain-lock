@@ -1,10 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BorderRadius, FontSize, FontFamily } from '../../constants/theme';
-
-const AMBER = '#F5A623';
-const DARK = '#0A0A0F';
+import { FontSize, FontFamily } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface OnboardingButtonProps {
     label: string;
@@ -20,10 +18,25 @@ export default function OnboardingButton({
     style,
 }: OnboardingButtonProps) {
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const { colors } = useThemeColors();
+
+    // Subtle idle breathing pulse
+    useEffect(() => {
+        if (variant !== 'primary') return;
+        const pulse = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.015, duration: 1400, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 1400, useNativeDriver: true }),
+            ])
+        );
+        const t = setTimeout(() => pulse.start(), 800);
+        return () => { clearTimeout(t); pulse.stop(); };
+    }, [variant]);
 
     const handlePressIn = () => {
         Animated.spring(scaleAnim, {
-            toValue: 0.96,
+            toValue: 0.97,
             friction: 8,
             tension: 100,
             useNativeDriver: true,
@@ -46,13 +59,13 @@ export default function OnboardingButton({
                 onPress={onPress}
                 activeOpacity={0.7}
             >
-                <Text style={styles.secondaryButtonText}>{label}</Text>
+                <Text style={[styles.secondaryButtonText, { color: colors.muted }]}>{label}</Text>
             </TouchableOpacity>
         );
     }
 
     return (
-        <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, { width: '100%' }]}>
+        <Animated.View style={[{ transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] }, { width: '100%' }]}>
             <TouchableOpacity
                 style={[styles.button, style]}
                 onPress={onPress}
@@ -76,22 +89,22 @@ export default function OnboardingButton({
 const styles = StyleSheet.create({
     button: {
         width: '100%',
-        borderRadius: BorderRadius.xl,
+        borderRadius: 12,
         overflow: 'hidden',
-        shadowColor: AMBER,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-        elevation: 10,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 8,
     },
     buttonInner: {
-        paddingVertical: 18,
+        paddingVertical: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: BorderRadius.xl,
+        borderRadius: 12,
     },
     buttonText: {
-        color: DARK,
+        color: '#0A0A0F',
         fontSize: FontSize.lg,
         fontFamily: FontFamily.bold,
         letterSpacing: 0.3,
@@ -103,7 +116,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     secondaryButtonText: {
-        color: '#9CA3AF',
         fontSize: FontSize.md,
         fontFamily: FontFamily.semibold,
     },

@@ -69,10 +69,10 @@ export const Spacing = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 20,
+  xl: 24,
   xxl: 24,
   xxxl: 32,
-  xxxxl: 40,
+  xxxxl: 48,
 };
 
 export const FontSize = {
@@ -86,26 +86,49 @@ export const FontSize = {
 };
 
 export const FontFamily = {
-  regular: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
-  heavy: 'Inter_800ExtraBold',
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semibold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  heavy: 'PlusJakartaSans_800ExtraBold',
 };
 
 export const FontWeight = {
   regular: '400' as const,
-  medium: '500' as const,
+  medium: '400' as const,
   semibold: '600' as const,
   bold: '700' as const,
-  heavy: '800' as const,
+  heavy: '700' as const,
 };
 
 export const BorderRadius = {
   sm: 8,
   md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
+  lg: 12,
+  xl: 12,
+  xxl: 12,
   full: 999,
+};
+
+export const Shadows = {
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  modal: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+};
+
+export const Heights = {
+  sm: 36,
+  md: 44,
+  lg: 52,
 };

@@ -3,13 +3,10 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { FontSize, FontFamily, Spacing } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
-
-const AMBER = '#F5A623';
-const AMBER_DIM = 'rgba(245,166,35,0.08)';
-const AMBER_GLOW = 'rgba(245,166,35,0.25)';
 
 const STEPS = [
     {
@@ -19,17 +16,19 @@ const STEPS = [
     },
     {
         lottie: require('../../assets/animations/brain.json'),
-        title: 'Complete a quick brain challenge',
-        subtitle: 'Math, memory, patterns. Pick your games!',
+        title: 'Complete a quick challenge',
+        subtitle: 'Improve mental or physical health.',
     },
     {
         lottie: require('../../assets/animations/success.json'),
         title: 'App unlocked. You earned it!',
-        subtitle: 'Build real cognitive skills along the way',
+        subtitle: 'Every unlock is earned, not given.',
     },
 ];
 
 export default function HowItWorksScreen() {
+    const { colors } = useThemeColors();
+
     // Entrance animations
     const titleAnim = useRef(new Animated.Value(0)).current;
     const stepAnims = useRef(STEPS.map(() => new Animated.Value(0))).current;
@@ -68,7 +67,7 @@ export default function HowItWorksScreen() {
         }, 200 + STEPS.length * 200 + 100);
     }, []);
 
-    const animStyle = (anim: Animated.Value, translateY = 30) => ({
+    const animStyle = (anim: Animated.Value, translateY = 32) => ({
         opacity: anim,
         transform: [{
             translateY: anim.interpolate({
@@ -86,8 +85,8 @@ export default function HowItWorksScreen() {
                 <View style={styles.centerSection}>
                     {/* Header */}
                     <Animated.View style={[styles.headerSection, animStyle(titleAnim)]}>
-                        <Text style={styles.title}>How BrainLock Works</Text>
-                        <Text style={styles.subtitle}>
+                        <Text style={[styles.title, { color: colors.text }]}>How BrainLock Works</Text>
+                        <Text style={[styles.subtitle, { color: colors.muted }]}>
                             Simple, fun, and takes under 60 seconds
                         </Text>
                     </Animated.View>
@@ -103,7 +102,7 @@ export default function HowItWorksScreen() {
                                         {
                                             translateY: stepAnims[index].interpolate({
                                                 inputRange: [0, 1],
-                                                outputRange: [25, 0],
+                                                outputRange: [24, 0],
                                             }),
                                         },
                                         { scale: stepScales[index] },
@@ -113,22 +112,22 @@ export default function HowItWorksScreen() {
                                 {/* Connector line */}
                                 {index > 0 && (
                                     <View style={styles.connectorContainer}>
-                                        <View style={styles.connectorLine} />
+                                        <View style={[styles.connectorLine, { backgroundColor: colors.accentGlow }]} />
                                     </View>
                                 )}
 
-                                <View style={styles.stepCard}>
+                                <View style={[styles.stepCard, { backgroundColor: colors.card, borderColor: colors.accentLight }]}>
                                     {/* Step number badge */}
-                                    <View style={styles.stepBadge}>
+                                    <View style={[styles.stepBadge, { backgroundColor: colors.accent }]}>
                                         <Text style={styles.stepNumber}>{index + 1}</Text>
                                     </View>
 
                                     {/* Lottie icon */}
-                                    <View style={styles.stepIconContainer}>
+                                    <View style={[styles.stepIconContainer, { backgroundColor: colors.accentLight, borderColor: colors.accentGlow }]}>
                                         <LottieView
                                             source={step.lottie}
                                             autoPlay
-                                            loop={index !== 2}
+                                            loop
                                             speed={0.6}
                                             style={styles.stepLottie}
                                         />
@@ -136,8 +135,8 @@ export default function HowItWorksScreen() {
 
                                     {/* Text */}
                                     <View style={styles.stepTextContainer}>
-                                        <Text style={styles.stepTitle}>{step.title}</Text>
-                                        <Text style={styles.stepSubtitle}>{step.subtitle}</Text>
+                                        <Text style={[styles.stepTitle, { color: colors.text }]}>{step.title}</Text>
+                                        <Text style={[styles.stepSubtitle, { color: colors.muted }]}>{step.subtitle}</Text>
                                     </View>
                                 </View>
                             </Animated.View>
@@ -148,7 +147,7 @@ export default function HowItWorksScreen() {
                 <Animated.View style={[styles.bottomContainer, animStyle(buttonAnim)]}>
                     <OnboardingButton
                         label="Let's Go"
-                        onPress={() => router.push('/onboarding/paywall')}
+                        onPress={() => router.push('/onboarding/letsgo')}
                     />
                 </Animated.View>
             </View>
@@ -173,7 +172,6 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontFamily: FontFamily.bold,
-        color: '#1A1A2E',
         textAlign: 'center',
         marginBottom: 8,
         letterSpacing: -0.3,
@@ -181,7 +179,6 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.regular,
-        color: '#9CA3AF',
         textAlign: 'center',
         lineHeight: 22,
     },
@@ -190,44 +187,37 @@ const styles = StyleSheet.create({
     },
     connectorContainer: {
         alignItems: 'center',
-        height: 20,
+        height: 24,
         justifyContent: 'center',
     },
     connectorLine: {
         width: 2,
-        height: 20,
-        backgroundColor: AMBER_GLOW,
+        height: 24,
         borderRadius: 1,
     },
     stepCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 14,
+        borderRadius: 12,
+        padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(245,166,35,0.12)',
-        shadowColor: '#F5A623',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-        elevation: 3,
+        ...({
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2,
+        }),
     },
     stepBadge: {
         position: 'absolute',
-        top: -10,
+        top: -12,
         left: 16,
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: AMBER,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: AMBER,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 3,
     },
     stepNumber: {
         fontSize: 12,
@@ -235,15 +225,13 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     stepIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 20,
-        backgroundColor: AMBER_DIM,
+        width: 48,
+        height: 48,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: AMBER_GLOW,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
+        marginRight: 16,
         overflow: 'hidden',
     },
     stepLottie: {
@@ -256,19 +244,17 @@ const styles = StyleSheet.create({
     stepTitle: {
         fontSize: FontSize.md,
         fontFamily: FontFamily.bold,
-        color: '#1A1A2E',
-        marginBottom: 3,
+        marginBottom: 4,
         lineHeight: 20,
     },
     stepSubtitle: {
         fontSize: FontSize.sm,
         fontFamily: FontFamily.regular,
-        color: '#9CA3AF',
         lineHeight: 18,
     },
     bottomContainer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: 56,
+        paddingBottom: 48,
         alignItems: 'center',
     },
 });

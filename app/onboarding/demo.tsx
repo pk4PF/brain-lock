@@ -10,6 +10,7 @@ import {
 import { router } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { FontSize, FontFamily, Spacing, BorderRadius } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
@@ -36,6 +37,7 @@ type Phase = 'intro' | 'showing' | 'input' | 'feedback' | 'result';
 
 export default function DemoScreen() {
     const { setDemoGameScore } = useStore();
+    const { colors } = useThemeColors();
 
     const [phase, setPhase] = useState<Phase>('intro');
     const [round, setRound] = useState(0);
@@ -225,10 +227,10 @@ export default function DemoScreen() {
                             />
                         </Animated.View>
                         <Animated.View style={animStyle(introTitleAnim)}>
-                            <Text style={styles.introTitle}>
+                            <Text style={[styles.introTitle, { color: colors.text }]}>
                                 Let's try a quick{'\n'}challenge!
                             </Text>
-                            <Text style={styles.introSubtitle}>
+                            <Text style={[styles.introSubtitle, { color: colors.muted }]}>
                                 Watch the tiles light up, then{'\n'}tap them back in order.
                             </Text>
                         </Animated.View>
@@ -275,20 +277,22 @@ export default function DemoScreen() {
                                 loop={false}
                                 style={styles.successLottie}
                             />
-                            <Text style={styles.resultTitle}>Amazing!</Text>
+                            <Text style={[styles.resultTitle, { color: colors.text }]}>Amazing!</Text>
 
                             {/* Stats */}
-                            <View style={styles.resultStatsRow}>
+                            <View style={[styles.resultStatsRow, { backgroundColor: colors.card, borderColor: colors.accentLight }]}>
                                 <View style={styles.resultStat}>
-                                    <Text style={styles.resultStatValue}>
+                                    <Text style={[styles.resultStatValue, { color: colors.accent }]}>
                                         {correct}/{DEMO_ROUNDS}
                                     </Text>
-                                    <Text style={styles.resultStatLabel}>Correct</Text>
+                                    <Text style={[styles.resultStatLabel, { color: colors.muted }]}>Correct</Text>
                                 </View>
-                                <View style={styles.resultStatDivider} />
+                                <View style={[styles.resultStatDivider, { backgroundColor: colors.border }]} />
                                 <View style={styles.resultStat}>
-                                    <Text style={styles.resultStatValue}>{totalSeconds}s</Text>
-                                    <Text style={styles.resultStatLabel}>Total Time</Text>
+                                    <Text style={[styles.resultStatValue, { color: colors.accent }]}>
+                                        {totalSeconds}s
+                                    </Text>
+                                    <Text style={[styles.resultStatLabel, { color: colors.muted }]}>Total Time</Text>
                                 </View>
                             </View>
 
@@ -301,7 +305,7 @@ export default function DemoScreen() {
                                     speed={0.8}
                                     style={styles.streakFlame}
                                 />
-                                <Text style={styles.streakText}>
+                                <Text style={[styles.streakText, { color: colors.secondary }]}>
                                     That took just {totalSeconds}s. Imagine doing{'\n'}this every time you reach for an app!
                                 </Text>
                             </View>
@@ -323,7 +327,7 @@ export default function DemoScreen() {
                     >
                         <OnboardingButton
                             label="Continue"
-                            onPress={() => router.push('/onboarding/paywall')}
+                            onPress={() => router.push('/onboarding/letsgo')}
                         />
                     </Animated.View>
                 </View>
@@ -494,7 +498,7 @@ const styles = StyleSheet.create({
         right: -SCREEN_WIDTH * 0.08,
         width: SCREEN_WIDTH * 0.35,
         height: SCREEN_WIDTH * 0.35,
-        borderRadius: 16,
+        borderRadius: 12,
         backgroundColor: 'rgba(255,255,255,0.03)',
         transform: [{ rotate: '25deg' }],
     },
@@ -537,7 +541,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.12)',
         paddingHorizontal: 20,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 999,
         marginBottom: 12,
     },
     roundText: {
@@ -578,7 +582,7 @@ const styles = StyleSheet.create({
     tile: {
         width: TILE_SIZE,
         height: TILE_SIZE,
-        borderRadius: 20,
+        borderRadius: 12,
         borderWidth: 1.5,
         shadowColor: '#FFFFFF',
         shadowOffset: { width: 0, height: 0 },
@@ -615,8 +619,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        paddingVertical: 18,
+        borderRadius: 12,
+        paddingVertical: 16,
         paddingHorizontal: 32,
         borderWidth: 1,
         borderColor: 'rgba(245,166,35,0.12)',

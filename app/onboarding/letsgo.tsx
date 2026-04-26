@@ -1,18 +1,20 @@
 import { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { Sparkles } from 'lucide-react-native';
 import { FontSize, Spacing } from '../../src/constants/theme';
+import { FontFamily } from '../../src/constants/theme';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
+import { track, Events } from '../../src/services/analytics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 
-const AMBER = '#F5A623';
-
 export default function LetsGoScreen() {
     const { userName, completeOnboarding } = useStore();
+    const { colors } = useThemeColors();
 
     // Entrance animations
     const mascotAnim = useRef(new Animated.Value(0)).current;
@@ -20,13 +22,14 @@ export default function LetsGoScreen() {
     const subtitleAnim = useRef(new Animated.Value(0)).current;
     const buttonAnim = useRef(new Animated.Value(0)).current;
     const sparkleRotation = useRef(new Animated.Value(0)).current;
+    const floatAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.stagger(150, [
             Animated.spring(mascotAnim, {
                 toValue: 1,
-                friction: 5,
-                tension: 60,
+                friction: 4,
+                tension: 50,
                 useNativeDriver: true,
             }),
             Animated.spring(titleAnim, {
@@ -49,7 +52,7 @@ export default function LetsGoScreen() {
             }),
         ]).start();
 
-        // Subtle continuous sparkle rotation
+        // Sparkle rotation
         Animated.loop(
             Animated.timing(sparkleRotation, {
                 toValue: 1,
@@ -57,6 +60,18 @@ export default function LetsGoScreen() {
                 useNativeDriver: true,
             })
         ).start();
+
+        // Mascot float loop — starts after entrance
+        setTimeout(() => {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(floatAnim, { toValue: -8, duration: 1800, useNativeDriver: true }),
+                    Animated.timing(floatAnim, { toValue: 0, duration: 1800, useNativeDriver: true }),
+                ])
+            ).start();
+        }, 800);
+
+        track(Events.OnboardingCompleted);
     }, []);
 
     const handleStart = () => {
@@ -64,7 +79,7 @@ export default function LetsGoScreen() {
         router.replace('/(tabs)');
     };
 
-    const animStyle = (anim: Animated.Value, translateY = 30) => ({
+    const animStyle = (anim: Animated.Value, translateY = 32) => ({
         opacity: anim,
         transform: [
             {
@@ -100,7 +115,7 @@ export default function LetsGoScreen() {
                             },
                         ]}
                     >
-                        <Sparkles size={18} color={AMBER} />
+                        <Sparkles size={16} color={colors.accent} />
                     </Animated.View>
                     <Animated.View
                         style={[
@@ -117,7 +132,7 @@ export default function LetsGoScreen() {
                             },
                         ]}
                     >
-                        <Sparkles size={14} color="rgba(245,166,35,0.5)" />
+                        <Sparkles size={12} color={colors.accentGlow} />
                     </Animated.View>
 
                     {/* Animated rocket */}
@@ -133,11 +148,12 @@ export default function LetsGoScreen() {
                                             outputRange: [0.5, 1],
                                         }),
                                     },
+                                    { translateY: floatAnim },
                                 ],
                             },
                         ]}
                     >
-                        <View style={styles.mascotGlow} />
+                        <View style={[styles.mascotGlow, { backgroundColor: colors.accentLight, borderColor: colors.accentLight }]} />
                         <LottieView
                             source={require('../../assets/animations/rocket.json')}
                             autoPlay
@@ -148,18 +164,18 @@ export default function LetsGoScreen() {
                     </Animated.View>
 
                     <Animated.View style={animStyle(titleAnim)}>
-                        <Text style={styles.title}>{greeting}</Text>
+                        <Text style={[styles.title, { color: colors.text }]}>{greeting}</Text>
                     </Animated.View>
 
                     <Animated.View style={animStyle(subtitleAnim)}>
-                        <Text style={styles.subtitle}>
+                        <Text style={[styles.subtitle, { color: colors.secondary }]}>
                             Time to take back your focus.{'\n'}
                             Every challenge makes you sharper.
                         </Text>
                     </Animated.View>
 
                     {/* Stats preview */}
-                    <Animated.View style={[styles.statsRow, animStyle(subtitleAnim, 20)]}>
+                    <Animated.View style={[styles.statsRow, animStyle(subtitleAnim, 24), { backgroundColor: colors.card, borderColor: colors.accentLight }]}>
                         <View style={styles.statBox}>
                             <View style={styles.statIconContainer}>
                                 <LottieView
@@ -170,9 +186,9 @@ export default function LetsGoScreen() {
                                     style={styles.statLottie}
                                 />
                             </View>
-                            <Text style={styles.statLabel}>Brain Games</Text>
+                            <Text style={[styles.statLabel, { color: colors.muted }]}>Earn XP</Text>
                         </View>
-                        <View style={styles.statDivider} />
+                        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                         <View style={styles.statBox}>
                             <View style={styles.statIconContainer}>
                                 <LottieView
@@ -183,9 +199,9 @@ export default function LetsGoScreen() {
                                     style={styles.statLottie}
                                 />
                             </View>
-                            <Text style={styles.statLabel}>Daily Streaks</Text>
+                            <Text style={[styles.statLabel, { color: colors.muted }]}>Daily Streaks</Text>
                         </View>
-                        <View style={styles.statDivider} />
+                        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                         <View style={styles.statBox}>
                             <View style={styles.statIconContainer}>
                                 <LottieView
@@ -196,7 +212,7 @@ export default function LetsGoScreen() {
                                     style={styles.statLottie}
                                 />
                             </View>
-                            <Text style={styles.statLabel}>Progress</Text>
+                            <Text style={[styles.statLabel, { color: colors.muted }]}>Progress</Text>
                         </View>
                     </Animated.View>
                 </View>
@@ -223,37 +239,34 @@ const styles = StyleSheet.create({
     sparkle1: {
         position: 'absolute',
         top: '18%',
-        right: 50,
+        right: 48,
     },
     sparkle2: {
         position: 'absolute',
         top: '24%',
-        left: 40,
+        left: 48,
     },
     mascotContainer: {
         width: 120,
         height: 120,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 28,
+        marginBottom: 32,
     },
     mascotGlow: {
         position: 'absolute',
         width: 180,
         height: 180,
         borderRadius: 90,
-        backgroundColor: 'rgba(245,166,35,0.06)',
         borderWidth: 1,
-        borderColor: 'rgba(245,166,35,0.08)',
     },
     rocketAnimation: {
         width: 140,
         height: 140,
     },
     title: {
-        fontSize: 30,
-        fontWeight: '700',
-        color: '#1A1A2E',
+        fontSize: 32,
+        fontFamily: FontFamily.bold,
         textAlign: 'center',
         marginBottom: 12,
         letterSpacing: -0.3,
@@ -261,7 +274,7 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: FontSize.md,
-        color: '#6B7280',
+        fontFamily: FontFamily.regular,
         textAlign: 'center',
         lineHeight: 24,
         marginBottom: 32,
@@ -269,48 +282,46 @@ const styles = StyleSheet.create({
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        borderRadius: 12,
         paddingVertical: 16,
         paddingHorizontal: 8,
         borderWidth: 1,
-        borderColor: 'rgba(245,166,35,0.12)',
-        shadowColor: '#F5A623',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-        elevation: 3,
+        ...({
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2,
+        }),
     },
     statBox: {
         flex: 1,
         alignItems: 'center',
     },
     statIconContainer: {
-        width: 40,
-        height: 40,
-        marginBottom: 6,
+        width: 44,
+        height: 44,
+        marginBottom: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
     statLottie: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
     },
     statLabel: {
         fontSize: 12,
-        fontWeight: '600',
-        color: '#9CA3AF',
+        fontFamily: FontFamily.semibold,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     statDivider: {
         width: 1,
-        height: 36,
-        backgroundColor: '#E5E7EB',
+        height: 32,
     },
     bottomContainer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: 56,
+        paddingBottom: 48,
         alignItems: 'center',
     },
 });

@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import Constants from 'expo-constants';
 import { useStore } from '../src/store/useStore';
 import { Colors } from '../src/constants/theme';
 
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+
 export default function Index() {
-  const { onboardingComplete, isPremium } = useStore();
+  const { onboardingComplete, lastAppVersion } = useStore();
 
   useEffect(() => {
     // DEV: always show onboarding on app start
@@ -26,11 +29,18 @@ export default function Index() {
       return;
     }
 
-    if (onboardingComplete && isPremium) {
+    // Version mismatch — reset onboarding so returning users see the new flow
+    if (lastAppVersion !== APP_VERSION) {
+      useStore.setState({
+        onboardingComplete: false,
+        lastAppVersion: APP_VERSION,
+      });
+      router.replace('/onboarding');
+      return;
+    }
+
+    if (onboardingComplete) {
       router.replace('/(tabs)');
-    } else if (onboardingComplete && !isPremium) {
-      // Subscription expired or was never completed — show paywall again
-      router.replace('/onboarding/paywall');
     } else {
       router.replace('/onboarding');
     }

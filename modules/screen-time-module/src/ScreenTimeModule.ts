@@ -1,4 +1,4 @@
-import { requireNativeModule } from 'expo-modules-core';
+import { requireNativeModule, EventEmitter, type Subscription } from 'expo-modules-core';
 import { Platform } from 'react-native';
 
 interface ScreenTimeModuleNative {
@@ -38,9 +38,17 @@ const NativeModule: ScreenTimeModuleNative | null = (() => {
   }
 })();
 
+const emitter = NativeModule ? new EventEmitter(NativeModule as any) : null;
+
 export const ScreenTime = {
   /** Whether Screen Time APIs are available (iOS only) */
   isAvailable: Platform.OS === 'ios',
+
+  /** Listen for selection changes from the native app picker. */
+  addSelectionChangeListener(callback: (event: { count: number }) => void): Subscription | null {
+    if (!emitter) return null;
+    return emitter.addListener('onSelectionChange', callback);
+  },
 
   /** Request FamilyControls authorization. Returns 'approved' or 'denied'. */
   async requestAuthorization(): Promise<'approved' | 'denied'> {

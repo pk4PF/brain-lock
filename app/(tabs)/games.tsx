@@ -2,39 +2,75 @@ import { ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ChevronRight, Calculator, Grid3x3, Type, BookOpen, Zap, Palette,
+  ChevronRight, Calculator, Dumbbell, Activity, Brain, Wind,
 } from 'lucide-react-native';
 import { YStack, XStack, Text, View } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GAMES, GameType, CATEGORIES, GameCategory } from '../../src/constants/games';
 import { hapticLight } from '../../src/utils/haptics';
-import { SectionTitle } from '../../src/components/ui/SectionTitle';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { useStore } from '../../src/store/useStore';
 
-const GAME_ICONS: Record<GameType, { icon: (s: number, c: string) => React.ReactNode; bg: string }> = {
-  math: { icon: (s, c) => <Calculator size={s} color={c} />, bg: '#E8F4FF' },
-  memory: { icon: (s, c) => <Grid3x3 size={s} color={c} />, bg: '#E0FFF5' },
-  wordscramble: { icon: (s, c) => <Type size={s} color={c} />, bg: '#FFF8E7' },
-  speedread: { icon: (s, c) => <BookOpen size={s} color={c} />, bg: '#FFEEE6' },
-  reaction: { icon: (s, c) => <Zap size={s} color={c} />, bg: '#FFFCE6' },
-  colormatch: { icon: (s, c) => <Palette size={s} color={c} />, bg: '#FFE8F3' },
-};
+const MENTAL_TASKS = [
+  {
+    key: 'math',
+    title: 'Math Blitz',
+    description: 'Quick arithmetic challenges',
+    color: '#00F0FF',
+    lightGradient: ['#E6FDFF', '#C0F5FF'] as const,
+    icon: (s: number, c: string) => <Calculator size={s} color={c} />,
+    route: '/games/math',
+  },
+  {
+    key: 'meditation',
+    title: 'Meditation',
+    description: '5, 10, or 15 minute sessions',
+    color: '#A78BFA',
+    lightGradient: ['#EDE9FE', '#DDD6FE'] as const,
+    icon: (s: number, c: string) => <Wind size={s} color={c} />,
+    route: '/games/meditation',
+  },
+] as const;
+
+const PHYSICAL_TASKS = [
+  {
+    key: 'pushups',
+    title: 'Pushups',
+    description: '10, 20, or 30 reps',
+    color: '#EA580C',
+    lightGradient: ['#FFEDD5', '#FED7AA'] as const,
+    icon: (s: number, c: string) => <Dumbbell size={s} color={c} />,
+    route: '/earn/physical/pushups',
+  },
+  {
+    key: 'squats',
+    title: 'Squats',
+    description: '10, 20, or 30 reps',
+    color: '#0891B2',
+    lightGradient: ['#CFFAFE', '#A5F3FC'] as const,
+    icon: (s: number, c: string) => <Activity size={s} color={c} />,
+    route: '/earn/physical/squats',
+  },
+] as const;
 
 export default function GamesScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useThemeColors();
+  const { canEarnToday, setShowPaywall } = useStore();
 
-  const handlePlayGame = (key: GameType) => {
-    hapticLight();
-    router.push(`/games/${key}`);
+  const gate = (): boolean => {
+    if (!canEarnToday()) {
+      setShowPaywall(true);
+      return false;
+    }
+    return true;
   };
 
-  const gamesByCategory = (Object.keys(CATEGORIES) as GameCategory[]).map((cat) => ({
-    category: cat,
-    label: CATEGORIES[cat].label,
-    games: (Object.keys(GAMES) as GameType[]).filter((g) => GAMES[g].category === cat),
-  }));
+  const handleTask = (route: string) => {
+    hapticLight();
+    if (!gate()) return;
+    router.push(route as any);
+  };
 
   return (
     <YStack flex={1} backgroundColor={colors.background}>
@@ -53,77 +89,146 @@ export default function GamesScreen() {
             fontSize={28}
             fontWeight="700"
             letterSpacing={-0.5}
-            marginBottom={24}
+            marginBottom={6}
           >
-            Games
+            Earn credits
+          </Text>
+          <Text color={colors.muted} fontSize={14} marginBottom={24}>
+            Physical or mental. Your choice.
           </Text>
         </FadeInView>
 
-        {gamesByCategory.map((section, sIdx) => (
-          <FadeInView key={section.category} delay={100 + sIdx * 150}>
-            <YStack marginBottom={28}>
-              <SectionTitle title={section.label} />
-              {section.games.map((key) => {
-                const game = GAMES[key];
-                const iconConfig = GAME_ICONS[key];
-                return (
-                  <View
-                    key={key}
-                    marginBottom={10}
-                    borderRadius={20}
-                    overflow="hidden"
-                    pressStyle={{ scale: 0.98, opacity: 0.9 }}
-                    onPress={() => handlePlayGame(key)}
-                    {...Platform.select({
-                      ios: {
-                        shadowColor: game.color,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: isDark ? 0.3 : 0.18,
-                        shadowRadius: 14,
-                      },
-                      android: { elevation: 4 },
-                      default: {},
-                    })}
-                  >
-                    <LinearGradient
-                      colors={isDark ? [colors.card, colors.cardAlt] : game.lightGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 0, y: 1 }}
-                      style={{
-                        padding: 20,
-                        borderRadius: 20,
-                        borderWidth: 1.5,
-                        borderColor: isDark ? `${game.color}40` : `${game.color}30`,
-                      }}
+        {/* ── Physical Health ── */}
+        <FadeInView delay={100}>
+          <YStack marginBottom={28}>
+            <XStack alignItems="center" gap={8} marginBottom={12}>
+              <Dumbbell size={18} color={colors.accent} />
+              <Text color={colors.text} fontSize={17} fontWeight="700" letterSpacing={-0.3}>
+                Physical Health
+              </Text>
+            </XStack>
+            {PHYSICAL_TASKS.map((task) => (
+              <View
+                key={task.key}
+                marginBottom={10}
+                borderRadius={20}
+                overflow="hidden"
+                pressStyle={{ scale: 0.98, opacity: 0.9 }}
+                onPress={() => handleTask(task.route)}
+                {...Platform.select({
+                  ios: {
+                    shadowColor: task.color,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: isDark ? 0.3 : 0.18,
+                    shadowRadius: 14,
+                  },
+                  android: { elevation: 4 },
+                  default: {},
+                })}
+              >
+                <LinearGradient
+                  colors={isDark ? [colors.card, colors.cardAlt] : [...task.lightGradient]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: isDark ? `${task.color}40` : `${task.color}30`,
+                  }}
+                >
+                  <XStack alignItems="center" gap={16}>
+                    <View
+                      width={52}
+                      height={52}
+                      borderRadius={16}
+                      backgroundColor={isDark ? `${task.color}18` : `${task.color}12`}
+                      justifyContent="center"
+                      alignItems="center"
                     >
-                      <XStack alignItems="center" gap={16}>
-                        <View
-                          width={52}
-                          height={52}
-                          borderRadius={16}
-                          backgroundColor={isDark ? `${game.color}18` : `${game.color}12`}
-                          justifyContent="center"
-                          alignItems="center"
-                        >
-                          {iconConfig.icon(24, game.color)}
-                        </View>
-                        <YStack flex={1}>
-                          <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
-                            {game.title}
-                          </Text>
-                          <Text color={colors.muted} fontSize={13}>
-                            {game.description}
-                          </Text>
-                        </YStack>
-                        <ChevronRight size={18} color={`${game.color}60`} />
-                      </XStack>
-                    </LinearGradient>
-                  </View>
-                );
-              })}
-            </YStack>
-          </FadeInView>
-        ))}
+                      {task.icon(24, task.color)}
+                    </View>
+                    <YStack flex={1}>
+                      <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
+                        {task.title}
+                      </Text>
+                      <Text color={colors.muted} fontSize={13}>
+                        {task.description}
+                      </Text>
+                    </YStack>
+                    <ChevronRight size={18} color={`${task.color}60`} />
+                  </XStack>
+                </LinearGradient>
+              </View>
+            ))}
+          </YStack>
+        </FadeInView>
+
+        {/* ── Mental Health ── */}
+        <FadeInView delay={200}>
+          <YStack marginBottom={28}>
+            <XStack alignItems="center" gap={8} marginBottom={12}>
+              <Brain size={18} color={colors.accent} />
+              <Text color={colors.text} fontSize={17} fontWeight="700" letterSpacing={-0.3}>
+                Mental Health
+              </Text>
+            </XStack>
+            {MENTAL_TASKS.map((task) => (
+              <View
+                key={task.key}
+                marginBottom={10}
+                borderRadius={20}
+                overflow="hidden"
+                pressStyle={{ scale: 0.98, opacity: 0.9 }}
+                onPress={() => handleTask(task.route)}
+                {...Platform.select({
+                  ios: {
+                    shadowColor: task.color,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: isDark ? 0.3 : 0.18,
+                    shadowRadius: 14,
+                  },
+                  android: { elevation: 4 },
+                  default: {},
+                })}
+              >
+                <LinearGradient
+                  colors={isDark ? [colors.card, colors.cardAlt] : [...task.lightGradient]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: isDark ? `${task.color}40` : `${task.color}30`,
+                  }}
+                >
+                  <XStack alignItems="center" gap={16}>
+                    <View
+                      width={52}
+                      height={52}
+                      borderRadius={16}
+                      backgroundColor={isDark ? `${task.color}18` : `${task.color}12`}
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      {task.icon(24, task.color)}
+                    </View>
+                    <YStack flex={1}>
+                      <Text color={colors.text} fontSize={16} fontWeight="600" marginBottom={3}>
+                        {task.title}
+                      </Text>
+                      <Text color={colors.muted} fontSize={13}>
+                        {task.description}
+                      </Text>
+                    </YStack>
+                    <ChevronRight size={18} color={`${task.color}60`} />
+                  </XStack>
+                </LinearGradient>
+              </View>
+            ))}
+          </YStack>
+        </FadeInView>
       </ScrollView>
     </YStack>
   );

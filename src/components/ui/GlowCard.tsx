@@ -38,10 +38,10 @@ export function GlowCard({
       : `rgba(0,0,0,0.04)`;
 
   const sizeStyles = size === 'sm'
-    ? { padding: 14, borderRadius: 14 }
+    ? { padding: 12, borderRadius: 12 }
     : size === 'lg'
-      ? { padding: 24, borderRadius: 24 }
-      : { padding: 20, borderRadius: 20 };
+      ? { padding: 24, borderRadius: 12 }
+      : { padding: 16, borderRadius: 12 };
 
   return (
     <YStack
@@ -67,7 +67,7 @@ export function StatCard({ highlighted, ...rest }: { highlighted?: boolean; chil
   return (
     <YStack
       backgroundColor={colors.card}
-      borderRadius={16}
+      borderRadius={12}
       borderWidth={1}
       borderColor={highlighted ? (isDark ? `${colors.accent}30` : colors.accentGlow) : (isDark ? colors.border : `rgba(0,0,0,0.04)`)}
       padding={16}
@@ -95,7 +95,7 @@ export function ListCard({
   return (
     <YStack
       backgroundColor={colors.card}
-      borderRadius={16}
+      borderRadius={12}
       borderWidth={1}
       borderColor={accent ? (isDark ? `${colors.accent}25` : colors.accentGlow) : (isDark ? colors.border : `rgba(0,0,0,0.04)`)}
       padding={16}

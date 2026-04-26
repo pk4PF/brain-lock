@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrainLock Icon Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0A0A0A;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+  .sub { color: #666; font-size: 14px; margin-bottom: 40px; }
+
+  .upload-zone {
+    width: 300px;
+    height: 300px;
+    border: 2px dashed #333;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #111;
+    margin-bottom: 30px;
+    overflow: hidden;
+    position: relative;
+  }
+  .upload-zone:hover { border-color: #E8850C; background: #1a1510; }
+  .upload-zone.has-image { border-color: #1B6B3C; border-style: solid; }
+  .upload-zone img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .upload-zone .placeholder {
+    text-align: center;
+    color: #555;
+  }
+  .upload-zone .placeholder .icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone .placeholder p { font-size: 14px; font-weight: 600; }
+  .upload-zone .placeholder small { font-size: 11px; color: #444; margin-top: 6px; display: block; }
+
+  input[type="file"] { display: none; }
+
+  .outputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 30px;
+    max-width: 700px;
+  }
+  .output-card {
+    background: #151515;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    width: 150px;
+  }
+  .output-card canvas {
+    border-radius: 16px;
+    margin-bottom: 10px;
+    image-rendering: auto;
+  }
+  .output-card .name { font-size: 12px; font-weight: 700; color: #ccc; margin-bottom: 2px; }
+  .output-card .size { font-size: 11px; color: #555; margin-bottom: 10px; }
+
+  .dl-btn {
+    background: #E8850C;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s;
+    width: 100%;
+  }
+  .dl-btn:hover { background: #D4700A; }
+  .dl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .dl-all {
+    background: linear-gradient(135deg, #1B6B3C, #145830);
+    color: #fff;
+    border: none;
+    padding: 16px 48px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: transform 0.15s;
+  }
+  .dl-all:hover { transform: scale(1.03); }
+  .dl-all:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .instructions {
+    margin-top: 40px;
+    background: #151515;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 600px;
+    width: 100%;
+  }
+  .instructions h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #E8850C; }
+  .instructions ol { padding-left: 20px; }
+  .instructions li { color: #999; font-size: 13px; line-height: 1.8; }
+  .instructions code {
+    background: #0a0a0a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #E8850C;
+  }
+
+  .status {
+    margin-top: 16px;
+    color: #1B6B3C;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>BrainLock Icon Generator</h1>
+<p class="sub">Upload your icon image &mdash; generates all required sizes for Expo/App Store</p>
+
+<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+  <div class="placeholder" id="placeholder">
+    <div class="icon">🧠</div>
+    <p>Click or drag your icon here</p>
+    <small>Recommended: 1024 x 1024 PNG</small>
+  </div>
+</div>
+<input type="file" id="fileInput" accept="image/*">
+
+<div class="outputs" id="outputs"></div>
+
+<button class="dl-all" id="dlAllBtn" disabled onclick="downloadAll()">Download All Icons</button>
+<div class="status" id="status"></div>
+
+<div class="instructions">
+  <h3>After downloading:</h3>
+  <ol>
+    <li>Move <code>icon.png</code> to <code>brain-lock-app/assets/icon.png</code> (replace existing)</li>
+    <li>Move <code>adaptive-icon.png</code> to <code>brain-lock-app/assets/adaptive-icon.png</code></li>
+    <li>Move <code>splash-icon.png</code> to <code>brain-lock-app/assets/splash-icon.png</code></li>
+    <li>Move <code>favicon.png</code> to <code>brain-lock-app/assets/favicon.png</code></li>
+    <li>Run <code>eas build --platform ios --profile production --auto-submit</code></li>
+  </ol>
+</div>
+
+<script>
+const ICONS = [
+  { name: 'icon.png',          size: 1024, radius: 0,   desc: 'App Icon (iOS/Android)' },
+  { name: 'adaptive-icon.png', size: 1024, radius: 0,   desc: 'Android Adaptive' },
+  { name: 'splash-icon.png',   size: 1024, radius: 0,   desc: 'Splash Screen' },
+  { name: 'favicon.png',       size: 48,   radius: 0,   desc: 'Web Favicon' },
+];
+
+let sourceImage = null;
+
+// Drag and drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = '#E8850C'; });
+zone.addEventListener('dragleave', () => { zone.style.borderColor = sourceImage ? '#1B6B3C' : '#333'; });
+zone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      // Update upload zone preview
+      zone.innerHTML = '';
+      zone.classList.add('has-image');
+      const preview = document.createElement('img');
+      preview.src = e.target.result;
+      zone.appendChild(preview);
+
+      generateIcons();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function generateIcons() {
+  const container = document.getElementById('outputs');
+  container.innerHTML = '';
+
+  ICONS.forEach((icon, i) => {
+    const card = document.createElement('div');
+    card.className = 'output-card';
+
+    // Create canvas at target size
+    const canvas = document.createElement('canvas');
+    canvas.width = icon.size;
+    canvas.height = icon.size;
+    const ctx = canvas.getContext('2d');
+
+    // Fill white background (no alpha!)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, icon.size, icon.size);
+
+    // Draw source image, centered and covering
+    const src = sourceImage;
+    const scale = Math.max(icon.size / src.width, icon.size / src.height);
+    const w = src.width * scale;
+    const h = src.height * scale;
+    const x = (icon.size - w) / 2;
+    const y = (icon.size - h) / 2;
+    ctx.drawImage(src, x, y, w, h);
+
+    // Display preview (scaled down)
+    const previewSize = Math.min(120, icon.size);
+    canvas.style.width = previewSize + 'px';
+    canvas.style.height = previewSize + 'px';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = icon.name;
+
+    const sizeEl = document.createElement('div');
+    sizeEl.className = 'size';
+    sizeEl.textContent = icon.size + ' × ' + icon.size + 'px';
+
+    const btn = document.createElement('button');
+    btn.className = 'dl-btn';
+    btn.textContent = 'Download';
+    btn.onclick = () => downloadIcon(canvas, icon.name);
+
+    card.appendChild(canvas);
+    card.appendChild(nameEl);
+    card.appendChild(sizeEl);
+    card.appendChild(btn);
+    container.appendChild(card);
+  });
+
+  document.getElementById('dlAllBtn').disabled = false;
+  document.getElementById('status').textContent = 'Icons generated! Download and move to assets/ folder.';
+}
+
+function downloadIcon(canvas, filename) {
+  const link = document.createElement('a');
+  link.download = filename;
+  // Export as PNG without alpha by drawing to a fresh opaque canvas
+  const opaqueCanvas = document.createElement('canvas');
+  opaqueCanvas.width = canvas.width;
+  opaqueCanvas.height = canvas.height;
+  const ctx = opaqueCanvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(canvas, 0, 0);
+  link.href = opaqueCanvas.toDataURL('image/png');
+  link.click();
+}
+
+async function downloadAll() {
+  const btn = document.getElementById('dlAllBtn');
+  btn.disabled = true;
+  btn.textContent = 'Downloading...';
+
+  const canvases = document.querySelectorAll('.output-card canvas');
+  for (let i = 0; i < ICONS.length; i++) {
+    downloadIcon(canvases[i], ICONS[i].name);
+    if (i < ICONS.length - 1) await new Promise(r => setTimeout(r, 500));
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Download All Icons';
+  document.getElementById('status').textContent = 'All icons downloaded! Move them to your assets/ folder.';
+}
+</script>
+
+</body>
+</html>
