@@ -1,8 +1,10 @@
 import { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { FontFamily } from '../constants/theme';
+import { FontFamily, Spacing } from '../constants/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { GameHeader } from './games/GameLayout';
+import { hapticMedium } from '../utils/haptics';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -21,198 +23,158 @@ interface DifficultyOption {
 }
 
 const OPTIONS: DifficultyOption[] = [
-  { id: 'easy', label: 'Easy', sublabel: 'Warm up', credits: 5, dots: 1 },
+  { id: 'easy',   label: 'Easy',   sublabel: 'Warm up',    credits: 5,  dots: 1 },
   { id: 'medium', label: 'Medium', sublabel: 'Train hard', credits: 10, dots: 2 },
-  { id: 'hard', label: 'Hard', sublabel: 'Grind', credits: 15, dots: 3 },
+  { id: 'hard',   label: 'Hard',   sublabel: 'Grind',      credits: 15, dots: 3 },
 ];
 
 interface Props {
   gameTitle: string;
   accentColor: string;
-  gradient: readonly [string, string, ...string[]];
   onSelect: (difficulty: Difficulty) => void;
+  onBack?: () => void;
 }
 
-export default function DifficultyPicker({ gameTitle, accentColor, gradient, onSelect }: Props) {
+export default function DifficultyPicker({ gameTitle, accentColor, onSelect, onBack }: Props) {
+  const { colors } = useThemeColors();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
   const cardAnims = useRef(OPTIONS.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
-    ]).start();
-
-    setTimeout(() => {
-      Animated.stagger(80, cardAnims.map((a) =>
-        Animated.spring(a, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true })
-      )).start();
-    }, 200);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+    Animated.stagger(70, cardAnims.map((a) =>
+      Animated.spring(a, { toValue: 1, friction: 7, tension: 65, useNativeDriver: true })
+    )).start();
   }, []);
 
   return (
-    <LinearGradient colors={gradient} style={styles.container}>
-      {/* Back button */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <GameHeader title={gameTitle} hue={accentColor} onClose={onBack ?? (() => router.back())} />
 
-      <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        <Text style={styles.gameTitle}>{gameTitle}</Text>
-        <Text style={styles.prompt}>Choose your difficulty</Text>
-      </Animated.View>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, paddingHorizontal: Spacing.xl, paddingBottom: 40 }}>
+        <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 28 }}>
+          <Text style={[styles.eyebrow, { color: colors.muted }]}>CHOOSE DIFFICULTY</Text>
+          <Text style={[styles.heading, { color: colors.text }]}>How hard do you want to push?</Text>
+        </View>
 
-      <View style={styles.cards}>
-        {OPTIONS.map((opt, i) => (
-          <Animated.View
-            key={opt.id}
-            style={{
-              flex: 1,
-              opacity: cardAnims[i],
-              transform: [{
-                translateY: cardAnims[i].interpolate({ inputRange: [0, 1], outputRange: [24, 0] }),
-              }],
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.75}
-              onPress={() => onSelect(opt.id)}
-              style={styles.cardTouch}
+        <View style={{ gap: 12 }}>
+          {OPTIONS.map((opt, i) => (
+            <Animated.View
+              key={opt.id}
+              style={{
+                opacity: cardAnims[i],
+                transform: [{ translateY: cardAnims[i].interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+              }}
             >
-              <View style={[styles.card, { borderColor: `${accentColor}30` }]}>
-                {/* Dots */}
-                <View style={styles.dots}>
-                  {Array.from({ length: 3 }, (_, k) => (
-                    <View
-                      key={k}
-                      style={[
-                        styles.dot,
-                        { backgroundColor: k < opt.dots ? accentColor : `${accentColor}20` },
-                      ]}
-                    />
-                  ))}
+              <TouchableOpacity
+                activeOpacity={0.78}
+                onPress={() => { hapticMedium(); onSelect(opt.id); }}
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.cardLeft}>
+                  <View style={styles.dots}>
+                    {Array.from({ length: 3 }, (_, k) => (
+                      <View
+                        key={k}
+                        style={[
+                          styles.dot,
+                          { backgroundColor: k < opt.dots ? accentColor : `${accentColor}26` },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <View>
+                    <Text style={[styles.cardLabel, { color: colors.text }]}>{opt.label}</Text>
+                    <Text style={[styles.cardSub, { color: colors.muted }]}>{opt.sublabel}</Text>
+                  </View>
                 </View>
 
-                <Text style={styles.cardLabel}>{opt.label}</Text>
-                <Text style={[styles.cardSub, { color: `rgba(255,255,255,0.5)` }]}>{opt.sublabel}</Text>
-
-                <View style={[styles.creditBadge, { backgroundColor: `${accentColor}20`, borderColor: `${accentColor}40` }]}>
+                <View style={[styles.creditBadge, { backgroundColor: `${accentColor}1A`, borderColor: `${accentColor}33` }]}>
                   <Text style={[styles.creditText, { color: accentColor }]}>+{opt.credits}</Text>
-                  <Text style={[styles.creditLabel, { color: `${accentColor}99` }]}>credits</Text>
+                  <Text style={[styles.creditLabel, { color: accentColor }]}>cells</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        ))}
-      </View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
 
-      <Animated.Text style={[styles.footer, { opacity: fadeAnim }]}>
-        Harder = more credits earned
-      </Animated.Text>
-    </LinearGradient>
+        <Text style={[styles.footer, { color: colors.muted }]}>
+          Harder = more brain cells per win.
+        </Text>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 64,
-    paddingBottom: 40,
-  },
-  backBtn: {
-    position: 'absolute',
-    top: 56,
-    left: 20,
-  },
-  backText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 15,
+  eyebrow: {
+    fontSize: 11,
     fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    marginBottom: 8,
   },
-  header: {
-    alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 40,
-  },
-  gameTitle: {
-    fontSize: 28,
-    fontFamily: FontFamily.heavy,
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-    marginBottom: 6,
-  },
-  prompt: {
-    fontSize: 14,
+  heading: {
+    fontSize: 22,
     fontFamily: FontFamily.medium,
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 0.3,
-  },
-  cards: {
-    flexDirection: 'row',
-    gap: 10,
-    flex: 1,
-  },
-  cardTouch: {
-    flex: 1,
-    height: '100%',
+    letterSpacing: -0.4,
+    textAlign: 'center',
   },
   card: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   dots: {
     flexDirection: 'row',
-    gap: 5,
-    marginBottom: 4,
+    gap: 4,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   cardLabel: {
-    fontSize: 18,
-    fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
   },
   cardSub: {
-    fontSize: 12,
-    fontFamily: FontFamily.medium,
-    textAlign: 'center',
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
   },
   creditBadge: {
-    marginTop: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
   },
   creditText: {
-    fontSize: 22,
-    fontFamily: FontFamily.heavy,
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.4,
   },
   creditLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: FontFamily.medium,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    opacity: 0.85,
   },
   footer: {
     textAlign: 'center',
     fontSize: 12,
     fontFamily: FontFamily.regular,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 20,
+    marginTop: 22,
   },
 });

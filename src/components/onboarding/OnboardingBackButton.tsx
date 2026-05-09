@@ -1,4 +1,4 @@
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
@@ -8,6 +8,13 @@ interface OnboardingBackButtonProps {
     onPress?: () => void;
 }
 
+/**
+ * The back chevron used on every onboarding screen.
+ *
+ * Sits *below* the progress bar (not on top of it) so the two never
+ * visually collide. Uses a soft circular card-tinted background so the
+ * arrow reads clearly against any onboarding hero.
+ */
 export default function OnboardingBackButton({ onPress }: OnboardingBackButtonProps) {
     const insets = useSafeAreaInsets();
     const { colors } = useThemeColors();
@@ -22,12 +29,30 @@ export default function OnboardingBackButton({ onPress }: OnboardingBackButtonPr
 
     return (
         <TouchableOpacity
-            style={[styles.button, { top: insets.top + 8 }]}
+            // The progress bar lives at ~insets.top + 22, with a 4px track.
+            // Sit clearly below it so they never overlap.
+            style={[
+                styles.button,
+                {
+                    top: insets.top + 38,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    ...Platform.select({
+                        ios: {
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.12,
+                            shadowRadius: 4,
+                        },
+                        android: { elevation: 2 },
+                    }),
+                },
+            ]}
             onPress={handlePress}
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-            <ArrowLeft size={24} color={colors.text} strokeWidth={2} />
+            <ArrowLeft size={20} color={colors.text} strokeWidth={2.4} />
         </TouchableOpacity>
     );
 }
@@ -37,8 +62,10 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 20,
         zIndex: 10,
-        width: 44,
-        height: 44,
+        width: 40,
+        height: 40,
+        borderRadius: 999,
+        borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },

@@ -11,25 +11,37 @@ export default function Index() {
   const { onboardingComplete, lastAppVersion } = useStore();
 
   useEffect(() => {
-    // DEV: always show onboarding on app start
+    // DEV: always show onboarding on app start, fully reset so the sliders
+    // and survey screens start blank and the cream theme is forced.
     if (__DEV__) {
       const { settings } = useStore.getState();
       useStore.setState({
         onboardingComplete: false,
         dailyGamesCompleted: 0,
         appsUnlocked: false,
+        // Clear survey answers so sliders open at default, not previous run.
+        userName: '',
+        userAge: null,
+        dailyScreenTimeHours: 0,
+        userGoals: [],
+        userStruggles: [],
+        // Clear the review-prompt flag every dev session. Without this, once
+        // the flag is set the in-onboarding review screen + the global
+        // maybeShowReviewPrompt() helper short-circuit forever.
+        reviewPromptShownAt: null,
         settings: {
           ...settings,
+          // Force the cream/light onboarding palette every fresh session.
+          theme: 'light',
           screenTimeAuthorized: false,
           screenTimeAppCount: 0,
-          screenTimeScheduleEnabled: false,
         },
       });
       router.replace('/onboarding');
       return;
     }
 
-    // Version mismatch — reset onboarding so returning users see the new flow
+    // Version mismatch - reset onboarding so returning users see the new flow
     if (lastAppVersion !== APP_VERSION) {
       useStore.setState({
         onboardingComplete: false,

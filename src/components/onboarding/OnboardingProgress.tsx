@@ -1,6 +1,6 @@
 import { View, StyleSheet, Animated } from 'react-native';
 import { useRef, useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface OnboardingProgressProps {
     currentStep: number;
@@ -12,6 +12,7 @@ export default function OnboardingProgress({
     totalSteps,
 }: OnboardingProgressProps) {
     const widthAnim = useRef(new Animated.Value(0)).current;
+    const { colors } = useThemeColors();
 
     useEffect(() => {
         Animated.spring(widthAnim, {
@@ -24,25 +25,19 @@ export default function OnboardingProgress({
 
     return (
         <View style={styles.container}>
-            <View style={styles.track}>
+            <View style={[styles.track, { backgroundColor: colors.cardAlt }]}>
                 <Animated.View
                     style={[
-                        styles.fillContainer,
+                        styles.fill,
                         {
+                            backgroundColor: colors.text,
                             width: widthAnim.interpolate({
                                 inputRange: [0, 100],
                                 outputRange: ['0%', '100%'],
                             }),
                         },
                     ]}
-                >
-                    <LinearGradient
-                        colors={['#E8850C', '#D4700A']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.gradient}
-                    />
-                </Animated.View>
+                />
             </View>
         </View>
     );
@@ -54,17 +49,12 @@ const styles = StyleSheet.create({
         paddingTop: 16,
     },
     track: {
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: '#E5E7EB',
+        height: 4,
+        borderRadius: 2,
         overflow: 'hidden',
     },
-    fillContainer: {
+    fill: {
         height: '100%',
-        borderRadius: 3,
-        overflow: 'hidden',
-    },
-    gradient: {
-        flex: 1,
+        borderRadius: 2,
     },
 });

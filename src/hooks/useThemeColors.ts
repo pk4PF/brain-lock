@@ -6,9 +6,11 @@ export function useThemeColors() {
   const systemScheme = useColorScheme();
   const themePref = useStore((s) => s.settings.theme);
 
-  const mode = themePref === 'system'
-    ? (systemScheme ?? 'light')
-    : themePref;
+  // Light-first product. We render the warm-cream light palette unless the
+  // user has explicitly chosen dark mode in settings. Friendlier first
+  // impression for onboarding and matches the brand mood.
+  void systemScheme;
+  const mode = themePref === 'dark' ? 'dark' : 'light';
 
   const isDark = mode === 'dark';
 

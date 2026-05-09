@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'BrainLock',
     slug: 'brain-lock',
-    version: '1.2.0',
+    version: '1.4.3',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -16,10 +16,11 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.pk4pf.brain-lock',
-      buildNumber: '200',
+      buildNumber: '202',
       deploymentTarget: '16.0',
       entitlements: {
         'com.apple.developer.family-controls': true,
+        'com.apple.security.application-groups': ['group.com.pk4pf.brain-lock'],
       },
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,

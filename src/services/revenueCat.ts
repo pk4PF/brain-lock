@@ -15,7 +15,7 @@ const API_KEYS = {
     android: 'goog_XXXXXXXXXXXXXXXXXXXXXXXX',
 };
 
-export async function initRevenueCat(): Promise<void> {
+export async function initRevenueCat(appUserID?: string | null): Promise<void> {
     if (API_KEYS.ios === 'appl_XXXXXXXXXXXXXXXXXXXXXXXX') {
         console.warn('REVENUECAT API KEY MISSING: Please replace API_KEYS.ios in src/services/revenueCat.ts with your actual Public App-Specific API Key from RevenueCat.');
     }
@@ -24,9 +24,28 @@ export async function initRevenueCat(): Promise<void> {
         Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     }
 
+    // Configure first as anonymous so RevenueCat can alias an existing
+    // $RCAnonymousID customer to the real ID via logIn() below. Calling
+    // configure() with appUserID directly would create a fresh customer
+    // and orphan any existing anonymous purchases.
     await Purchases.configure({
         apiKey: Platform.OS === 'ios' ? API_KEYS.ios : API_KEYS.android,
     });
+
+    if (appUserID) {
+        try {
+            const { customerInfo, created } = await Purchases.logIn(appUserID);
+            if (__DEV__) {
+                console.log('[RevenueCat] logIn:', {
+                    appUserID,
+                    created,
+                    originalAppUserId: customerInfo.originalAppUserId,
+                });
+            }
+        } catch (err) {
+            if (__DEV__) console.warn('[RevenueCat] logIn failed:', err);
+        }
+    }
 }
 
 /** Listen for real-time subscription state changes. Returns unsubscribe function. */

@@ -1,5 +1,22 @@
 import { useEffect, useState, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Text, TextInput } from 'react-native';
+
+// Cap iOS Dynamic Type / accessibility text scaling at 1.5× project-wide.
+// Without this, users on maximum accessibility settings get 3× scaling, which
+// pushes Continue buttons off-screen and breaks fixed layouts. 1.5× is the
+// sweet spot: still meaningfully larger for accessibility, doesn't shred
+// layouts. Per-screen overrides are still possible by passing
+// `maxFontSizeMultiplier` directly to a Text element.
+// Use defaultProps assignment (the @ts-expect-error is for the missing
+// type - the property exists at runtime in RN).
+// @ts-expect-error: defaultProps is a valid RN escape hatch for global text caps
+Text.defaultProps = Text.defaultProps || {};
+// @ts-expect-error: as above
+Text.defaultProps.maxFontSizeMultiplier = 1.5;
+// @ts-expect-error: as above
+TextInput.defaultProps = TextInput.defaultProps || {};
+// @ts-expect-error: as above
+TextInput.defaultProps.maxFontSizeMultiplier = 1.5;
 import { Stack, usePathname, useGlobalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { TamaguiProvider } from 'tamagui';
@@ -8,17 +25,17 @@ import tamaguiConfig from '../tamagui.config';
 import { useStore } from '../src/store/useStore';
 import { useThemeColors } from '../src/hooks/useThemeColors';
 import { initRevenueCat, getCurrentCustomerInfo, checkPremiumStatus, addSubscriptionListener } from '../src/services/revenueCat';
-import { initAnalytics, identify, setPersonProperties, getPostHogClient } from '../src/services/analytics';
+import { initAnalytics, identify, setPersonProperties, getPostHogClient, track } from '../src/services/analytics';
+import Constants from 'expo-constants';
 import { ScreenTime } from 'screen-time-module';
 import { preloadSounds } from '../src/utils/sounds';
 import {
   useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+} from '@expo-google-fonts/geist';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Prevent the native splash from auto-hiding
@@ -28,11 +45,10 @@ export default function RootLayout() {
   const [storeReady, setStoreReady] = useState(false);
 
   const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
   });
 
   useEffect(() => {
@@ -45,7 +61,7 @@ export default function RootLayout() {
 
     // Initialize PostHog analytics
     initAnalytics().then(() => {
-      const { userName, userStruggles, ageBand, isPremium, subscriptionPlan } = useStore.getState();
+      const { userName, userStruggles, ageBand, isPremium, subscriptionPlan, referralSource } = useStore.getState();
       if (userName) {
         identify(userName, { userName });
       }
@@ -55,12 +71,36 @@ export default function RootLayout() {
         ageBand,
         isPremium,
         subscriptionPlan,
+        referral_source: referralSource,
+      });
+
+      // Probe event. Used to verify the PostHog connection is healthy on
+      // every install — the first thing we look for in PostHog → Activity →
+      // Live Events when investigating a silent funnel.
+      track('app_launched', {
+        version: Constants.expoConfig?.version ?? 'unknown',
+        build:
+          Constants.expoConfig?.ios?.buildNumber ??
+          Constants.expoConfig?.android?.versionCode ??
+          'unknown',
       });
     });
 
-    // Initialize RevenueCat and re-validate subscription
+    // Initialize RevenueCat and re-validate subscription. Use the PostHog
+    // distinctId as the RevenueCat appUserID so paying customers in the
+    // RevenueCat dashboard match users in PostHog instead of showing as
+    // "Anonymous". On first run for existing anonymous customers, logIn()
+    // aliases the $RCAnonymousID to this ID so entitlements carry over.
     let unsubListener: (() => void) | undefined;
-    initRevenueCat()
+    let rcAppUserID: string | undefined;
+    try {
+      const ph = getPostHogClient();
+      const id = ph?.getDistinctId();
+      if (typeof id === 'string' && id.length > 0) rcAppUserID = id;
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to read PostHog distinctId for RC:', err);
+    }
+    initRevenueCat(rcAppUserID)
       .then(async () => {
         // Clear stale 'lifetime' plan left over from old dev bypass
         if (useStore.getState().subscriptionPlan === 'lifetime') {
@@ -73,7 +113,7 @@ export default function RootLayout() {
             const customerInfo = await getCurrentCustomerInfo();
             if (!checkPremiumStatus(customerInfo)) {
               clearSubscription();
-              if (__DEV__) console.log('Subscription expired or revoked — cleared premium status');
+              if (__DEV__) console.log('Subscription expired or revoked - cleared premium status');
             }
           } catch (err) {
             if (__DEV__) console.warn('Failed to validate subscription:', err);
@@ -86,10 +126,10 @@ export default function RootLayout() {
           const isActive = checkPremiumStatus(customerInfo);
           if (state.isPremium && !isActive) {
             state.clearSubscription();
-            if (__DEV__) console.log('Subscription state changed — cleared premium');
+            if (__DEV__) console.log('Subscription state changed - cleared premium');
           } else if (!state.isPremium && isActive) {
             state.setSubscription('restored');
-            if (__DEV__) console.log('Subscription state changed — restored premium');
+            if (__DEV__) console.log('Subscription state changed - restored premium');
           }
         });
       })

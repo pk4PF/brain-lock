@@ -57,8 +57,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: isDark ? '#4A4A5A' : '#B0A99F',
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 12,
+          fontFamily: 'Geist_500Medium',
           letterSpacing: 0.2,
           marginTop: -2,
         },

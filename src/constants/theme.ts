@@ -1,129 +1,201 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-export const LightColors = {
-  background: '#FBF5EC',
-  card: '#FFFFFF',
-  cardAlt: '#F5EFE6',
-  border: '#E8DFD3',
-  muted: '#9C9389',
-  secondary: '#6B6359',
-  text: '#1A1A2E',
-  accent: '#E8850C',
-  accentDark: '#D4700A',
-  accentLight: 'rgba(232,133,12,0.10)',
-  accentGlow: 'rgba(232,133,12,0.20)',
+// ─────────────────────────────────────────────
+// COLOUR SYSTEM - dark-first, single warm orange accent.
+// We allow each *game* its own quiet accent hue (see GameAccents),
+// but the rest of the app stays monochrome with one accent.
+//
+// "Playful but minimal":
+//   - Warm cream paper for light mode (not stark white)
+//   - A touch of warm tint on dark surfaces (not pure black)
+//   - One accent that already feels playful (warm orange)
+// ─────────────────────────────────────────────
+
+export const DarkColors = {
+  background: '#0E0D0C',     // warm near-black, not pure
+  card: '#161412',           // hint of warmth
+  cardAlt: '#1B1916',
+  border: '#231F1B',
+  borderStrong: '#2D2924',
+  muted: '#666058',
+  secondary: '#9A938A',
+  text: '#F5F1EC',           // warm off-white, easier on eyes
+  accent: '#FF6A1A',
+  accentDark: '#E55A12',
+  accentSoft: '#FF8A4A',
+  accentLight: 'rgba(255,106,26,0.12)',
+  accentGlow: 'rgba(255,106,26,0.22)',
   info: '#3B82F6',
   infoLight: 'rgba(59,130,246,0.10)',
   success: '#22C55E',
+  successLight: 'rgba(34,197,94,0.14)',
   error: '#EF4444',
   transparent: 'transparent',
 };
 
-export const DarkColors: typeof LightColors = {
-  background: '#0B0B10',
-  card: '#141420',
-  cardAlt: '#1C1C2E',
-  border: '#2A2A3C',
-  muted: '#6B7280',
-  secondary: '#9CA3AF',
-  text: '#F0F0F5',
-  accent: '#FFD54F',
-  accentDark: '#FFC107',
-  accentLight: 'rgba(255,213,79,0.12)',
-  accentGlow: 'rgba(255,213,79,0.25)',
-  info: '#60A5FA',
-  infoLight: 'rgba(96,165,250,0.12)',
-  success: '#22C55E',
-  error: '#EF4444',
+// Warm cream light mode - paper feel, not stark white.
+// Notion-meets-Duolingo: friendly background, generous warmth.
+export const LightColors: typeof DarkColors = {
+  background: '#FAF6F0',     // warm cream paper
+  card: '#FFFFFF',           // pure white card pops against cream
+  cardAlt: '#F4EFE7',
+  border: '#EBE3D5',         // warm hairline
+  borderStrong: '#D8CDB8',
+  muted: '#A39686',
+  secondary: '#6A6056',
+  text: '#1A1612',           // warm near-black
+  accent: '#FF6A1A',
+  accentDark: '#E55A12',
+  accentSoft: '#FF8A4A',
+  accentLight: 'rgba(255,106,26,0.10)',
+  accentGlow: 'rgba(255,106,26,0.18)',
+  info: '#3B82F6',
+  infoLight: 'rgba(59,130,246,0.08)',
+  success: '#16A34A',
+  successLight: 'rgba(22,163,74,0.12)',
+  error: '#DC2626',
   transparent: 'transparent',
 };
 
-// Backward compat
-export const Colors = LightColors;
+// ─────────────────────────────────────────────
+// PER-GAME ACCENTS - one place to change, used by:
+//   • the games-tab tile illustration + tinted card
+//   • the game's intro/HUD/result accent strokes
+// Each game keeps its own personality without becoming a
+// rainbow gradient screen.
+// ─────────────────────────────────────────────
+export const GameAccents = {
+  memory:    { hue: '#8B5CF6', tintLight: 'rgba(139,92,246,0.08)', tintDark: 'rgba(139,92,246,0.12)' },
+  'word-recall': { hue: '#10B981', tintLight: 'rgba(16,185,129,0.08)', tintDark: 'rgba(16,185,129,0.12)' },
+  math:      { hue: '#F97316', tintLight: 'rgba(249,115,22,0.08)', tintDark: 'rgba(249,115,22,0.14)' },
+  focus:     { hue: '#3B82F6', tintLight: 'rgba(59,130,246,0.08)', tintDark: 'rgba(59,130,246,0.12)' },
+  reaction:  { hue: '#E53935', tintLight: 'rgba(229,57,53,0.08)', tintDark: 'rgba(229,57,53,0.14)' },
+  // Day-1 launch batch. Hues chosen to be distinct from the existing 5
+  // while still living inside the warm/cool/saturation palette.
+  sequence:    { hue: '#A855F7', tintLight: 'rgba(168,85,247,0.08)',  tintDark: 'rgba(168,85,247,0.12)' },
+  anagram:     { hue: '#0EA5E9', tintLight: 'rgba(14,165,233,0.08)',  tintDark: 'rgba(14,165,233,0.12)' },
+  'color-match': { hue: '#EC4899', tintLight: 'rgba(236,72,153,0.08)', tintDark: 'rgba(236,72,153,0.12)' },
+  'block-tap': { hue: '#F59E0B', tintLight: 'rgba(245,158,11,0.08)',  tintDark: 'rgba(245,158,11,0.14)' },
+  'number-seq': { hue: '#14B8A6', tintLight: 'rgba(20,184,166,0.08)', tintDark: 'rgba(20,184,166,0.12)' },
+  // Hero marketing game. Deep teal so the lit tiles pop hard against the
+  // warm cream background and don't collide with Memory Match's purple.
+  'tile-recall': { hue: '#0EA5A5', tintLight: 'rgba(14,165,165,0.08)', tintDark: 'rgba(14,165,165,0.12)' },
+} as const;
 
-export type ThemeColors = typeof LightColors;
+export type GameAccentKey = keyof typeof GameAccents;
+
+export const Colors = DarkColors;
+export type ThemeColors = typeof DarkColors;
 
 export function getColors(mode: 'light' | 'dark'): ThemeColors {
   return mode === 'dark' ? DarkColors : LightColors;
 }
 
+// ─────────────────────────────────────────────
+// GRADIENTS - kept for legacy components, but new
+// surfaces should NOT use gradients. Use solid
+// `card` + 1px `border` instead.
+// ─────────────────────────────────────────────
 export const Gradients = {
   light: {
-    cardWarm: ['#FFFFFF', '#FFF8EE'] as [string, string],
-    heroGreen: ['#1B6B3C', '#145830', '#0D4025'] as [string, string, string],
-    heroPrimary: ['#C46A08', '#A85506', '#8B4205'] as [string, string, string],
-    heroDeep: ['#2C1810', '#4A2812', '#2C1810'] as [string, string, string],
-    cardSurface: ['#FFFFFF', '#FDFAF5'] as [string, string],
+    cta: ['#FF6A1A', '#FF6A1A'] as [string, string],
+    heroPrimary: ['#FF6A1A', '#FF6A1A', '#FF6A1A'] as [string, string, string],
+    heroWarm: ['#FFFFFF', '#FAFAFA'] as [string, string],
+    cardWarm: ['#FFFFFF', '#FAFAFA'] as [string, string],
+    cardSurface: ['#FFFFFF', '#FAFAFA'] as [string, string],
+    heroDeep: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
+    heroGreen: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
   },
   dark: {
-    cardWarm: ['#141420', '#1A1814'] as [string, string],
-    heroGreen: ['#0A2A1A', '#0D3520', '#082E18'] as [string, string, string],
-    heroPrimary: ['#1A1508', '#251C06', '#1A1508'] as [string, string, string],
-    heroDeep: ['#1A1508', '#251C06', '#1A1508'] as [string, string, string],
-    cardSurface: ['#141420', '#18182A'] as [string, string],
+    cta: ['#FF6A1A', '#FF6A1A'] as [string, string],
+    heroPrimary: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
+    heroWarm: ['#0B0B0B', '#121212'] as [string, string],
+    cardWarm: ['#121212', '#0F0F0F'] as [string, string],
+    cardSurface: ['#121212', '#181818'] as [string, string],
+    heroDeep: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
+    heroGreen: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
   },
 };
 
+// ─────────────────────────────────────────────
+// SPACING - strict 8pt grid
+// ─────────────────────────────────────────────
 export const Spacing = {
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 24,
-  xxl: 24,
-  xxxl: 32,
-  xxxxl: 48,
+  xxl: 32,
+  xxxl: 40,
+  xxxxl: 56,
 };
 
+// ─────────────────────────────────────────────
+// TYPOGRAPHY - Geist. One display per screen, medium for labels,
+// regular for body. Bumped a notch in v1.1 - original sizes felt
+// too small/SaaS-y on real devices.
+// ─────────────────────────────────────────────
 export const FontSize = {
-  xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 17,
-  xl: 20,
-  xxl: 28,
-  hero: 32,
+  xs: 12,
+  sm: 14,
+  md: 16,
+  lg: 18,
+  xl: 22,
+  xxl: 26,
+  hero: 34,
 };
 
 export const FontFamily = {
-  regular: 'PlusJakartaSans_400Regular',
-  medium: 'PlusJakartaSans_500Medium',
-  semibold: 'PlusJakartaSans_600SemiBold',
-  bold: 'PlusJakartaSans_700Bold',
-  heavy: 'PlusJakartaSans_800ExtraBold',
+  regular:  'Geist_400Regular',
+  medium:   'Geist_500Medium',
+  semibold: 'Geist_600SemiBold',
+  bold:     'Geist_700Bold',
+  heavy:    'Geist_700Bold', // We only load up to 700 to keep the bundle small
 };
 
 export const FontWeight = {
-  regular: '400' as const,
-  medium: '400' as const,
+  regular:  '400' as const,
+  medium:   '500' as const,
   semibold: '600' as const,
-  bold: '700' as const,
-  heavy: '700' as const,
+  bold:     '700' as const,
+  heavy:    '700' as const,
 };
 
+// ─────────────────────────────────────────────
+// SHAPE - restrained radii. 16 max for cards.
+// ─────────────────────────────────────────────
 export const BorderRadius = {
-  sm: 8,
-  md: 12,
-  lg: 12,
-  xl: 12,
-  xxl: 12,
+  sm:   8,
+  md:   12,
+  lg:   14,
+  xl:   16,
+  xxl:  18,
   full: 999,
 };
 
+// Hairline borders replace shadows on dark surfaces.
 export const Shadows = {
   card: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  cardStrong: {
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   modal: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 28,
+    elevation: 12,
   },
 };
 

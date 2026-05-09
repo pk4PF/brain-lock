@@ -96,7 +96,7 @@ export default function DisableCountdownScreen({
         />
       </View>
 
-      {/* Cancel button — subtle, at bottom */}
+      {/* Cancel button - subtle, at bottom */}
       <TouchableOpacity
         onPress={onCancel}
         activeOpacity={0.7}

@@ -1,4 +1,20 @@
-export type GameType = 'math';
+// Widened from `'math'` to all live game keys so per-game lifetime
+// stats (`gameStats[type]`) populate for every game, not just math.
+// The keys mirror the routes under `app/games/*.tsx` and the
+// GameAccents palette in `theme.ts`.
+export type GameType =
+  | 'math'
+  | 'memory'
+  | 'word-recall'
+  | 'focus'
+  | 'reaction'
+  // Day-1 launch batch: one new game per cognitive area.
+  | 'sequence'      // memory   - tap-sequence (Simon)
+  | 'anagram'       // recall   - unscramble letters
+  | 'color-match'   // attention - Stroop (word vs ink colour)
+  | 'block-tap'     // speed     - tap targets as they appear
+  | 'number-seq'    // problemSolving - "2, 4, 6, ?"
+  | 'tile-recall';  // memory (spatial) - Corsi block-tapping. Hero marketing game.
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameCategory = 'speed' | 'memory' | 'focus' | 'problem_solving';
 
@@ -19,7 +35,11 @@ export const CATEGORIES: Record<GameCategory, { label: string }> = {
   problem_solving: { label: 'Problem Solving' },
 };
 
-export const GAMES: Record<GameType, GameConfig> = {
+// Partial — we only configure the legacy `math` entry here. The newer
+// games (memory, focus, reaction, word-recall) carry their own metadata
+// inline in their respective screens; this map is kept for the legacy
+// `app/challenge/index.tsx` flow only.
+export const GAMES: Partial<Record<GameType, GameConfig>> = {
   math: {
     id: 'math',
     title: 'Math Blitz',

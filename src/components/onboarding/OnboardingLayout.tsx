@@ -1,22 +1,38 @@
 import { ReactNode } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import OnboardingProgress from './OnboardingProgress';
 
 const { height } = Dimensions.get('window');
 
 interface OnboardingLayoutProps {
     children: ReactNode;
+    /** Current step index (1-based) for the top progress bar. Omit to hide bar. */
+    step?: number;
+    /** Total step count for the progress bar. Defaults to 13 (matches the new flow). */
+    totalSteps?: number;
 }
 
-export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
-    const { colors, isDark } = useThemeColors();
+export default function OnboardingLayout({ children, step, totalSteps = 13 }: OnboardingLayoutProps) {
+    const { colors } = useThemeColors();
+    const insets = useSafeAreaInsets();
+    const showProgress = typeof step === 'number';
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Warm ambient orbs */}
-            <View style={[styles.glowOrb1, { backgroundColor: isDark ? 'rgba(255,213,79,0.04)' : 'rgba(245,166,35,0.06)' }]} />
-            <View style={[styles.glowOrb2, { backgroundColor: isDark ? 'rgba(255,213,79,0.03)' : 'rgba(245,166,35,0.05)' }]} />
-            <View style={[styles.glowOrb3, { backgroundColor: isDark ? 'rgba(255,107,53,0.02)' : 'rgba(255,107,53,0.03)' }]} />
+            {/* Warm ambient orbs - pulled from theme accent so they track
+                the rest of the app, not a stale brand red. */}
+            <View pointerEvents="none" style={[styles.glowOrb1, { backgroundColor: colors.accentLight }]} />
+            <View pointerEvents="none" style={[styles.glowOrb2, { backgroundColor: colors.accentGlow }]} />
+            <View pointerEvents="none" style={[styles.glowOrb3, { backgroundColor: colors.accentLight }]} />
+
+            {showProgress && (
+                <View style={[styles.progressWrap, { paddingTop: insets.top + 6 }]}>
+                    <OnboardingProgress currentStep={step!} totalSteps={totalSteps} />
+                </View>
+            )}
+
             {children}
         </View>
     );
@@ -25,6 +41,9 @@ export default function OnboardingLayout({ children }: OnboardingLayoutProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    progressWrap: {
+        // Sits above all content but below back button (which uses absolute positioning).
     },
     glowOrb1: {
         position: 'absolute',

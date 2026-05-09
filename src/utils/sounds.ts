@@ -14,7 +14,7 @@ let initialized = false;
 
 /**
  * Generate sound files, configure audio mode, and preload all sounds.
- * Safe to call multiple times (idempotent). Non-blocking — audio failures
+ * Safe to call multiple times (idempotent). Non-blocking - audio failures
  * should never prevent the app from working.
  */
 export async function preloadSounds(): Promise<void> {
@@ -22,7 +22,7 @@ export async function preloadSounds(): Promise<void> {
   initialized = true;
 
   if (!nativeAVAvailable) {
-    console.warn('[Sound] ExponentAV not available — skipping audio');
+    console.warn('[Sound] ExponentAV not available - skipping audio');
     return;
   }
 
@@ -82,7 +82,7 @@ async function play(name: SoundName): Promise<void> {
     await sound.setPositionAsync(0);
     await sound.playAsync();
   } catch {
-    // Silently fail — audio should never break gameplay
+    // Silently fail - audio should never break gameplay
   }
 }
 

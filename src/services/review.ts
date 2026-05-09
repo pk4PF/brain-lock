@@ -13,7 +13,7 @@ export async function maybeShowReviewPrompt() {
       return;
     }
 
-    // Use require inside try/catch — dynamic import() is synchronous in RN/Metro
+    // Use require inside try/catch - dynamic import() is synchronous in RN/Metro
     // and will throw at call time if the native module isn't in the build
     let StoreReview: typeof import('expo-store-review');
     try {

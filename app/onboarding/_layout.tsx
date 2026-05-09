@@ -11,6 +11,9 @@ export default function OnboardingLayout() {
         animation: 'slide_from_right',
         contentStyle: { backgroundColor: colors.background },
       }}
-    />
+    >
+      {/* Paywall is a hard gate - disable swipe-back & hardware back */}
+      <Stack.Screen name="paywall" options={{ gestureEnabled: false }} />
+    </Stack>
   );
 }

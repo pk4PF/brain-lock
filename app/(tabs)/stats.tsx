@@ -1,249 +1,446 @@
-import { ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Flame, Sparkles, Trophy, Zap, Dumbbell, Gamepad2 } from 'lucide-react-native';
-import { YStack, XStack, Text, View } from 'tamagui';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { Brain } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStore, XP_PER_LEVEL } from '../../src/store/useStore';
-import { GlowCard } from '../../src/components/ui/GlowCard';
-import { SectionTitle } from '../../src/components/ui/SectionTitle';
+import { useStore } from '../../src/store/useStore';
+import type { CognitiveArea, CognitiveScores } from '../../src/store/useStore';
 import { FadeInView } from '../../src/components/ui/AnimatedElements';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { FontFamily, FontSize, Spacing, GameAccents } from '../../src/constants/theme';
+import { Eyebrow, SectionHeading, MutedText, AnvilCard } from '../../src/components/ui/anvil';
 
-function ProgressChart({ data }: { data: number[] }) {
+// ─────────────────────────────────────────────────────────────
+// Brain Profile - five cognitive attributes, each scored 0-100.
+// This is the "you're getting smarter" surface: it shows
+// concrete capacities, not Tinder-style streak shame.
+// ─────────────────────────────────────────────────────────────
+
+interface AttributeMeta {
+  key: CognitiveArea;
+  label: string;
+  blurb: string;
+  hue: string;
+  source: string; // which game trains it (shown in subtitle)
+}
+
+const ATTRIBUTES: AttributeMeta[] = [
+  { key: 'memory',         label: 'Memory',         blurb: 'Visual pattern recall',  hue: GameAccents.memory.hue,        source: 'Memory Match' },
+  { key: 'recall',         label: 'Verbal Recall',  blurb: 'Word memory in 5s',      hue: GameAccents['word-recall'].hue, source: 'Word Recall' },
+  { key: 'attention',      label: 'Attention',      blurb: 'Filtering distraction',  hue: GameAccents.focus.hue,         source: 'Focus Flash' },
+  { key: 'speed',          label: 'Speed',          blurb: 'Reaction time',          hue: GameAccents.reaction.hue,      source: 'Reaction Test' },
+  { key: 'problemSolving', label: 'Problem Solving',blurb: 'Math under pressure',    hue: GameAccents.math.hue,          source: 'Quick Math' },
+];
+
+function band(score: number): string {
+  if (score >= 90) return 'Elite';
+  if (score >= 75) return 'Sharp';
+  if (score >= 60) return 'Steady';
+  if (score >= 40) return 'Building';
+  if (score > 0)   return 'Warming up';
+  return 'Untested';
+}
+
+// Secondary label shown under the score on each row. Always forward-leaning —
+// no "below average" or "bottom tier" copy, since those tank retention for new
+// players who haven't had time to climb yet.
+function tier(score: number): string {
+  if (score >= 90) return 'Elite';
+  if (score >= 75) return 'Sharp';
+  if (score >= 60) return 'Steady';
+  if (score >= 40) return 'Building';
+  if (score > 0)   return 'Warming up';
+  return '—';
+}
+
+function avgScore(scores: CognitiveScores): number {
+  const tested = Object.values(scores).filter((s) => s > 0);
+  if (tested.length === 0) return 0;
+  return Math.round(tested.reduce((a, b) => a + b, 0) / tested.length);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Single attribute row: label + tier + horizontal bar
+// ─────────────────────────────────────────────────────────────
+function AttributeRow({ meta, score, isLast }: { meta: AttributeMeta; score: number; isLast: boolean }) {
+  const { colors } = useThemeColors();
+  const tested = score > 0;
+  return (
+    <View style={[styles.attrRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+      <View style={styles.attrTopRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.attrLabel, { color: colors.text }]}>{meta.label}</Text>
+          <Text style={[styles.attrBlurb, { color: colors.muted }]}>
+            {meta.blurb} · {meta.source}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.attrScore, { color: tested ? meta.hue : colors.muted }]}>
+            {tested ? score : '-'}
+          </Text>
+          <Text style={[styles.attrTier, { color: colors.muted }]}>
+            {tier(score)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.attrBarTrack, { backgroundColor: colors.cardAlt }]}>
+        <View
+          style={[
+            styles.attrBarFill,
+            {
+              width: tested ? `${Math.max(2, score)}%` : '0%',
+              backgroundColor: meta.hue,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mini weekly chart - kept but tucked under the profile.
+// ─────────────────────────────────────────────────────────────
+function WeeklyChart({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
   const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const today = new Date().getDay();
   const { colors } = useThemeColors();
 
   return (
-    <XStack justifyContent="space-between" alignItems="flex-end" height={110} gap={6} paddingTop={10}>
+    <View style={styles.chartRow}>
       {data.map((val, i) => {
         const pct = Math.max(4, (val / max) * 100);
         const isToday = i === today;
         return (
-          <YStack key={i} flex={1} alignItems="center" gap={6}>
-            <YStack
-              flex={1}
-              width="100%"
-              justifyContent="flex-end"
-              borderRadius={6}
-              overflow="hidden"
-              backgroundColor={colors.cardAlt}
-            >
+          <View key={i} style={styles.chartCol}>
+            <View style={[styles.chartTrack, { backgroundColor: colors.cardAlt }]}>
               <View
-                height={`${pct}%`}
-                borderRadius={6}
-                backgroundColor={isToday ? colors.accent : 'rgba(232,133,12,0.25)'}
+                style={[
+                  styles.chartBar,
+                  { height: `${pct}%`, backgroundColor: isToday ? colors.accent : colors.border },
+                ]}
               />
-            </YStack>
-            <Text
-              color={isToday ? colors.accent : colors.muted}
-              fontSize={11}
-              fontWeight={isToday ? '700' : '500'}
-            >
-              {days[i]}
-            </Text>
-          </YStack>
+            </View>
+            <Text style={[styles.chartDay, {
+              color: isToday ? colors.accent : colors.muted,
+              fontFamily: FontFamily.medium,
+            }]}>{days[i]}</Text>
+          </View>
         );
       })}
-    </XStack>
+    </View>
   );
 }
 
+// ─────────────────────────────────────────────────────────────
 export default function StatsScreen() {
-  const { progress, totalXpEarned, physicalStats, getLevel, getXpToNextLevel } = useStore();
+  const { progress, cognitiveScores } = useStore();
   const insets = useSafeAreaInsets();
-  const { colors, gradients } = useThemeColors();
+  const { colors } = useThemeColors();
 
-  const level = getLevel();
-  const xpToNext = getXpToNextLevel();
-  const xpInLevel = XP_PER_LEVEL - xpToNext;
-  const levelProgress = Math.round((xpInLevel / XP_PER_LEVEL) * 100);
-  const totalReps = physicalStats.pushups.totalReps + physicalStats.squats.totalReps;
+  const overall = avgScore(cognitiveScores);
+  const testedCount = Object.values(cognitiveScores).filter((s) => s > 0).length;
+  const isEmpty = testedCount === 0;
 
   return (
-    <YStack flex={1} backgroundColor={colors.background}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 40,
-          paddingHorizontal: 20,
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingHorizontal: Spacing.xl,
         }}
       >
         {/* Header */}
         <FadeInView delay={0}>
-          <Text
-            color={colors.text}
-            fontSize={28}
-            fontWeight="700"
-            letterSpacing={-0.5}
-            marginBottom={16}
-          >
-            Stats
-          </Text>
+          <Eyebrow>Brain profile</Eyebrow>
+          <SectionHeading size="lg">
+            {isEmpty ? 'Measure your brainpower.' : `Brainpower, rising.`}
+          </SectionHeading>
+          <View style={{ height: 8 }} />
+          <MutedText size="md">
+            {isEmpty
+              ? 'Play each game once to map your cognitive profile across 5 attributes - memory, recall, attention, speed, problem solving.'
+              : `${testedCount} of 5 attributes tested. Put your brain back in charge.`}
+          </MutedText>
         </FadeInView>
 
-        {/* Level / XP Card */}
-        <FadeInView delay={50}>
-          <View
-            borderRadius={20}
-            overflow="hidden"
-            marginBottom={20}
-          >
-            <LinearGradient
-              colors={gradients.heroPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 22 }}
-            >
-              <XStack alignItems="center" justifyContent="space-between" marginBottom={14}>
-                <XStack alignItems="center" gap={12}>
-                  <View
-                    width={48}
-                    height={48}
-                    borderRadius={14}
-                    backgroundColor="rgba(255,255,255,0.18)"
-                    justifyContent="center"
-                    alignItems="center"
-                  >
-                    <Trophy size={22} color="#FFFFFF" />
-                  </View>
-                  <YStack>
-                    <Text color="rgba(255,255,255,0.7)" fontSize={12} fontWeight="600" letterSpacing={0.4}>
-                      LEVEL
-                    </Text>
-                    <Text color="#FFFFFF" fontSize={28} fontWeight="800" letterSpacing={-0.5}>
-                      {level}
-                    </Text>
-                  </YStack>
-                </XStack>
-                <YStack alignItems="flex-end">
-                  <Text color="rgba(255,255,255,0.7)" fontSize={12} fontWeight="600">
-                    LIFETIME XP
-                  </Text>
-                  <Text color="#FFFFFF" fontSize={22} fontWeight="700">
-                    {totalXpEarned}
-                  </Text>
-                </YStack>
-              </XStack>
+        <View style={{ height: Spacing.xl }} />
 
-              <View
-                height={8}
-                borderRadius={4}
-                backgroundColor="rgba(255,255,255,0.2)"
-                overflow="hidden"
-                marginBottom={6}
-              >
+        {/* Overall hero - big composite score with halo */}
+        <FadeInView delay={80}>
+          <AnvilCard padding="xl">
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
                 <View
-                  height="100%"
-                  width={`${levelProgress}%`}
-                  backgroundColor="#FFFFFF"
-                  borderRadius={4}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: -10,
+                    left: -16,
+                    width: 130,
+                    height: 80,
+                    borderRadius: 60,
+                    backgroundColor: colors.accentGlow,
+                    opacity: 0.55,
+                  }}
                 />
+                <Text style={[styles.overallStat, { color: colors.accent }]}>
+                  {isEmpty ? '-' : overall}
+                </Text>
+                <Text style={[styles.overallLabel, { color: colors.muted }]}>OVERALL</Text>
               </View>
-              <Text color="rgba(255,255,255,0.85)" fontSize={12} fontWeight="500">
-                {xpToNext} XP to level {level + 1}
-              </Text>
-            </LinearGradient>
-          </View>
+              <View style={{ alignItems: 'flex-end', paddingTop: 6 }}>
+                <View style={[styles.bandPill, {
+                  backgroundColor: isEmpty ? colors.cardAlt : `${colors.accent}1A`,
+                  borderColor: isEmpty ? colors.border : `${colors.accent}33`,
+                }]}>
+                  <Text style={[styles.bandText, { color: isEmpty ? colors.muted : colors.accent }]}>
+                    {isEmpty ? 'NOT TESTED' : band(overall).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={[styles.gamesCount, { color: colors.muted }]}>
+                  {progress.gamesPlayed} games played
+                </Text>
+              </View>
+            </View>
+          </AnvilCard>
         </FadeInView>
 
-        {/* Lifetime Totals — Games / Reps / Streak */}
-        <FadeInView delay={100}>
-          <XStack gap={10} marginBottom={28}>
-            <YStack
-              flex={1}
-              backgroundColor={colors.card}
-              borderRadius={14}
-              padding={16}
-              borderWidth={1}
-              borderColor={colors.border}
-              alignItems="center"
-              gap={6}
-            >
-              <Gamepad2 size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={22} fontWeight="700">
-                {progress.gamesPlayed}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="600" letterSpacing={0.3}>
-                GAMES
-              </Text>
-            </YStack>
-            <YStack
-              flex={1}
-              backgroundColor={colors.card}
-              borderRadius={14}
-              padding={16}
-              borderWidth={1}
-              borderColor={colors.border}
-              alignItems="center"
-              gap={6}
-            >
-              <Dumbbell size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={22} fontWeight="700">
-                {totalReps}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="600" letterSpacing={0.3}>
-                REPS
-              </Text>
-            </YStack>
-            <YStack
-              flex={1}
-              backgroundColor={colors.card}
-              borderRadius={14}
-              padding={16}
-              borderWidth={1}
-              borderColor={colors.border}
-              alignItems="center"
-              gap={6}
-            >
-              <Flame size={20} color={colors.accent} />
-              <Text color={colors.text} fontSize={22} fontWeight="700">
-                {progress.currentStreak}
-              </Text>
-              <Text color={colors.muted} fontSize={11} fontWeight="600" letterSpacing={0.3}>
-                STREAK
-              </Text>
-            </YStack>
-          </XStack>
+        {/* Attributes section */}
+        <View style={styles.sectionLabelRow}>
+          <Eyebrow style={{ marginBottom: 0 }}>Cognitive attributes</Eyebrow>
+        </View>
+
+        <FadeInView delay={140}>
+          <AnvilCard padding="md">
+            {ATTRIBUTES.map((meta, i) => (
+              <AttributeRow
+                key={meta.key}
+                meta={meta}
+                score={cognitiveScores[meta.key] ?? 0}
+                isLast={i === ATTRIBUTES.length - 1}
+              />
+            ))}
+          </AnvilCard>
         </FadeInView>
 
-        {/* Weekly Progress */}
-        <FadeInView delay={200}>
-          <YStack marginBottom={28}>
-            <SectionTitle title="This week" />
-            <GlowCard>
-              <ProgressChart data={progress.weeklyPoints} />
-            </GlowCard>
-          </YStack>
-        </FadeInView>
+        {/* Coaching nudge - call out the weakest tested area, or the next
+            untested one. Builds the "getting smarter" loop. */}
+        {!isEmpty && (() => {
+          const untested = ATTRIBUTES.find((a) => (cognitiveScores[a.key] ?? 0) === 0);
+          const weakest = !untested
+            ? [...ATTRIBUTES].sort((a, b) => (cognitiveScores[a.key] ?? 0) - (cognitiveScores[b.key] ?? 0))[0]
+            : null;
+          const target = untested ?? weakest;
+          if (!target) return null;
+          const isUntested = !!untested;
+          return (
+            <FadeInView delay={200}>
+              <View style={{ height: Spacing.lg }} />
+              <AnvilCard padding="lg">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={[styles.nudgeIcon, { backgroundColor: `${target.hue}1A`, borderColor: `${target.hue}40` }]}>
+                    <Brain size={18} color={target.hue} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.nudgeTitle, { color: colors.text }]}>
+                      {isUntested ? `Test your ${target.label.toLowerCase()}` : `Train ${target.label.toLowerCase()} next`}
+                    </Text>
+                    <Text style={[styles.nudgeBody, { color: colors.muted }]}>
+                      {isUntested
+                        ? `Play ${target.source} to map this attribute.`
+                        : `Your weakest area. ${target.source} pushes it up.`}
+                    </Text>
+                  </View>
+                </View>
+              </AnvilCard>
+            </FadeInView>
+          );
+        })()}
 
-        {/* Empty State */}
-        {totalXpEarned === 0 && (
-          <YStack alignItems="center" paddingVertical={32} gap={12}>
-            <YStack
-              width={52}
-              height={52}
-              borderRadius={26}
-              backgroundColor={colors.card}
-              borderWidth={1}
-              borderColor={colors.border}
-              justifyContent="center"
-              alignItems="center"
-            >
-              <Sparkles size={22} color={colors.muted} />
-            </YStack>
-            <Text color={colors.secondary} fontSize={17} fontWeight="600">
-              No XP yet
-            </Text>
-            <Text color={colors.muted} fontSize={14} textAlign="center" paddingHorizontal={32}>
-              Complete a challenge to start levelling up
-            </Text>
-          </YStack>
+        {/* Weekly chart - kept, demoted */}
+        {!isEmpty && (
+          <FadeInView delay={240}>
+            <View style={styles.sectionLabelRow}>
+              <Eyebrow style={{ marginBottom: 0 }}>This week</Eyebrow>
+              <Text style={[styles.sectionCount, { color: colors.muted }]}>POINTS</Text>
+            </View>
+            <AnvilCard padding="lg">
+              <WeeklyChart data={progress.weeklyPoints} />
+            </AnvilCard>
+          </FadeInView>
+        )}
+
+        {/* Empty state - show how it'll look once they play */}
+        {isEmpty && (
+          <FadeInView delay={140}>
+            <View style={{ height: Spacing.lg }} />
+            <View style={[styles.emptyHint, { borderColor: colors.border }]}>
+              <Text style={[styles.emptyHintTitle, { color: colors.text }]}>
+                Five short games. Five measurements.
+              </Text>
+              <Text style={[styles.emptyHintBody, { color: colors.muted }]}>
+                Each game is a real cognitive test - the same kind sports
+                neurology clinics use. After one round of each, you'll have
+                a baseline you can train.
+              </Text>
+            </View>
+          </FadeInView>
         )}
       </ScrollView>
-    </YStack>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+  },
+
+  // Overall hero
+  overallStat: {
+    fontSize: 64,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -2.2,
+    lineHeight: 68,
+  },
+  overallLabel: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    marginTop: 6,
+  },
+  bandPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  bandText: {
+    fontSize: 11,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 1.2,
+  },
+  gamesCount: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    marginTop: 8,
+  },
+
+  // Attribute rows
+  attrRow: {
+    paddingVertical: 14,
+  },
+  attrTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 12,
+  },
+  attrLabel: {
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
+  },
+  attrBlurb: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
+  },
+  attrScore: {
+    fontSize: 26,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+  },
+  attrTier: {
+    fontSize: 11,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 0.4,
+    marginTop: -2,
+  },
+  attrBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  attrBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+
+  // Coaching nudge
+  nudgeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nudgeTitle: {
+    fontSize: 16,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
+  },
+  nudgeBody: {
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    marginTop: 3,
+    lineHeight: 20,
+  },
+
+  // Weekly chart
+  chartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 110,
+    gap: 6,
+    paddingTop: 4,
+  },
+  chartCol: { flex: 1, alignItems: 'center', gap: 8 },
+  chartTrack: {
+    flex: 1,
+    width: '100%',
+    borderRadius: 4,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  chartBar: { width: '100%', borderRadius: 4 },
+  chartDay: { fontSize: 12, letterSpacing: 0.4 },
+
+  // Empty hint
+  emptyHint: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 18,
+    borderStyle: 'dashed',
+  },
+  emptyHintTitle: {
+    fontSize: 16,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
+    marginBottom: 6,
+  },
+  emptyHintBody: {
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    lineHeight: 20,
+  },
+});

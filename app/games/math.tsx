@@ -1,97 +1,72 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily, BorderRadius } from '../../src/constants/theme';
+import { Calculator } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
-import GameShell, { GAME_THEMES } from '../../src/components/GameShell';
-import GameComplete from '../../src/components/GameComplete';
-import DifficultyPicker, { type Difficulty, DIFFICULTY_CREDITS } from '../../src/components/DifficultyPicker';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
+import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { generateProblem, type Problem } from '../../src/utils/mathProblem';
 import { soundTap, soundCorrect, soundWrong, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
+import { QuickMathIll } from '../../src/components/games/GameIllustrations';
+import { router } from 'expo-router';
 
+const HUE = GameAccents.math.hue;
 const TOTAL_ROUNDS = 10;
-const T = GAME_THEMES.math;
 
-const DIFFICULTY_CONFIG = {
-  easy:   { timeStages: [22, 22, 20, 20, 18, 18, 16, 16, 14, 12] },
-  medium: { timeStages: [15, 15, 12, 12, 10, 10,  8,  8,  7,  6] },
-  hard:   { timeStages: [10,  9,  8,  7,  6,  5,  5,  4,  4,  3] },
-};
-const MULT_STAGES = [1, 1, 1, 1.2, 1.2, 1.5, 1.5, 1.8, 2, 2];
+type Phase = 'intro' | 'playing' | 'result';
+
+/**
+ * Performance-based 2–5 cells. Single curve (difficulty + timer removed) —
+ * accuracy alone determines the reward.
+ *   100%  → 5
+ *   80–99% → 4
+ *   60–79% → 3
+ *   below → 2
+ */
+function creditsForMath(correct: number, total: number): number {
+  const pct = (correct / total) * 100;
+  if (pct >= 100) return 5;
+  if (pct >= 80) return 4;
+  if (pct >= 60) return 3;
+  return 2;
+}
 
 export default function MathGame() {
-  const { addPoints, recordGame, completeDailyGame } = useStore();
-  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const { colors } = useThemeColors();
+  const { addPoints, recordGame, completeDailyGame, canEarnToday, setShowPaywall, recordCognitiveScore } = useStore();
 
-  const getTimeStages = () => DIFFICULTY_CONFIG[difficulty ?? 'medium'].timeStages;
+  const [phase, setPhase] = useState<Phase>('intro');
 
-  const [problem, setProblem] = useState<Problem>(generateProblem(1, 'medium'));
+  const [problem, setProblem] = useState<Problem>(generateProblem(1));
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
   const [correct, setCorrect] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(DIFFICULTY_CONFIG.medium.timeStages[0]);
-  const [gameOver, setGameOver] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
-  const startTime = useRef(Date.now());
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const correctRef = useRef(correct);
-  const scoreRef = useRef(score);
-  const roundRef = useRef(round);
-  correctRef.current = correct;
-  scoreRef.current = score;
-  roundRef.current = round;
 
-  const advancing = useRef(false);
-  const flashAnim = useRef(new Animated.Value(0)).current;
+  const startTime = useRef(Date.now());
   const problemScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.sequence([
-      Animated.timing(problemScale, { toValue: 0.9, duration: 0, useNativeDriver: true }),
+      Animated.timing(problemScale, { toValue: 0.92, duration: 0, useNativeDriver: true }),
       Animated.spring(problemScale, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }),
     ]).start();
   }, [round]);
-
-  // Timer only counts down — never call handlers from inside updater
-  useEffect(() => {
-    if (!difficulty || gameOver || selectedAnswer !== null) return;
-    startTime.current = Date.now();
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => (t <= 1 ? 0 : t - 1));
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [round, gameOver, selectedAnswer, difficulty]);
-
-  // Handle timeout separately when timeLeft hits 0
-  useEffect(() => {
-    if (timeLeft !== 0 || advancing.current || selectedAnswer !== null || gameOver) return;
-    advancing.current = true;
-    clearInterval(timerRef.current);
-    if (roundRef.current >= TOTAL_ROUNDS) {
-      finishGame(correctRef.current, scoreRef.current);
-    } else {
-      const nextRound = roundRef.current + 1;
-      setRound(nextRound);
-      setProblem(generateProblem(nextRound, difficulty ?? 'medium'));
-      setTimeLeft(getTimeStages()[Math.min(nextRound - 1, getTimeStages().length - 1)]);
-      setSelectedAnswer(null);
-      setIsCorrectAnswer(null);
-      setTimeout(() => { advancing.current = false; }, 50);
-    }
-  }, [timeLeft]);
 
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
     const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
     recordGame('math', won, timeTaken);
-    const credits = DIFFICULTY_CREDITS[difficulty ?? 'medium'];
+    const credits = creditsForMath(finalCorrect, TOTAL_ROUNDS);
     completeDailyGame(credits);
+    // Problem solving = math accuracy %.
+    const accuracy = (finalCorrect / TOTAL_ROUNDS) * 100;
+    recordCognitiveScore('problemSolving', accuracy);
     track(Events.GameCompleted, {
       game: 'math',
-      difficulty: difficulty ?? 'medium',
       score: finalScore,
       correct: finalCorrect,
       total: TOTAL_ROUNDS,
@@ -99,117 +74,135 @@ export default function MathGame() {
       credits_earned: credits,
       time_taken_seconds: Math.round(timeTaken),
     });
-    setGameOver(true);
+    setPhase('result');
   };
 
   const handleAnswer = (answer: number) => {
     if (selectedAnswer !== null) return;
     soundTap();
-    clearInterval(timerRef.current);
     const isRight = answer === problem.answer;
     setSelectedAnswer(answer);
     setIsCorrectAnswer(isRight);
-    if (isRight) {
-      soundCorrect();
-      Animated.sequence([
-        Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-    if (!isRight) { soundWrong(); }
+    if (isRight) soundCorrect();
+    else soundWrong();
     let newScore = score;
     let newCorrect = correct;
     if (isRight) {
-      const points = Math.round(10 * MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)]);
-      newScore = score + points;
+      newScore = score + 10;
       newCorrect = correct + 1;
       setScore(newScore);
       setCorrect(newCorrect);
     }
     setTimeout(() => {
-      if (round >= TOTAL_ROUNDS) { finishGame(newCorrect, newScore); }
-      else {
+      if (round >= TOTAL_ROUNDS) {
+        finishGame(newCorrect, newScore);
+      } else {
         soundRound();
         const nextR = round + 1;
         setRound(nextR);
-        setProblem(generateProblem(nextR, difficulty ?? 'medium'));
-        setTimeLeft(getTimeStages()[Math.min(nextR - 1, getTimeStages().length - 1)]);
+        setProblem(generateProblem(nextR));
         setSelectedAnswer(null);
         setIsCorrectAnswer(null);
       }
     }, 600);
   };
 
-  const resetGame = () => {
-    advancing.current = false;
-    setScore(0); setRound(1); setCorrect(0);
-    setTimeLeft(getTimeStages()[0]);
-    setGameOver(false); setSelectedAnswer(null); setIsCorrectAnswer(null);
-    setProblem(generateProblem(1, difficulty ?? 'medium'));
+  const handleStart = () => {
+    if (!canEarnToday()) { setShowPaywall(true); return; }
+    setProblem(generateProblem(1));
+    setRound(1);
+    setScore(0);
+    setCorrect(0);
+    setSelectedAnswer(null);
+    setIsCorrectAnswer(null);
+    startTime.current = Date.now();
+    track(Events.GameStarted, { game: 'math' });
+    setPhase('playing');
   };
 
-  if (!difficulty) {
+  const playAgain = () => handleStart();
+
+  // ── INTRO ──
+  if (phase === 'intro') {
     return (
-      <DifficultyPicker
-        gameTitle="Math Blitz"
-        accentColor="#00F0FF"
-        gradient={['#0A1628', '#0D2035', '#0A1628']}
-        onSelect={(d) => {
-          setDifficulty(d);
-          setTimeLeft(DIFFICULTY_CONFIG[d].timeStages[0]);
-          setProblem(generateProblem(1, d));
-          track(Events.GameStarted, { game: 'math', difficulty: d });
-        }}
-      />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <GameHeader title="Math" hue={HUE} />
+        <GameIntro
+          hue={HUE}
+          Illustration={<QuickMathIll size={88} />}
+          title="Quick Math"
+          blurb="Ten problems. No clock — take your time. Each round gets a touch harder."
+          rules={['10 rounds', 'No timer', 'Builds gradually']}
+          startLabel="Start"
+          onStart={handleStart}
+        />
+      </View>
     );
   }
 
-  if (gameOver) {
-    return <GameComplete creditsEarned={DIFFICULTY_CREDITS[difficulty]} correct={correct} total={TOTAL_ROUNDS} gameTitle="Math Blitz" onPlayAgain={resetGame} gameId="math" />;
+  // ── RESULT ──
+  if (phase === 'result') {
+    const credits = creditsForMath(correct, TOTAL_ROUNDS);
+    const isGood = correct >= TOTAL_ROUNDS * 0.7;
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <GameHeader title="Math" hue={HUE} />
+        <GameResult
+          hue={HUE}
+          badgeIcon={<Calculator size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
+          title={isGood ? 'Sharp arithmetic' : correct > 5 ? 'Solid round' : 'Keep training'}
+          bigStat={`${correct}/${TOTAL_ROUNDS}`}
+          subtitle={`${score} points`}
+          credits={credits}
+          primaryLabel="Play again"
+          onPrimary={playAgain}
+          secondaryLabel="Back to home"
+          onSecondary={() => router.replace('/(tabs)')}
+        />
+      </View>
+    );
   }
 
+  // ── PLAYING ──
   return (
-    <GameShell title="Math Blitz" color="#00F0FF" score={score} timeLeft={timeLeft} gameId="math" multiplier={MULT_STAGES[Math.min(round - 1, MULT_STAGES.length - 1)]}>
-      <Animated.View style={[styles.glowOverlay, { opacity: flashAnim }]} pointerEvents="none" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <GameHeader
+        title="Math"
+        hue={HUE}
+        rightSlot={
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.scoreVal, { color: HUE }]}>{score}</Text>
+            <Text style={[styles.scoreLbl, { color: colors.muted }]}>{round}/{TOTAL_ROUNDS}</Text>
+          </View>
+        }
+      />
 
-      {/* Progress pips */}
-      <View style={styles.pips}>
-        {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
-          <View key={i} style={[styles.pip, i < round - 1 && styles.pipDone, i === round - 1 && styles.pipCurrent]} />
-        ))}
+      {/* Problem */}
+      <View style={styles.problemArea}>
+        <Animated.View style={[styles.problemCard, { backgroundColor: colors.card, borderColor: colors.border, transform: [{ scale: problemScale }] }]}>
+          <Text style={[styles.problemText, { color: colors.text }]}>
+            {problem.a} {problem.op} {problem.b}
+          </Text>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <Text style={[styles.equalsQ, { color: HUE }]}>?</Text>
+        </Animated.View>
       </View>
-
-      {/* Problem display */}
-      <Animated.View style={[styles.problemWrap, { transform: [{ scale: problemScale }] }]}>
-        <LinearGradient
-          colors={['rgba(0,240,255,0.08)', 'rgba(0,240,255,0.02)']}
-          style={styles.problemCard}
-        >
-          <Text style={styles.problemText}>{problem.a} {problem.op} {problem.b}</Text>
-          <LinearGradient
-            colors={['transparent', 'rgba(0,240,255,0.25)', 'transparent']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.dividerLine}
-          />
-          <Text style={styles.equalsQ}>?</Text>
-        </LinearGradient>
-      </Animated.View>
 
       {/* Answer grid */}
       <View style={styles.grid}>
         {problem.options.map((option, idx) => {
-          let borderCol = 'rgba(0,240,255,0.12)';
-          let bgColors: [string, string] = ['rgba(0,240,255,0.05)', 'rgba(0,240,255,0.02)'];
-          let textCol = '#E8F4FF';
+          let bg = colors.card;
+          let border = colors.border;
+          let textCol = colors.text;
 
           if (selectedAnswer !== null) {
             if (option === problem.answer) {
-              borderCol = '#22C55E';
-              bgColors = ['rgba(34,197,94,0.18)', 'rgba(34,197,94,0.06)'];
-              textCol = '#22C55E';
+              bg = `${HUE}14`;
+              border = HUE;
+              textCol = HUE;
             } else if (option === selectedAnswer && !isCorrectAnswer) {
-              borderCol = '#EF4444';
-              bgColors = ['rgba(239,68,68,0.18)', 'rgba(239,68,68,0.06)'];
+              bg = 'rgba(239,68,68,0.10)';
+              border = '#EF4444';
               textCol = '#EF4444';
             }
           }
@@ -217,90 +210,73 @@ export default function MathGame() {
           return (
             <TouchableOpacity
               key={idx}
-              style={styles.optionTouch}
+              style={[styles.optionTouch, { backgroundColor: bg, borderColor: border }]}
               onPress={() => handleAnswer(option)}
-              activeOpacity={0.7}
+              activeOpacity={0.78}
               disabled={selectedAnswer !== null}
             >
-              <LinearGradient colors={bgColors} style={[styles.optionCard, { borderColor: borderCol }]}>
-                <Text style={[styles.optionText, { color: textCol }]}>{option}</Text>
-              </LinearGradient>
+              <Text style={[styles.optionText, { color: textCol }]}>{option}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
-    </GameShell>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,240,255,0.04)',
-    borderRadius: 12,
-  },
-  pips: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 20,
-  },
-  pip: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: 'rgba(0,240,255,0.12)',
-  },
-  pipDone: { backgroundColor: '#00F0FF' },
-  pipCurrent: { backgroundColor: '#00F0FF' },
-  problemWrap: {
+  scoreVal: { fontSize: 18, fontFamily: FontFamily.semibold, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  scoreLbl: { fontSize: 11, fontFamily: FontFamily.medium, letterSpacing: 0.4 },
+
+  problemArea: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    maxHeight: 260,
+    paddingHorizontal: Spacing.xl,
   },
   problemCard: {
     alignItems: 'center',
     paddingVertical: 36,
     paddingHorizontal: 48,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,240,255,0.1)',
+    minWidth: 240,
   },
   problemText: {
-    fontSize: 52,
-    fontFamily: FontFamily.heavy,
-    color: '#E8F4FF',
-    letterSpacing: 4,
-    textShadowColor: 'rgba(0,240,255,0.35)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 24,
+    fontSize: 64,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 1.5,
+    fontVariant: ['tabular-nums'],
   },
-  dividerLine: {
+  divider: {
     width: 60,
-    height: 2,
-    borderRadius: 1,
+    height: 1,
     marginVertical: 14,
   },
   equalsQ: {
     fontSize: 36,
-    fontFamily: FontFamily.bold,
-    color: 'rgba(0,240,255,0.4)',
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.4,
   },
+
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     justifyContent: 'center',
-    paddingBottom: 12,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xxl,
   },
-  optionTouch: { width: '46%' },
-  optionCard: {
-    paddingVertical: 20,
-    borderRadius: 12,
+  optionTouch: {
+    width: '46%',
+    paddingVertical: 22,
+    borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
   },
   optionText: {
     fontSize: 28,
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.semibold,
+    fontVariant: ['tabular-nums'],
   },
 });

@@ -1,21 +1,19 @@
 import { useState, useRef } from 'react';
-import { ScrollView, Switch, TouchableOpacity, TextInput, Linking } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Volume2, User, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield, Crown } from 'lucide-react-native';
-// LinearGradient still used for profile card gradient
-import { YStack, XStack, Text } from 'tamagui';
+import { ScrollView, Switch, TouchableOpacity, TextInput, Linking, View, Text, StyleSheet } from 'react-native';
+import {
+  Zap, Volume2, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield, ChevronRight, User,
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
-import { GlowCard } from '../../src/components/ui/GlowCard';
-import { SectionTitle } from '../../src/components/ui/SectionTitle';
-import { IconBadge } from '../../src/components/ui/IconBadge';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
-import type { ThemeMode } from '../../src/constants/theme';
+import { FadeInView } from '../../src/components/ui/AnimatedElements';
+import { FontFamily, FontSize, Spacing, type ThemeMode } from '../../src/constants/theme';
+import { Eyebrow, SectionHeading, MutedText, AnvilCard, Pill } from '../../src/components/ui/anvil';
 
 export default function ProfileScreen() {
-  const { progress, settings, updateSettings, userName, setUserName, isPremium, setShowPaywall } = useStore();
+  const { progress, settings, updateSettings, userName, setUserName, isPremium } = useStore();
   const insets = useSafeAreaInsets();
-  const { colors, isDark, gradients } = useThemeColors();
+  const { colors } = useThemeColors();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
@@ -23,11 +21,8 @@ export default function ProfileScreen() {
 
   const handleSaveName = () => {
     const trimmed = nameInput.trim();
-    if (trimmed) {
-      setUserName(trimmed);
-    } else {
-      setNameInput(userName);
-    }
+    if (trimmed) setUserName(trimmed);
+    else setNameInput(userName);
     setEditingName(false);
   };
 
@@ -37,263 +32,256 @@ export default function ProfileScreen() {
     setTimeout(() => nameInputRef.current?.focus(), 100);
   };
 
-  const themeModes: { mode: ThemeMode; label: string; icon: React.ReactNode }[] = [
-    { mode: 'light', label: 'Light', icon: <Sun size={16} color={colors.accent} /> },
-    { mode: 'dark', label: 'Dark', icon: <Moon size={16} color={colors.accent} /> },
-    { mode: 'system', label: 'System', icon: <Smartphone size={16} color={colors.accent} /> },
+  const themeModes: { mode: ThemeMode; label: string; icon: React.ComponentType<any> }[] = [
+    { mode: 'light',  label: 'Light',  icon: Sun },
+    { mode: 'dark',   label: 'Dark',   icon: Moon },
+    { mode: 'system', label: 'System', icon: Smartphone },
   ];
 
+  const trimmedName = userName?.trim() ?? '';
+  const initial = trimmedName.length > 0 ? trimmedName[0].toUpperCase() : null;
+
   return (
-    <YStack flex={1} backgroundColor={colors.background}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 40,
-          paddingHorizontal: 20,
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingHorizontal: Spacing.xl,
         }}
       >
         {/* Header */}
-        <Text
-          color={colors.text}
-          fontSize={28}
-          fontWeight="700"
-          letterSpacing={-0.5}
-          marginBottom={24}
-        >
-          Profile
-        </Text>
+        <FadeInView delay={0}>
+          <Eyebrow>Profile</Eyebrow>
+          <SectionHeading size="lg">Settings.</SectionHeading>
+          <View style={{ height: 8 }} />
+          <MutedText size="md">
+            Tweak how Brain Lock looks, sounds, and feels.
+          </MutedText>
+        </FadeInView>
 
-        {/* Profile Card - green gradient */}
-        <GlowCard elevated marginBottom={28} padding={0} overflow="hidden" borderWidth={0}>
-          <LinearGradient
-            colors={gradients.heroGreen}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ padding: 28, alignItems: 'center' }}
-          >
-            <YStack
-              width={72}
-              height={72}
-              borderRadius={36}
-              backgroundColor="rgba(255,255,255,0.15)"
-              justifyContent="center"
-              alignItems="center"
-              marginBottom={14}
-            >
-              <User size={30} color="#FFFFFF" />
-            </YStack>
+        <View style={{ height: Spacing.xl }} />
 
-            {editingName ? (
-              <TextInput
-                ref={nameInputRef}
-                value={nameInput}
-                onChangeText={setNameInput}
-                onBlur={handleSaveName}
-                onSubmitEditing={handleSaveName}
-                returnKeyType="done"
-                maxLength={24}
-                autoFocus
-                style={{
-                  fontSize: 22,
-                  fontWeight: '700',
-                  color: '#FFFFFF',
-                  textAlign: 'center',
-                  paddingVertical: 4,
-                  paddingHorizontal: 16,
-                  minWidth: 120,
-                  borderBottomWidth: 2,
-                  borderBottomColor: 'rgba(255,255,255,0.5)',
-                }}
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                placeholder="Your name"
-              />
-            ) : (
-              <TouchableOpacity
-                onPress={handleEditName}
-                activeOpacity={0.7}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-              >
-                <Text color="#FFFFFF" fontSize={22} fontWeight="700">
-                  {userName || 'Tap to set name'}
+        {/* Identity card */}
+        <FadeInView delay={60}>
+          <AnvilCard padding="lg">
+            <View style={styles.identityRow}>
+              {/* Avatar - hairline circle, monochrome. Initial when set, neutral icon otherwise. */}
+              <View style={[styles.avatar, { borderColor: colors.border }]}>
+                {initial
+                  ? <Text style={[styles.avatarLetter, { color: colors.text }]}>{initial}</Text>
+                  : <User size={20} color={colors.muted} strokeWidth={1.6} />}
+              </View>
+
+              <View style={{ flex: 1 }}>
+                {editingName ? (
+                  <TextInput
+                    ref={nameInputRef}
+                    value={nameInput}
+                    onChangeText={setNameInput}
+                    onBlur={handleSaveName}
+                    onSubmitEditing={handleSaveName}
+                    returnKeyType="done"
+                    maxLength={24}
+                    autoFocus
+                    style={[styles.nameInput, { color: colors.text, borderBottomColor: colors.accent }]}
+                    placeholderTextColor={colors.muted}
+                    placeholder="Your name"
+                  />
+                ) : (
+                  <TouchableOpacity onPress={handleEditName} activeOpacity={0.6} style={styles.nameRow}>
+                    <Text style={[styles.name, { color: colors.text }]}>
+                      {userName || 'Tap to set name'}
+                    </Text>
+                    <Pencil size={13} color={colors.muted} strokeWidth={2} />
+                  </TouchableOpacity>
+                )}
+                <Text style={[styles.identityMeta, { color: colors.muted }]}>
+                  {progress.gamesWon} {progress.gamesWon === 1 ? 'game won' : 'games won'}
                 </Text>
-                <Pencil size={16} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            )}
+              </View>
 
-            <Text color="rgba(255,255,255,0.6)" fontSize={14} marginTop={4}>
-              {progress.gamesWon} challenges won
-            </Text>
-          </LinearGradient>
-        </GlowCard>
+              {isPremium && <Pill tone="accent">PREMIUM</Pill>}
+            </View>
+          </AnvilCard>
+        </FadeInView>
 
         {/* Appearance */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Appearance" />
-          <GlowCard padding={0}>
-            {themeModes.map(({ mode, label, icon }, i) => {
+        <FadeInView delay={180}>
+          <View style={styles.sectionLabelRow}>
+            <Eyebrow style={{ marginBottom: 0 }}>Appearance</Eyebrow>
+          </View>
+          <AnvilCard padding="md">
+            {themeModes.map(({ mode, label, icon: Icon }, i) => {
               const active = (settings.theme ?? 'system') === mode;
               return (
                 <TouchableOpacity
                   key={mode}
-                  activeOpacity={0.7}
+                  activeOpacity={0.6}
                   onPress={() => updateSettings({ theme: mode })}
+                  style={[
+                    styles.row,
+                    {
+                      paddingVertical: 12,
+                      borderBottomWidth: i < themeModes.length - 1 ? 1 : 0,
+                      borderBottomColor: colors.border,
+                    },
+                  ]}
                 >
-                  <XStack
-                    alignItems="center"
-                    justifyContent="space-between"
-                    paddingVertical={14}
-                    paddingHorizontal={20}
-                    borderBottomWidth={i < themeModes.length - 1 ? 1 : 0}
-                    borderBottomColor={colors.border}
-                    backgroundColor={active ? colors.accentLight : 'transparent'}
-                  >
-                    <XStack alignItems="center" gap={14}>
-                      <IconBadge size={36}>{icon}</IconBadge>
-                      <Text color={colors.text} fontSize={16} fontWeight="500">
-                        {label}
-                      </Text>
-                    </XStack>
-                    {active && <Check size={18} color={colors.accent} />}
-                  </XStack>
+                  <Icon size={18} color={active ? colors.accent : colors.muted} strokeWidth={1.8} />
+                  <Text style={[styles.rowTitle, {
+                    color: colors.text,
+                    flex: 1,
+                  }]}>
+                    {label}
+                  </Text>
+                  {active && <Check size={16} color={colors.accent} strokeWidth={2} />}
                 </TouchableOpacity>
               );
             })}
-          </GlowCard>
-        </YStack>
+          </AnvilCard>
+        </FadeInView>
 
         {/* Preferences */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Preferences" />
-          <GlowCard padding={0}>
-            <XStack
-              alignItems="center"
-              justifyContent="space-between"
-              paddingVertical={14}
-              paddingHorizontal={20}
-              borderBottomWidth={1}
-              borderBottomColor={colors.border}
+        <FadeInView delay={240}>
+          <View style={styles.sectionLabelRow}>
+            <Eyebrow style={{ marginBottom: 0 }}>Preferences</Eyebrow>
+          </View>
+          <AnvilCard padding="md">
+            <View
+              style={[
+                styles.row,
+                { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+              ]}
             >
-              <XStack alignItems="center" gap={14}>
-                <IconBadge size={36}>
-                  <Zap size={16} color={colors.accent} />
-                </IconBadge>
-                <Text color={colors.text} fontSize={16} fontWeight="500">
-                  Haptic Feedback
-                </Text>
-              </XStack>
+              <Zap size={18} color={colors.muted} strokeWidth={1.8} />
+              <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Haptic feedback</Text>
               <Switch
                 value={settings.hapticFeedback}
                 onValueChange={(v) => updateSettings({ hapticFeedback: v })}
-                trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
-                thumbColor={settings.hapticFeedback ? colors.accent : colors.muted}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.border}
               />
-            </XStack>
-            <XStack
-              alignItems="center"
-              justifyContent="space-between"
-              paddingVertical={14}
-              paddingHorizontal={20}
-            >
-              <XStack alignItems="center" gap={14}>
-                <IconBadge size={36}>
-                  <Volume2 size={16} color={colors.accent} />
-                </IconBadge>
-                <Text color={colors.text} fontSize={16} fontWeight="500">
-                  Sound Effects
-                </Text>
-              </XStack>
+            </View>
+            <View style={[styles.row, { paddingVertical: 8 }]}>
+              <Volume2 size={18} color={colors.muted} strokeWidth={1.8} />
+              <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Sound effects</Text>
               <Switch
                 value={settings.soundEnabled}
                 onValueChange={(v) => updateSettings({ soundEnabled: v })}
-                trackColor={{ false: colors.border, true: 'rgba(232,133,12,0.35)' }}
-                thumbColor={settings.soundEnabled ? colors.accent : colors.muted}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={colors.border}
               />
-            </XStack>
-          </GlowCard>
-        </YStack>
-
-        {/* Upgrade to Premium */}
-        {!isPremium && (
-          <YStack marginBottom={28}>
-            <SectionTitle title="Subscription" />
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowPaywall(true)}>
-              <GlowCard padding={0}>
-                <XStack
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingVertical={14}
-                  paddingHorizontal={20}
-                >
-                  <XStack alignItems="center" gap={14}>
-                    <IconBadge size={36}>
-                      <Crown size={16} color="#F59E0B" />
-                    </IconBadge>
-                    <YStack>
-                      <Text color={colors.text} fontSize={16} fontWeight="600">
-                        Upgrade to Premium
-                      </Text>
-                      <Text color={colors.muted} fontSize={13}>
-                        Unlimited games & app blocking
-                      </Text>
-                    </YStack>
-                  </XStack>
-                </XStack>
-              </GlowCard>
-            </TouchableOpacity>
-          </YStack>
-        )}
+            </View>
+          </AnvilCard>
+        </FadeInView>
 
         {/* Legal */}
-        <YStack marginBottom={28}>
-          <SectionTitle title="Legal" />
-          <GlowCard padding={0}>
+        <FadeInView delay={300}>
+          <View style={styles.sectionLabelRow}>
+            <Eyebrow style={{ marginBottom: 0 }}>Legal</Eyebrow>
+          </View>
+          <AnvilCard padding="md">
             <TouchableOpacity
-              activeOpacity={0.7}
+              activeOpacity={0.6}
               onPress={() => Linking.openURL('https://plbtk.com#terms')}
+              style={[
+                styles.row,
+                { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+              ]}
             >
-              <XStack
-                alignItems="center"
-                justifyContent="space-between"
-                paddingVertical={14}
-                paddingHorizontal={20}
-                borderBottomWidth={1}
-                borderBottomColor={colors.border}
-              >
-                <XStack alignItems="center" gap={14}>
-                  <IconBadge size={36}>
-                    <FileText size={16} color={colors.accent} />
-                  </IconBadge>
-                  <Text color={colors.text} fontSize={16} fontWeight="500">
-                    Terms of Use
-                  </Text>
-                </XStack>
-              </XStack>
+              <FileText size={18} color={colors.muted} strokeWidth={1.8} />
+              <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Terms of use</Text>
+              <ChevronRight size={16} color={colors.muted} strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
-              activeOpacity={0.7}
+              activeOpacity={0.6}
               onPress={() => Linking.openURL('https://plbtk.com#privacy')}
+              style={[styles.row, { paddingVertical: 12 }]}
             >
-              <XStack
-                alignItems="center"
-                justifyContent="space-between"
-                paddingVertical={14}
-                paddingHorizontal={20}
-              >
-                <XStack alignItems="center" gap={14}>
-                  <IconBadge size={36}>
-                    <Shield size={16} color={colors.accent} />
-                  </IconBadge>
-                  <Text color={colors.text} fontSize={16} fontWeight="500">
-                    Privacy Policy
-                  </Text>
-                </XStack>
-              </XStack>
+              <Shield size={18} color={colors.muted} strokeWidth={1.8} />
+              <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Privacy policy</Text>
+              <ChevronRight size={16} color={colors.muted} strokeWidth={2} />
             </TouchableOpacity>
-          </GlowCard>
-        </YStack>
+          </AnvilCard>
+        </FadeInView>
       </ScrollView>
-    </YStack>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+
+  // Section label rows
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+
+  // Identity card
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLetter: {
+    fontSize: 18,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.5,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  name: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.3,
+  },
+  nameInput: {
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.3,
+    paddingVertical: 2,
+    borderBottomWidth: 1.5,
+  },
+  identityMeta: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
+  },
+
+  // Shared row layout
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rowTitle: {
+    fontSize: FontSize.md,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.1,
+  },
+  rowDescription: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
+  },
+});

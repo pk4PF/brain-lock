@@ -1,4 +1,7 @@
 export type Operation = '+' | '-' | '×' | '÷';
+// Difficulty modes were removed — math is now a single progressive curve.
+// Type kept for back-compat with any stale imports; no longer used by the
+// generator.
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface Problem {
@@ -16,37 +19,29 @@ interface DifficultyBand {
   optionSpread: number;
 }
 
-function bandFor(difficulty: Difficulty, round: number): DifficultyBand {
-  // Each difficulty has its own number ranges AND operation mix.
-  // Round nudges things up within the band but stays in the band.
-  if (difficulty === 'easy') {
-    return {
-      ops: ['+', '-'],
-      addSubMax: round <= 5 ? 12 : 20,
-      multMax: 0,
-      optionSpread: 5,
-    };
+/**
+ * Single progressive curve, rounds 1–10. We deliberately stop short of
+ * "hard": no division (it's a confidence-killer), multiplication caps at
+ * 10×10. The curve goes "easy warm-up → medium core → light challenge"
+ * so the game stays approachable for the casual brain-game audience.
+ */
+function bandFor(round: number): DifficultyBand {
+  if (round <= 3) {
+    // Warm-up: simple + and -
+    return { ops: ['+', '-'], addSubMax: 15, multMax: 0, optionSpread: 5 };
   }
-  if (difficulty === 'medium') {
-    return {
-      ops: round <= 3 ? ['+', '-'] : ['+', '-', '×'],
-      addSubMax: round <= 5 ? 40 : 75,
-      multMax: round <= 5 ? 10 : 12,
-      optionSpread: 8,
-    };
+  if (round <= 6) {
+    // Mid: introduces multiplication, slightly bigger numbers
+    return { ops: ['+', '-', '×'], addSubMax: 30, multMax: 8, optionSpread: 7 };
   }
-  // hard
-  return {
-    ops: round <= 2 ? ['+', '-', '×'] : ['+', '-', '×', '÷'],
-    addSubMax: round <= 3 ? 80 : round <= 6 ? 150 : 250,
-    multMax: round <= 3 ? 12 : 15,
-    optionSpread: 12,
-  };
+  // Late: bigger numbers, still no division
+  return { ops: ['+', '-', '×'], addSubMax: 60, multMax: 10, optionSpread: 9 };
 }
 
-/** Generate a math problem scaled by both difficulty and round (1-based). */
-export function generateProblem(round: number, difficulty: Difficulty = 'medium'): Problem {
-  const band = bandFor(difficulty, round);
+/** Generate a math problem on the progressive single-mode curve.
+ *  The legacy `_difficulty` parameter is accepted but ignored. */
+export function generateProblem(round: number, _difficulty?: Difficulty): Problem {
+  const band = bandFor(round);
   const op = band.ops[Math.floor(Math.random() * band.ops.length)];
 
   let a: number, b: number, answer: number;

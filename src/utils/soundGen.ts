@@ -74,7 +74,7 @@ function mix(a: number[], b: number[], bOffset = 0): number[] {
 
 // ── Sound generators ──────────────────────────────────────────
 
-/** Soft wooden tap — filtered low-freq noise with a tonal body */
+/** Soft wooden tap - filtered low-freq noise with a tonal body */
 function genTap(): number[] {
   const len = Math.floor(SAMPLE_RATE * 0.035);
   const samples: number[] = [];
@@ -93,7 +93,7 @@ function genTap(): number[] {
   return samples;
 }
 
-/** Gentle ascending chime — warm, not piercing */
+/** Gentle ascending chime - warm, not piercing */
 function genCorrect(): number[] {
   const tone1 = warmTone(523, 0.12, 0.22); // C5
   const tone2 = warmTone(784, 0.16, 0.18); // G5
@@ -101,7 +101,7 @@ function genCorrect(): number[] {
   return mix(tone1, tone2, Math.floor(SAMPLE_RATE * 0.07));
 }
 
-/** Soft muffled low tone — communicates "nope" without jarring */
+/** Soft muffled low tone - communicates "nope" without jarring */
 function genWrong(): number[] {
   const len = Math.floor(SAMPLE_RATE * 0.18);
   const samples: number[] = [];
@@ -118,7 +118,7 @@ function genWrong(): number[] {
   return samples;
 }
 
-/** Musical success arpeggio — overlapping notes with decay tails */
+/** Musical success arpeggio - overlapping notes with decay tails */
 function genComplete(): number[] {
   const notes = [
     { freq: 523, delay: 0 },     // C5
@@ -137,7 +137,7 @@ function genComplete(): number[] {
   return result;
 }
 
-/** Gentle descending — soft "aww" without being dramatic */
+/** Gentle descending - soft "aww" without being dramatic */
 function genFail(): number[] {
   const notes = [
     { freq: 392, delay: 0 },     // G4
@@ -152,7 +152,7 @@ function genFail(): number[] {
   return result;
 }
 
-/** Subtle soft tick — not a piercing beep */
+/** Subtle soft tick - not a piercing beep */
 function genCountdown(): number[] {
   const len = Math.floor(SAMPLE_RATE * 0.04);
   const samples: number[] = [];
@@ -213,7 +213,7 @@ export function generateSoundFiles(): Record<string, string> {
     soundsDir.create({ intermediates: true });
   }
 
-  // Version marker — bump this to force regeneration after changes
+  // Version marker - bump this to force regeneration after changes
   const VERSION = '2';
   const versionFile = new File(soundsDir, '.version');
   const currentVersion = versionFile.exists ? versionFile.text() : '';

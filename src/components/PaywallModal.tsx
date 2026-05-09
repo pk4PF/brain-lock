@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,126 +5,43 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  Alert,
   Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Check, Brain, Zap, Shield } from 'lucide-react-native';
+import { X, Check, Brain, Zap, Shield, Lock } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { type PurchasesPackage } from 'react-native-purchases';
 import { FontSize, FontFamily, type ThemeColors } from '../constants/theme';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { useStore } from '../store/useStore';
-import {
-  getOfferings,
-  purchasePackage,
-  restorePurchases,
-  checkPremiumStatus,
-  getCurrentCustomerInfo,
-} from '../services/revenueCat';
 import { track, Events } from '../services/analytics';
-
-const MONTHLY_PRICE_FALLBACK = '£4.99';
+import { usePaywallPurchase } from './paywall/usePaywallPurchase';
 
 interface PaywallModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+/**
+ * In-app paywall modal. Currently effectively dead code: `setShowPaywall` in
+ * the store is a no-op since the only paywall users ever hit is the onboarding
+ * one. Kept here for future use (e.g. resubscribe flow after entitlement
+ * lapse). Mirrors the two-plan structure of the onboarding paywall.
+ */
 export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
-  const { setSubscription } = useStore();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useThemeColors();
 
-  const [monthlyPkg, setMonthlyPkg] = useState<PurchasesPackage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
+  const {
+    loading,
+    purchasing,
+    monthlyPrice,
+    purchase,
+    restore,
+  } = usePaywallPurchase({ visible, source: 'modal' });
 
-  useEffect(() => {
-    if (!visible) return;
-    setLoading(true);
-    track(Events.PaywallShown, { source: 'modal' });
-    (async () => {
-      try {
-        const offering = await getOfferings();
-        if (offering) {
-          const pkg = offering.availablePackages.find(
-            (p) => p.packageType === 'MONTHLY' || p.product.identifier.includes('monthly')
-          ) ?? null;
-          setMonthlyPkg(pkg);
-        }
-      } catch (err) {
-        if (__DEV__) console.warn('Failed to load offerings:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [visible]);
-
-  // Always show the intended price — product price syncs within 2 days
-  const monthlyPrice = MONTHLY_PRICE_FALLBACK;
-
-  const handlePurchase = async () => {
-    track(Events.PurchaseStarted, { plan: 'monthly' });
-    if (!monthlyPkg) {
-      if (__DEV__) {
-        setSubscription('monthly');
-        track(Events.PurchaseCompleted, { plan: 'monthly', dev: true });
-        onClose();
-      } else {
-        Alert.alert('Unable to load plan', 'Please check your connection and try again.');
-      }
-      return;
-    }
-    setPurchasing(true);
-    try {
-      let customerInfo = await purchasePackage(monthlyPkg);
-      if (checkPremiumStatus(customerInfo)) {
-        setSubscription('monthly');
-        track(Events.PurchaseCompleted, { plan: 'monthly' });
-        onClose();
-        return;
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-      customerInfo = await getCurrentCustomerInfo();
-      if (checkPremiumStatus(customerInfo)) {
-        setSubscription('monthly');
-        track(Events.PurchaseCompleted, { plan: 'monthly' });
-        onClose();
-      } else {
-        setSubscription('monthly');
-        track(Events.PurchaseCompleted, { plan: 'monthly', fallback: true });
-        onClose();
-      }
-    } catch (err: any) {
-      track(Events.PurchaseFailed, { plan: 'monthly', cancelled: !!err.userCancelled });
-      if (!err.userCancelled) Alert.alert('Purchase failed', 'Please try again later.');
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    track(Events.RestoreAttempted);
-    setPurchasing(true);
-    try {
-      const customerInfo = await restorePurchases();
-      if (checkPremiumStatus(customerInfo)) {
-        setSubscription('restored');
-        Alert.alert('Restored!', 'Your premium access has been restored.');
-        onClose();
-      } else {
-        Alert.alert('No purchases found', "We couldn't find any previous purchases on this account.");
-      }
-    } catch {
-      Alert.alert('Restore failed', 'Please try again later.');
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
+  const handlePurchase = () => purchase(onClose);
+  const handleRestore = () => restore(onClose);
   const handleClose = () => {
-    track(Events.PaywallDismissed);
+    track(Events.PaywallDismissed, { source: 'modal' });
     onClose();
   };
 
@@ -146,18 +62,16 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
 
           {/* Header */}
           <View style={s.header}>
-            <Text style={s.title}>Go Unlimited</Text>
-            <Text style={s.subtitle}>
-              Unlimited games. Unlimited unlocks.{'\n'}No daily limits, ever.
-            </Text>
+            <Text style={s.title}>Take back your focus</Text>
+            <Text style={s.subtitle}>Pick a plan. Cancel anytime.</Text>
           </View>
 
           {/* Benefits */}
           <View style={s.benefits}>
             {[
-              { icon: <Brain size={16} color={colors.accent} />, text: 'Unlimited brain games daily' },
+              { icon: <Brain size={16} color={colors.accent} />, text: 'Unlimited brain games' },
               { icon: <Zap size={16} color={colors.accent} />, text: 'Unlimited app unlocks' },
-              { icon: <Shield size={16} color={colors.accent} />, text: 'Full screen time blocking' },
+              { icon: <Shield size={16} color={colors.accent} />, text: 'Full screen-time blocking' },
               { icon: <Check size={16} color={colors.accent} />, text: 'Cancel anytime' },
             ].map((b, i) => (
               <View key={i} style={s.benefitRow}>
@@ -167,20 +81,23 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
             ))}
           </View>
 
-          {/* Price */}
+          {/* Monthly plan */}
           {loading ? (
             <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
           ) : (
-            <View style={s.priceRow}>
-              <Text style={s.price}>{monthlyPrice}</Text>
-              <Text style={s.pricePeriod}>per month</Text>
+            <View style={[s.planCard, { borderColor: colors.accent, backgroundColor: `${colors.accent}10` }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.planTitle, { color: colors.text }]}>Monthly</Text>
+                <Text style={[s.planCaption, { color: colors.muted }]}>{monthlyPrice} billed monthly</Text>
+              </View>
+              <Text style={[s.planPrice, { color: colors.text }]}>{monthlyPrice}/mo</Text>
             </View>
           )}
 
           {/* Subscribe button */}
-          <TouchableOpacity activeOpacity={0.8} onPress={handlePurchase} disabled={purchasing}>
+          <TouchableOpacity activeOpacity={0.85} onPress={handlePurchase} disabled={purchasing}>
             <LinearGradient
-              colors={[colors.accent, colors.accentDark]}
+              colors={['#E53935', '#F97316']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={s.subscribeBtn}
@@ -188,7 +105,7 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
               {purchasing ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={s.subscribeBtnText}>Subscribe for {monthlyPrice}/mo</Text>
+                <Text style={s.subscribeBtnText}>Continue for {monthlyPrice}/month</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -213,6 +130,7 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
     </Modal>
   );
 }
+
 
 function createStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
@@ -241,31 +159,30 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     header: {
       alignItems: 'center',
       marginTop: 8,
-      marginBottom: 24,
+      marginBottom: 18,
     },
     title: {
-      fontSize: 28,
+      fontSize: 26,
       fontFamily: FontFamily.heavy,
       color: colors.text,
       textAlign: 'center',
       letterSpacing: -0.5,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     subtitle: {
       fontSize: FontSize.sm,
       fontFamily: FontFamily.regular,
       color: colors.secondary,
       textAlign: 'center',
-      lineHeight: 20,
     },
     benefits: {
-      marginBottom: 20,
+      marginBottom: 18,
     },
     benefitRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingVertical: 6,
+      paddingVertical: 5,
     },
     benefitIcon: {
       width: 32,
@@ -280,21 +197,27 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontFamily: FontFamily.semibold,
       color: colors.text,
     },
-    priceRow: {
+    planCard: {
+      flexDirection: 'row',
       alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 2,
       marginBottom: 16,
     },
-    price: {
-      fontSize: 40,
+    planTitle: {
+      fontSize: 16,
       fontFamily: FontFamily.heavy,
-      color: colors.text,
-      letterSpacing: -1,
     },
-    pricePeriod: {
-      fontSize: FontSize.sm,
+    planCaption: {
+      fontSize: 11,
       fontFamily: FontFamily.regular,
-      color: colors.muted,
       marginTop: 2,
+    },
+    planPrice: {
+      fontSize: 18,
+      fontFamily: FontFamily.heavy,
     },
     subscribeBtn: {
       height: 52,

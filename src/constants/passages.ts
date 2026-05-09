@@ -5,7 +5,7 @@ export interface Passage {
   answer: number;
 }
 
-// ── Short passages (15–20 words) — used in early rounds ──────
+// ── Short passages (15-20 words) - used in early rounds ──────
 
 const SHORT: Passage[] = [
   {
@@ -82,7 +82,7 @@ const SHORT: Passage[] = [
   },
 ];
 
-// ── Medium passages (20–30 words) — used in middle rounds ────
+// ── Medium passages (20-30 words) - used in middle rounds ────
 
 const MEDIUM: Passage[] = [
   {
@@ -159,7 +159,7 @@ const MEDIUM: Passage[] = [
   },
 ];
 
-// ── Long passages (30–45 words) — used in later rounds ───────
+// ── Long passages (30-45 words) - used in later rounds ───────
 
 const LONG: Passage[] = [
   {

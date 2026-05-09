@@ -1,25 +1,39 @@
 import PostHog from 'posthog-react-native';
 import Constants from 'expo-constants';
 
-const apiKey = Constants.expoConfig?.extra?.posthogProjectToken as string | undefined;
-const host = Constants.expoConfig?.extra?.posthogHost as string | undefined;
+// Prefer EXPO_PUBLIC_* (auto-inlined by Expo at build time, set via EAS env);
+// fall back to the older app.config.js `extra` plumbing for local dev.
+const apiKey =
+  process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
+  (Constants.expoConfig?.extra?.posthogProjectToken as string | undefined);
+// Default to EU — that's where this project's PostHog instance lives.
+// Pointing at us.i.posthog.com silently 404s every event (the silent
+// killer that hid all our funnel data through builds 1–35).
+const host =
+  process.env.EXPO_PUBLIC_POSTHOG_HOST ||
+  (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
+  'https://eu.i.posthog.com';
 const isConfigured = !!apiKey && apiKey !== 'phc_YOUR_KEY_HERE';
 
-// Create client synchronously at module load so PostHogProvider can use it immediately
+// Create client synchronously at module load so PostHogProvider can use it immediately.
+// flushAt: 1 means we POST every event individually. Slightly more network
+// chatter, but onboarding fires ~17 events and we cannot afford to lose
+// them when a tester backgrounds or quits before a 20-event batch fills.
+// Once daily volume is high we can raise flushAt back to 5–10.
 const posthog: PostHog | null = isConfigured
   ? new PostHog(apiKey!, {
       host,
       captureAppLifecycleEvents: true,
-      flushAt: 20,
-      flushInterval: 30000,
+      flushAt: 1,
+      flushInterval: 10000,
     })
   : null;
 
 if (__DEV__) {
   if (posthog) {
-    console.log('[Analytics] PostHog initialized');
+    console.log('[Analytics] PostHog initialized', { host });
   } else {
-    console.warn('[Analytics] PostHog token not configured — analytics disabled');
+    console.warn('[Analytics] PostHog token not configured - analytics disabled');
   }
 }
 
@@ -28,7 +42,7 @@ export function getPostHogClient(): PostHog | null {
   return posthog;
 }
 
-/** Kept for backwards compatibility — resolves immediately */
+/** Kept for backwards compatibility - resolves immediately */
 export async function initAnalytics(): Promise<PostHog | null> {
   return posthog;
 }
@@ -68,7 +82,7 @@ export function screen(name: string, properties?: Record<string, any>) {
   }
 }
 
-// Event name constants — use these to avoid typos
+// Event name constants - use these to avoid typos
 export const Events = {
   // Onboarding
   OnboardingStepViewed: 'onboarding_step_viewed',
@@ -77,6 +91,12 @@ export const Events = {
   StrugglesSelected: 'struggles_selected',
   AgeSelected: 'age_selected',
   NameEntered: 'name_entered',
+  ScreentimeReported: 'screentime_reported',
+  ScreentimeSkipped: 'screentime_skipped',
+  GoalSelected: 'goal_selected',
+  CommitmentLocked: 'commitment_locked',
+  PaywallSkipped: 'paywall_skipped',
+  ReferralSourceSelected: 'referral_source_selected',
 
   // Earn
   EarnCategoryOpened: 'earn_category_opened',
@@ -86,6 +106,9 @@ export const Events = {
   PushupCompleted: 'pushup_completed',
   SquatStarted: 'squat_started',
   SquatCompleted: 'squat_completed',
+
+  // Review
+  ReviewPrompted: 'review_prompted',
 
   // Paywall
   PaywallShown: 'paywall_shown',

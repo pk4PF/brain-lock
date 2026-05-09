@@ -6,26 +6,16 @@ interface ScreenTimeModuleNative {
   getAuthorizationStatus(): Promise<string>;
   showAppPicker(): Promise<void>;
   getSelectionCount(): Promise<number>;
-  setSchedule(
-    startHour: number,
-    startMin: number,
-    endHour: number,
-    endMin: number
-  ): Promise<void>;
-  getSchedule(): Promise<{
-    startHour: number;
-    startMinute: number;
-    endHour: number;
-    endMinute: number;
-    enabled: boolean;
-  }>;
-  setScheduleEnabled(enabled: boolean): Promise<void>;
-  isScheduleEnabled(): Promise<boolean>;
+  blockApps(): Promise<void>;
+  unblockAll(): Promise<void>;
   applyShieldNow(): Promise<void>;
   removeShieldNow(): Promise<void>;
   ensureBlocking(): Promise<void>;
+  scheduleUnlockExpiry(minutes: number): Promise<void>;
+  cancelUnlockExpiry(): Promise<void>;
   setAppsUnlocked(unlocked: boolean): Promise<void>;
   getAppsUnlocked(): Promise<boolean>;
+  getUnlockExpiresAt(): Promise<number>;
 }
 
 const NativeModule: ScreenTimeModuleNative | null = (() => {
@@ -78,44 +68,19 @@ export const ScreenTime = {
     return await NativeModule.getSelectionCount();
   },
 
-  /** Set the blocked hours schedule (24h format) and enable monitoring. */
-  async setSchedule(
-    startHour: number,
-    startMin: number,
-    endHour: number,
-    endMin: number
-  ): Promise<void> {
-    if (!NativeModule) throw new Error('Screen Time is only available on iOS');
-    await NativeModule.setSchedule(startHour, startMin, endHour, endMin);
+  /** Apply the shield to currently-selected apps. Idempotent. */
+  async blockApps(): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.blockApps();
   },
 
-  /** Get the current schedule configuration. */
-  async getSchedule() {
-    if (!NativeModule) {
-      return {
-        startHour: 0,
-        startMinute: 0,
-        endHour: 23,
-        endMinute: 59,
-        enabled: false,
-      };
-    }
-    return await NativeModule.getSchedule();
+  /** Lift the shield and cancel any active unlock window. */
+  async unblockAll(): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.unblockAll();
   },
 
-  /** Enable or disable the scheduled monitoring. */
-  async setScheduleEnabled(enabled: boolean): Promise<void> {
-    if (!NativeModule) throw new Error('Screen Time is only available on iOS');
-    await NativeModule.setScheduleEnabled(enabled);
-  },
-
-  /** Check if schedule monitoring is currently enabled. */
-  async isScheduleEnabled(): Promise<boolean> {
-    if (!NativeModule) return false;
-    return await NativeModule.isScheduleEnabled();
-  },
-
-  /** Immediately apply shields to selected apps (for testing). */
+  /** Immediately apply shields to selected apps. */
   async applyShieldNow(): Promise<void> {
     if (!NativeModule) throw new Error('Screen Time is only available on iOS');
     await NativeModule.applyShieldNow();
@@ -127,10 +92,26 @@ export const ScreenTime = {
     await NativeModule.removeShieldNow();
   },
 
-  /** Re-apply shields on app launch if blocking was previously enabled. */
+  /** Re-apply shields on app launch if a selection exists and no unlock window is active. */
   async ensureBlocking(): Promise<void> {
     if (!NativeModule) return;
     await NativeModule.ensureBlocking();
+  },
+
+  /**
+   * Schedule the DeviceActivityMonitor extension to fire at `now + minutes`.
+   * When the interval ends, the extension re-applies the shield even if the
+   * host app has been killed. Call this from JS right after `removeShieldNow`.
+   */
+  async scheduleUnlockExpiry(minutes: number): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.scheduleUnlockExpiry(minutes);
+  },
+
+  /** Cancel any pending unlock-window expiry (e.g. when re-blocking manually). */
+  async cancelUnlockExpiry(): Promise<void> {
+    if (!NativeModule) return;
+    await NativeModule.cancelUnlockExpiry();
   },
 
   /** Write unlock state to shared UserDefaults so native code + extension can read it. */
@@ -143,5 +124,11 @@ export const ScreenTime = {
   async getAppsUnlocked(): Promise<boolean> {
     if (!NativeModule) return false;
     return await NativeModule.getAppsUnlocked();
+  },
+
+  /** Read unlock expiry timestamp (unix seconds, 0 if no active window). */
+  async getUnlockExpiresAt(): Promise<number> {
+    if (!NativeModule) return 0;
+    return await NativeModule.getUnlockExpiresAt();
   },
 };

@@ -1,260 +1,220 @@
-import { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import LottieView from 'lottie-react-native';
-import { FontSize, FontFamily, Spacing } from '../../src/constants/theme';
+import { Brain, Coins, Lock, Unlock, Trophy } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
+import FadeUp from '../../src/components/onboarding/FadeUp';
+import { SectionHeading } from '../../src/components/ui/anvil';
+import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 
-const STEPS = [
-    {
-        lottie: require('../../assets/animations/lock.json'),
-        title: 'You reach for a distracting app',
-        subtitle: 'TikTok, Instagram, Twitter...',
-    },
-    {
-        lottie: require('../../assets/animations/brain.json'),
-        title: 'Complete a quick challenge',
-        subtitle: 'Improve mental or physical health.',
-    },
-    {
-        lottie: require('../../assets/animations/success.json'),
-        title: 'App unlocked. You earned it!',
-        subtitle: 'Every unlock is earned, not given.',
-    },
+/**
+ * Single-screen "how it works" explainer.
+ *
+ * One job: tell the user how brain cells become screen time. Four steps
+ * that mirror the actual product loop:
+ *
+ *   1. Block apps                         (the trigger)
+ *   2. Train your brain                   (the input)
+ *   3. Earn brain cells                   (the currency)
+ *   4. Spend cells to unlock apps         (the payoff)
+ *
+ * Iconography tells the same story visually: Lock → Brain → Coins →
+ * Unlock. Locked at the start, unlocked at the end — the steps in between
+ * are the work that earns the user from one state to the other.
+ *
+ * Cards are vertically connected by a hairline so it reads as a flow,
+ * not four independent boxes.
+ */
+
+interface Step {
+  Icon: any;
+  title: string;
+}
+
+const STEPS: Step[] = [
+  {
+    Icon: Lock,
+    title: 'Block apps',
+  },
+  {
+    Icon: Brain,
+    title: 'Train your brain',
+  },
+  {
+    Icon: Coins,
+    title: 'Earn brain cells',
+  },
+  {
+    Icon: Unlock,
+    title: 'Spend braincells to unlock apps',
+  },
 ];
 
 export default function HowItWorksScreen() {
-    const { colors } = useThemeColors();
+  useOnboardingStepView('howitworks');
+  const { colors } = useThemeColors();
 
-    // Entrance animations
-    const titleAnim = useRef(new Animated.Value(0)).current;
-    const stepAnims = useRef(STEPS.map(() => new Animated.Value(0))).current;
-    const buttonAnim = useRef(new Animated.Value(0)).current;
+  return (
+    <OnboardingLayout step={8}>
+      <OnboardingBackButton />
+      <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.scrollBody}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* One big heading, no eyebrow + headline + body stack. The 4-step
+              flow below tells the rest of the story without prose. */}
+          <FadeUp delay={0}>
+            <SectionHeading size="lg">
+              How it works
+            </SectionHeading>
+          </FadeUp>
 
-    // Step scale bounce
-    const stepScales = useRef(STEPS.map(() => new Animated.Value(0.9))).current;
+          <View style={{ height: 28 }} />
 
-    useEffect(() => {
-        // Title first
-        Animated.spring(titleAnim, {
-            toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
-        }).start();
-
-        // Stagger steps with scale bounce
-        setTimeout(() => {
-            STEPS.forEach((_, i) => {
-                setTimeout(() => {
-                    Animated.parallel([
-                        Animated.spring(stepAnims[i], {
-                            toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
-                        }),
-                        Animated.spring(stepScales[i], {
-                            toValue: 1, friction: 5, tension: 60, useNativeDriver: true,
-                        }),
-                    ]).start();
-                }, i * 200);
-            });
-        }, 200);
-
-        // Button last
-        setTimeout(() => {
-            Animated.spring(buttonAnim, {
-                toValue: 1, friction: 8, tension: 60, useNativeDriver: true,
-            }).start();
-        }, 200 + STEPS.length * 200 + 100);
-    }, []);
-
-    const animStyle = (anim: Animated.Value, translateY = 32) => ({
-        opacity: anim,
-        transform: [{
-            translateY: anim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [translateY, 0],
-            }),
-        }],
-    });
-
-    return (
-        <OnboardingLayout>
-            <OnboardingBackButton />
-
-            <View style={styles.content}>
-                <View style={styles.centerSection}>
-                    {/* Header */}
-                    <Animated.View style={[styles.headerSection, animStyle(titleAnim)]}>
-                        <Text style={[styles.title, { color: colors.text }]}>How BrainLock Works</Text>
-                        <Text style={[styles.subtitle, { color: colors.muted }]}>
-                            Simple, fun, and takes under 60 seconds
-                        </Text>
-                    </Animated.View>
-
-                    {/* Steps */}
-                    <View style={styles.stepsContainer}>
-                        {STEPS.map((step, index) => (
-                            <Animated.View
-                                key={index}
-                                style={{
-                                    opacity: stepAnims[index],
-                                    transform: [
-                                        {
-                                            translateY: stepAnims[index].interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [24, 0],
-                                            }),
-                                        },
-                                        { scale: stepScales[index] },
-                                    ],
-                                }}
-                            >
-                                {/* Connector line */}
-                                {index > 0 && (
-                                    <View style={styles.connectorContainer}>
-                                        <View style={[styles.connectorLine, { backgroundColor: colors.accentGlow }]} />
-                                    </View>
-                                )}
-
-                                <View style={[styles.stepCard, { backgroundColor: colors.card, borderColor: colors.accentLight }]}>
-                                    {/* Step number badge */}
-                                    <View style={[styles.stepBadge, { backgroundColor: colors.accent }]}>
-                                        <Text style={styles.stepNumber}>{index + 1}</Text>
-                                    </View>
-
-                                    {/* Lottie icon */}
-                                    <View style={[styles.stepIconContainer, { backgroundColor: colors.accentLight, borderColor: colors.accentGlow }]}>
-                                        <LottieView
-                                            source={step.lottie}
-                                            autoPlay
-                                            loop
-                                            speed={0.6}
-                                            style={styles.stepLottie}
-                                        />
-                                    </View>
-
-                                    {/* Text */}
-                                    <View style={styles.stepTextContainer}>
-                                        <Text style={[styles.stepTitle, { color: colors.text }]}>{step.title}</Text>
-                                        <Text style={[styles.stepSubtitle, { color: colors.muted }]}>{step.subtitle}</Text>
-                                    </View>
-                                </View>
-                            </Animated.View>
-                        ))}
+          {/* Step list - cards connected by a thin vertical guide. */}
+          <View style={styles.steps}>
+            {STEPS.map((s, i) => (
+              <View key={s.title}>
+                <FadeUp delay={260 + i * 90}>
+                  <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={[styles.iconPlate, { backgroundColor: `${colors.accent}1F`, borderColor: `${colors.accent}40` }]}>
+                      <s.Icon size={20} color={colors.accent} strokeWidth={2.2} />
                     </View>
-                </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.cardTitle, { color: colors.text }]}>{s.title}</Text>
+                    </View>
+                  </View>
+                </FadeUp>
 
-                <Animated.View style={[styles.bottomContainer, animStyle(buttonAnim)]}>
-                    <OnboardingButton
-                        label="Let's Go"
-                        onPress={() => router.push('/onboarding/letsgo')}
-                    />
-                </Animated.View>
+                {/* Connector between cards */}
+                {i < STEPS.length - 1 && (
+                  <View style={styles.connectorWrap}>
+                    <View style={[styles.connector, { backgroundColor: colors.border }]} />
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {/* Outcome — visually distinct from the 4 steps. Solid filled
+                accent so it reads as the destination, not another step.
+                Connector above is dashed to mark a category change. */}
+            <View style={styles.connectorWrap}>
+              <View style={[styles.connector, { backgroundColor: colors.border, height: 18 }]} />
             </View>
-        </OnboardingLayout>
-    );
+
+            <FadeUp delay={260 + STEPS.length * 90 + 60}>
+              <View style={[styles.outcomeCard, { backgroundColor: colors.accent }]}>
+                <View style={styles.outcomeIconPlate}>
+                  <Trophy size={20} color="#FFFFFF" strokeWidth={2.2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.outcomeLabel}>YOU GET</Text>
+                  <Text style={styles.outcomeTitle}>Your brain, back in charge.</Text>
+                </View>
+              </View>
+            </FadeUp>
+          </View>
+        </ScrollView>
+
+        <View style={[styles.bottomContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          <OnboardingButton
+            label="Continue"
+            onPress={() => router.push('/onboarding/referral')}
+          />
+        </View>
+      </View>
+    </OnboardingLayout>
+  );
 }
 
+const ICON_PLATE = 38;
+
 const styles = StyleSheet.create({
-    content: {
-        flex: 1,
-        justifyContent: 'space-between',
-    },
-    centerSection: {
-        flex: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-    },
-    headerSection: {
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    title: {
-        fontSize: 28,
-        fontFamily: FontFamily.bold,
-        textAlign: 'center',
-        marginBottom: 8,
-        letterSpacing: -0.3,
-    },
-    subtitle: {
-        fontSize: FontSize.md,
-        fontFamily: FontFamily.regular,
-        textAlign: 'center',
-        lineHeight: 22,
-    },
-    stepsContainer: {
-        gap: 0,
-    },
-    connectorContainer: {
-        alignItems: 'center',
-        height: 24,
-        justifyContent: 'center',
-    },
-    connectorLine: {
-        width: 2,
-        height: 24,
-        borderRadius: 1,
-    },
-    stepCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        ...({
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 2,
-        }),
-    },
-    stepBadge: {
-        position: 'absolute',
-        top: -12,
-        left: 16,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    stepNumber: {
-        fontSize: 12,
-        fontFamily: FontFamily.bold,
-        color: '#FFFFFF',
-    },
-    stepIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-        overflow: 'hidden',
-    },
-    stepLottie: {
-        width: 44,
-        height: 44,
-    },
-    stepTextContainer: {
-        flex: 1,
-    },
-    stepTitle: {
-        fontSize: FontSize.md,
-        fontFamily: FontFamily.bold,
-        marginBottom: 4,
-        lineHeight: 20,
-    },
-    stepSubtitle: {
-        fontSize: FontSize.sm,
-        fontFamily: FontFamily.regular,
-        lineHeight: 18,
-    },
-    bottomContainer: {
-        paddingHorizontal: Spacing.xl,
-        paddingBottom: 48,
-        alignItems: 'center',
-    },
+  content: { flex: 1 },
+  scrollBody: {
+    paddingTop: 84,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: 24,
+  },
+
+  // Step list
+  steps: {
+    gap: 0,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  iconPlate: {
+    width: ICON_PLATE,
+    height: ICON_PLATE,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
+  },
+
+  // Connector between cards
+  connectorWrap: {
+    // Align the line under the icon plate inside the card.
+    // Card: padding 14 left + iconPlate width / 2.
+    paddingLeft: 14 + ICON_PLATE / 2 - 1,
+  },
+  connector: {
+    width: 2,
+    height: 14,
+    marginVertical: 0,
+  },
+
+  bottomContainer: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: 32,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
+
+  // Outcome — solid filled accent card, the only inverted card on the
+  // screen. White icon plate + label + headline so the card reads as
+  // a destination, not another step.
+  outcomeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+  },
+  outcomeIconPlate: {
+    width: ICON_PLATE,
+    height: ICON_PLATE,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outcomeLabel: {
+    fontSize: 10,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    color: 'rgba(255,255,255,0.78)',
+    marginBottom: 2,
+  },
+  outcomeTitle: {
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.3,
+    color: '#FFFFFF',
+  },
 });

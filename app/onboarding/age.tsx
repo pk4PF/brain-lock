@@ -1,185 +1,257 @@
-import { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  View, Text, StyleSheet, PanResponder, ScrollView,
+} from 'react-native';
 import { router } from 'expo-router';
-import { Check } from 'lucide-react-native';
-import { FontSize, FontFamily, Spacing } from '../../src/constants/theme';
-import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useStore } from '../../src/store/useStore';
-import { track, Events, setPersonProperties } from '../../src/services/analytics';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { hapticLight } from '../../src/utils/haptics';
+import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
+import FadeUp from '../../src/components/onboarding/FadeUp';
+import { Eyebrow, SectionHeading, MutedText } from '../../src/components/ui/anvil';
+import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
+import { track, Events } from '../../src/services/analytics';
 
-const AGE_BANDS = [
-  { id: 'under_18', label: 'Under 18' },
-  { id: '18_24', label: '18–24' },
-  { id: '25_34', label: '25–34' },
-  { id: '35_44', label: '35–44' },
-  { id: '45_plus', label: '45+' },
-];
+const MIN_AGE = 1;
+const MAX_AGE = 100;
+const STEP = 1;
 
 export default function AgeScreen() {
-  const [selected, setSelected] = useState<string | null>(null);
-  const { setAgeBand } = useStore();
-  const { colors, isDark } = useThemeColors();
+  useOnboardingStepView('age');
+  const { colors } = useThemeColors();
+  const { userAge, setUserAge, userName } = useStore();
+  const firstName = userName.trim().split(/\s+/)[0] || '';
+  const [age, setAge] = useState<number>(userAge ?? 22);
 
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const buttonAnim = useRef(new Animated.Value(0)).current;
-  const itemAnims = useRef(AGE_BANDS.map(() => new Animated.Value(0))).current;
-
-  useEffect(() => {
-    Animated.spring(headerAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
-    setTimeout(() => {
-      Animated.stagger(
-        80,
-        itemAnims.map((anim) =>
-          Animated.spring(anim, { toValue: 1, friction: 8, tension: 65, useNativeDriver: true })
-        )
-      ).start();
-    }, 150);
-    setTimeout(() => {
-      Animated.spring(buttonAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
-    }, 150 + AGE_BANDS.length * 80 + 100);
-  }, []);
-
-  const handleContinue = () => {
-    if (!selected) return;
-    setAgeBand(selected);
-    track(Events.AgeSelected, { ageBand: selected });
-    setPersonProperties({ ageBand: selected });
-    router.push('/onboarding/struggles');
+  const advance = () => {
+    setUserAge(age);
+    track(Events.AgeSelected, { age });
+    router.push('/onboarding/screentime');
   };
 
-  const animStyle = (anim: Animated.Value, translateY = 32) => ({
-    opacity: anim,
-    transform: [
-      {
-        translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [translateY, 0] }),
-      },
-    ],
-  });
-
   return (
-    <OnboardingLayout>
+    <OnboardingLayout step={2}>
       <OnboardingBackButton />
-
-      <View style={styles.content}>
-        <Animated.View style={[styles.headerSection, animStyle(headerAnim)]}>
-          <Text style={[styles.title, { color: colors.text }]}>How old{'\n'}are you?</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
-            Helps us tailor the experience.
-          </Text>
-        </Animated.View>
-
-        <View style={styles.listSection}>
-          {AGE_BANDS.map((item, index) => {
-            const isSelected = selected === item.id;
-            return (
-              <Animated.View key={item.id} style={animStyle(itemAnims[index], 24)}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setSelected(item.id)}
-                  style={[
-                    styles.itemRow,
-                    {
-                      backgroundColor: isSelected
-                        ? (isDark ? colors.accentLight : 'rgba(245,166,35,0.06)')
-                        : colors.card,
-                      borderColor: isSelected ? colors.accentGlow : colors.accentLight,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.itemLabel,
-                      { color: isSelected ? colors.text : colors.secondary },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  <View
-                    style={[
-                      styles.checkbox,
-                      {
-                        backgroundColor: isSelected ? colors.accent : 'transparent',
-                        borderColor: isSelected ? colors.accent : colors.border,
-                      },
-                    ]}
-                  >
-                    {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
+      {/* ScrollView wrap so iOS Display Zoom + Dynamic Type users can still
+          reach the Continue button. Slider PanResponder still wins on
+          horizontal drags because it sets onStartShouldSetPanResponderCapture
+          and onPanResponderTerminationRequest=false. */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.top}>
+          <FadeUp delay={0}>
+            <Eyebrow>One more</Eyebrow>
+          </FadeUp>
+          <FadeUp delay={80}>
+            <SectionHeading size="lg">
+              {firstName ? `${firstName}, how old are you?` : 'How old are you?'}
+            </SectionHeading>
+          </FadeUp>
+          <View style={{ height: 10 }} />
+          <FadeUp delay={160}>
+            <MutedText size="md">
+              We'll use this to project your real lifetime cost.
+            </MutedText>
+          </FadeUp>
         </View>
 
-        <Animated.View style={[styles.bottomContainer, animStyle(buttonAnim)]}>
-          <OnboardingButton
-            label={selected ? 'Continue' : 'Pick an age range'}
-            onPress={handleContinue}
-          />
-        </Animated.View>
-      </View>
+        <View style={styles.center}>
+          <FadeUp delay={260}>
+            <View style={styles.bigReadout}>
+              <Text style={[styles.bigNumber, { color: colors.accent }]}>{age}</Text>
+              <Text style={[styles.bigUnit, { color: colors.muted }]}>YEARS OLD</Text>
+            </View>
+          </FadeUp>
+
+          <FadeUp delay={360}>
+            <Slider
+              value={age}
+              onChange={setAge}
+              min={MIN_AGE}
+              max={MAX_AGE}
+              step={STEP}
+              colors={colors}
+            />
+            <View style={styles.tickRow}>
+              <Text style={[styles.tick, { color: colors.muted }]}>{MIN_AGE}</Text>
+              <Text style={[styles.tick, { color: colors.muted }]}>{MAX_AGE}+</Text>
+            </View>
+          </FadeUp>
+        </View>
+
+        <FadeUp delay={500} travel={20}>
+          <View style={styles.bottomContainer}>
+            <OnboardingButton label="Continue" onPress={advance} />
+          </View>
+        </FadeUp>
+      </ScrollView>
     </OnboardingLayout>
   );
 }
 
+// Same PanResponder slider as screentime - duplicated locally so it stays
+// inline with the screen and doesn't pull a global dependency for a 50-line
+// primitive. Both screens use the same gesture pattern.
+interface SliderProps {
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  colors: any;
+}
+
+function Slider({ value, onChange, min, max, step, colors }: SliderProps) {
+  const wrapRef = useRef<View>(null);
+  const [width, setWidth] = useState(0);
+
+  const widthRef = useRef(0);
+  widthRef.current = width;
+  const trackPageX = useRef(0);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const lastHapticVal = useRef<number>(value);
+
+  const apply = (screenX: number) => {
+    const w = widthRef.current;
+    if (w <= 0) return;
+    const localX = screenX - trackPageX.current;
+    const clamped = Math.max(0, Math.min(w, localX));
+    const pct = clamped / w;
+    const raw = min + pct * (max - min);
+    const stepped = Math.round(raw / step) * step;
+    const next = Math.max(min, Math.min(max, stepped));
+    if (next !== lastHapticVal.current) {
+      hapticLight();
+      lastHapticVal.current = next;
+    }
+    if (next !== valueRef.current) onChangeRef.current(next);
+  };
+
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (_e, gs) => {
+        wrapRef.current?.measureInWindow((x: number) => {
+          trackPageX.current = x;
+          applyRef.current(gs.x0);
+        });
+      },
+      onPanResponderMove: (_e, gs) => {
+        applyRef.current(gs.moveX);
+      },
+    }),
+  ).current;
+
+  // Cast to any: RN accepts percentage strings at runtime even though
+  // the type system insists on number | DimensionValue.
+  const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const pctStr: any = `${pct * 100}%`;
+
+  return (
+    <View
+      ref={wrapRef}
+      onLayout={(e) => {
+        setWidth(e.nativeEvent.layout.width);
+        wrapRef.current?.measureInWindow((x: number) => {
+          trackPageX.current = x;
+        });
+      }}
+      style={styles.sliderTrackHit}
+      {...responder.panHandlers}
+    >
+      <View style={[styles.sliderTrack, { backgroundColor: colors.cardAlt }]} pointerEvents="none">
+        <View
+          style={[
+            styles.sliderFill,
+            { backgroundColor: colors.accent, width: pctStr },
+          ]}
+        />
+        <View
+          style={[
+            styles.sliderThumb,
+            { backgroundColor: colors.accent, borderColor: colors.background, left: pctStr },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+const SLIDER_HEIGHT = 6;
+const THUMB_SIZE = 28;
+
 const styles = StyleSheet.create({
-  content: { flex: 1 },
-  headerSection: {
-    paddingHorizontal: 32,
-    paddingTop: 140,
-    alignItems: 'flex-start',
+  // flexGrow inside ScrollView contentContainerStyle so children fill the
+  // viewport when content fits, but can grow taller (and scroll) when zoom
+  // pushes them past the available height.
+  content: { flexGrow: 1, justifyContent: 'space-between' },
+  top: { paddingTop: 96, paddingHorizontal: Spacing.xl },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', paddingHorizontal: Spacing.xl },
+  bigReadout: { alignItems: 'center', marginBottom: 28 },
+  bigNumber: {
+    fontSize: 96,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -4,
+    lineHeight: 100,
+    fontVariant: ['tabular-nums'],
   },
-  title: {
-    fontSize: 28,
-    fontFamily: FontFamily.bold,
-    marginBottom: 8,
-    letterSpacing: -0.3,
-    lineHeight: 34,
+  bigUnit: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    marginTop: 4,
   },
-  subtitle: {
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.regular,
-    lineHeight: 22,
-  },
-  listSection: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  itemLabel: {
-    fontSize: FontSize.md,
-    fontFamily: FontFamily.semibold,
-    flex: 1,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+  sliderTrackHit: { width: '100%', paddingVertical: 18, justifyContent: 'center' },
+  sliderTrack: {
+    height: SLIDER_HEIGHT,
+    borderRadius: SLIDER_HEIGHT / 2,
+    width: '100%',
+    overflow: 'visible',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  bottomContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 48,
-    alignItems: 'center',
+  sliderFill: {
+    height: SLIDER_HEIGHT,
+    borderRadius: SLIDER_HEIGHT / 2,
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
+  sliderThumb: {
+    position: 'absolute',
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    top: (SLIDER_HEIGHT - THUMB_SIZE) / 2,
+    marginLeft: -THUMB_SIZE / 2,
+    borderWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  tickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  tick: { fontSize: 12, fontFamily: FontFamily.medium, letterSpacing: 1.2 },
+  bottomContainer: { paddingHorizontal: Spacing.xl, paddingBottom: 40 },
 });

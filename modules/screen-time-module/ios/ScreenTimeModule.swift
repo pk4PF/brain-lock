@@ -79,56 +79,26 @@ public class ScreenTimeModule: Module {
             return sel.applicationTokens.count + sel.categoryTokens.count
         }
 
-        // MARK: - Schedule
+        // MARK: - Block apps (no schedule)
+        //
+        // The model is now: pick apps → blocked. The only way to unlock is
+        // to spend credits, which schedules a one-shot DeviceActivity event
+        // to re-block at the unlock-window's intervalEnd.
 
-        AsyncFunction("setSchedule") { [weak self] (startHour: Int, startMin: Int, endHour: Int, endMin: Int) -> Void in
+        AsyncFunction("blockApps") { [weak self] () -> Void in
             guard #available(iOS 16.0, *) else { return }
-            guard let self = self else { return }
-            let store = SharedDataStore.shared
-            store.scheduleStartHour = startHour
-            store.scheduleStartMinute = startMin
-            store.scheduleEndHour = endHour
-            store.scheduleEndMinute = endMin
-            store.scheduleEnabled = true
-
-            // Apply shields IMMEDIATELY so blocking starts right now
-            self.applyShieldsFromStore()
-
-            // Also set up DeviceActivity monitoring for background schedule enforcement
-            try self.startMonitoringImpl()
+            self?.applyShieldsFromStore()
+            // If a stale unlock-window is still active, cancel it so the
+            // user's manual block takes precedence.
+            DeviceActivityCenter().stopMonitoring([.unlockWindow])
+            SharedDataStore.shared.appsUnlocked = false
         }
 
-        AsyncFunction("getSchedule") { () -> [String: Any] in
-            guard #available(iOS 16.0, *) else {
-                return ["startHour": 0, "startMinute": 0, "endHour": 23, "endMinute": 59, "enabled": false]
-            }
-            let store = SharedDataStore.shared
-            return [
-                "startHour": store.scheduleStartHour,
-                "startMinute": store.scheduleStartMinute,
-                "endHour": store.scheduleEndHour,
-                "endMinute": store.scheduleEndMinute,
-                "enabled": store.scheduleEnabled,
-            ]
-        }
-
-        AsyncFunction("setScheduleEnabled") { [weak self] (enabled: Bool) -> Void in
+        AsyncFunction("unblockAll") { [weak self] () -> Void in
             guard #available(iOS 16.0, *) else { return }
-            guard let self = self else { return }
-            let store = SharedDataStore.shared
-            store.scheduleEnabled = enabled
-            if enabled {
-                self.applyShieldsFromStore()
-                try self.startMonitoringImpl()
-            } else {
-                DeviceActivityCenter().stopMonitoring()
-                self.removeAllShields()
-            }
-        }
-
-        AsyncFunction("isScheduleEnabled") { () -> Bool in
-            guard #available(iOS 16.0, *) else { return false }
-            return SharedDataStore.shared.scheduleEnabled
+            self?.removeAllShields()
+            DeviceActivityCenter().stopMonitoring([.unlockWindow])
+            SharedDataStore.shared.appsUnlocked = false
         }
 
         // MARK: - Shield (immediate apply/remove)
@@ -143,12 +113,58 @@ public class ScreenTimeModule: Module {
             self?.removeAllShields()
         }
 
-        // MARK: - Unlock state (shared with DeviceActivity extension)
+        // MARK: - Unlock window scheduling
+        //
+        // When the user spends credits to unlock, JS calls scheduleUnlockExpiry
+        // with the duration in minutes. iOS schedules a DeviceActivity event
+        // whose intervalEnd is `now + minutes`. At that moment, the system wakes
+        // BrainLockMonitor (a separate process) which re-applies shields from
+        // SharedDataStore.savedSelection — works even if the host app is killed.
+
+        AsyncFunction("scheduleUnlockExpiry") { (minutes: Int) -> Void in
+            guard #available(iOS 16.0, *) else { return }
+            let now = Date()
+            // iOS requires intervalStart to be at least 15 minutes from intervalEnd
+            // for repeating schedules. For non-repeating one-shot, the minimum is
+            // unlockable but the schedule must not fire instantly. We cap minimum
+            // at 1 min and use a tiny window starting "now" using calendar comps.
+            let cal = Calendar.current
+            let minutes = max(1, minutes)
+            let endDate = now.addingTimeInterval(TimeInterval(minutes * 60))
+            let startComps = cal.dateComponents([.hour, .minute, .second], from: now)
+            let endComps = cal.dateComponents([.hour, .minute, .second], from: endDate)
+
+            let schedule = DeviceActivitySchedule(
+                intervalStart: startComps,
+                intervalEnd: endComps,
+                repeats: false
+            )
+
+            SharedDataStore.shared.unlockExpiresAt = endDate
+            SharedDataStore.shared.appsUnlocked = true
+
+            let center = DeviceActivityCenter()
+            center.stopMonitoring([.unlockWindow])
+            do {
+                try center.startMonitoring(.unlockWindow, during: schedule)
+                print("[ScreenTimeModule] unlockWindow monitoring started, expires at \(endDate)")
+            } catch {
+                print("[ScreenTimeModule] startMonitoring failed: \(error)")
+            }
+        }
+
+        AsyncFunction("cancelUnlockExpiry") { () -> Void in
+            guard #available(iOS 16.0, *) else { return }
+            DeviceActivityCenter().stopMonitoring([.unlockWindow])
+            SharedDataStore.shared.appsUnlocked = false
+            SharedDataStore.shared.unlockExpiresAt = nil
+        }
+
+        // MARK: - Unlock state (read-only convenience for JS)
 
         AsyncFunction("setAppsUnlocked") { (unlocked: Bool) -> Void in
             guard #available(iOS 16.0, *) else { return }
             SharedDataStore.shared.appsUnlocked = unlocked
-            print("[ScreenTimeModule] appsUnlocked set to \(unlocked)")
         }
 
         AsyncFunction("getAppsUnlocked") { () -> Bool in
@@ -156,22 +172,34 @@ public class ScreenTimeModule: Module {
             return SharedDataStore.shared.appsUnlocked
         }
 
+        AsyncFunction("getUnlockExpiresAt") { () -> Double in
+            guard #available(iOS 16.0, *) else { return 0 }
+            return SharedDataStore.shared.unlockExpiresAt?.timeIntervalSince1970 ?? 0
+        }
+
         // MARK: - Ensure blocking on app launch
+        //
+        // Called once on app foreground. Re-applies shields if the user has
+        // selected apps and is not currently within an active unlock window.
+        // This is a belt-and-braces fallback in case ManagedSettings was
+        // somehow cleared (extremely rare; ManagedSettings persists across
+        // launches by default).
 
         AsyncFunction("ensureBlocking") { [weak self] () -> Void in
             guard #available(iOS 16.0, *) else { return }
             guard let self = self else { return }
             let store = SharedDataStore.shared
-            guard store.scheduleEnabled else { return }
+            let sel = store.savedSelection
+            let hasSelection = !sel.applicationTokens.isEmpty || !sel.categoryTokens.isEmpty
+            guard hasSelection else { return }
 
             if store.appsUnlocked {
-                print("[ScreenTimeModule] Apps unlocked for today — skipping shield re-apply")
+                print("[ScreenTimeModule] Active unlock window — leaving shields removed")
                 return
             }
 
-            print("[ScreenTimeModule] Re-applying shields on app launch")
+            print("[ScreenTimeModule] ensureBlocking: re-applying shields")
             self.applyShieldsFromStore()
-            try? self.startMonitoringImpl()
         }
     }
 
@@ -181,9 +209,9 @@ public class ScreenTimeModule: Module {
     private func applyShieldsFromStore() {
         let sel = SharedDataStore.shared.savedSelection
         let managedStore = ManagedSettingsStore()
-        managedStore.shield.applications = sel.applicationTokens
-        managedStore.shield.applicationCategories = .specific(sel.categoryTokens)
-        managedStore.shield.webDomains = sel.webDomainTokens
+        managedStore.shield.applications = sel.applicationTokens.isEmpty ? nil : sel.applicationTokens
+        managedStore.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        managedStore.shield.webDomains = sel.webDomainTokens.isEmpty ? nil : sel.webDomainTokens
         print("[ScreenTimeModule] Shields applied: \(sel.applicationTokens.count) apps, \(sel.categoryTokens.count) categories")
     }
 
@@ -195,31 +223,11 @@ public class ScreenTimeModule: Module {
         managedStore.shield.webDomains = nil
         print("[ScreenTimeModule] All shields removed")
     }
-
-    @available(iOS 16.0, *)
-    private func startMonitoringImpl() throws {
-        let store = SharedDataStore.shared
-        let schedule = DeviceActivitySchedule(
-            intervalStart: DateComponents(
-                hour: store.scheduleStartHour,
-                minute: store.scheduleStartMinute
-            ),
-            intervalEnd: DateComponents(
-                hour: store.scheduleEndHour,
-                minute: store.scheduleEndMinute
-            ),
-            repeats: true
-        )
-        let center = DeviceActivityCenter()
-        center.stopMonitoring()
-        try center.startMonitoring(.daily, during: schedule)
-        print("[ScreenTimeModule] Monitoring started: \(store.scheduleStartHour):\(store.scheduleStartMinute) - \(store.scheduleEndHour):\(store.scheduleEndMinute)")
-    }
 }
 
 // MARK: - DeviceActivityName Extension
 
 @available(iOS 16.0, *)
 extension DeviceActivityName {
-    static let daily = Self("daily")
+    static let unlockWindow = Self("unlockWindow")
 }

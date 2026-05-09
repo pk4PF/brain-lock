@@ -8,11 +8,8 @@ public class SharedDataStore {
 
     private let suiteName = "group.com.pk4pf.brain-lock"
     private let selectionKey = "familyActivitySelection"
-    private let scheduleStartHourKey = "scheduleStartHour"
-    private let scheduleStartMinuteKey = "scheduleStartMinute"
-    private let scheduleEndHourKey = "scheduleEndHour"
-    private let scheduleEndMinuteKey = "scheduleEndMinute"
-    private let scheduleEnabledKey = "scheduleEnabled"
+    private let appsUnlockedKey = "appsUnlocked"
+    private let unlockExpiresAtKey = "unlockExpiresAt"
 
     private var defaults: UserDefaults? {
         UserDefaults(suiteName: suiteName)
@@ -35,55 +32,33 @@ public class SharedDataStore {
         }
     }
 
-    // MARK: - Schedule
-
-    public var scheduleStartHour: Int {
-        get { defaults?.integer(forKey: scheduleStartHourKey) ?? 0 }
-        set { defaults?.set(newValue, forKey: scheduleStartHourKey) }
-    }
-
-    public var scheduleStartMinute: Int {
-        get { defaults?.integer(forKey: scheduleStartMinuteKey) ?? 0 }
-        set { defaults?.set(newValue, forKey: scheduleStartMinuteKey) }
-    }
-
-    public var scheduleEndHour: Int {
-        get { defaults?.integer(forKey: scheduleEndHourKey) ?? 23 }
-        set { defaults?.set(newValue, forKey: scheduleEndHourKey) }
-    }
-
-    public var scheduleEndMinute: Int {
-        get { defaults?.integer(forKey: scheduleEndMinuteKey) ?? 59 }
-        set { defaults?.set(newValue, forKey: scheduleEndMinuteKey) }
-    }
-
-    public var scheduleEnabled: Bool {
-        get { defaults?.bool(forKey: scheduleEnabledKey) ?? false }
-        set { defaults?.set(newValue, forKey: scheduleEnabledKey) }
-    }
-
     // MARK: - Unlock State
+    //
+    // Apps are unlocked iff `unlockExpiresAt` is in the future. The bool flag
+    // is kept as a fast-read marker for JS code paths, but the truth source
+    // for the DeviceActivityMonitor extension is the timestamp.
 
-    private let appsUnlockedKey = "appsUnlocked"
-    private let unlockDateKey = "unlockDate"
-
-    /// Whether the user has completed enough games to unlock apps today
     public var appsUnlocked: Bool {
         get {
-            guard let date = defaults?.string(forKey: unlockDateKey) else { return false }
-            let today = Self.todayString()
-            return date == today && (defaults?.bool(forKey: appsUnlockedKey) ?? false)
+            guard let expiry = unlockExpiresAt else { return false }
+            return Date() < expiry
         }
         set {
             defaults?.set(newValue, forKey: appsUnlockedKey)
-            defaults?.set(Self.todayString(), forKey: unlockDateKey)
+            if !newValue {
+                defaults?.removeObject(forKey: unlockExpiresAtKey)
+            }
         }
     }
 
-    private static func todayString() -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        fmt.timeZone = .current
-        return fmt.string(from: Date())
+    public var unlockExpiresAt: Date? {
+        get { defaults?.object(forKey: unlockExpiresAtKey) as? Date }
+        set {
+            if let v = newValue {
+                defaults?.set(v, forKey: unlockExpiresAtKey)
+            } else {
+                defaults?.removeObject(forKey: unlockExpiresAtKey)
+            }
+        }
     }
 }

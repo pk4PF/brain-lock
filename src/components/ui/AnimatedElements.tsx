@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Zap } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 
-const AMBER = '#E8850C';
+const AMBER = '#E53935';
 
 // -- Floating glow orb that drifts and pulses --
 export function FloatingGlowOrb({
@@ -199,7 +199,7 @@ export function PulsingIcon({
         }}
       >
         <LinearGradient
-          colors={[AMBER, '#D4700A']}
+          colors={[AMBER, '#F97316']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
