@@ -11,12 +11,15 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { FocusFlashIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { passByAccuracy } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents.focus.hue;
 const NO_GO_DIGIT = 3;
-const PRODUCTION_ROUNDS = 30;
+const PRODUCTION_ROUNDS = 40;
 const DEMO_ROUNDS = 10;
-const SHOW_MS = 1100;
+const SHOW_MS = 850;
 
 type State = 'intro' | 'playing' | 'result';
 
@@ -40,6 +43,7 @@ function label(pct: number): string {
 
 export default function FocusScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const params = useLocalSearchParams<{ rounds?: string; demo?: string }>();
   const isDemo = params.demo === '1';
   const ROUNDS = params.rounds ? Number(params.rounds) : (isDemo ? DEMO_ROUNDS : PRODUCTION_ROUNDS);
@@ -51,6 +55,7 @@ export default function FocusScreen() {
   const [currentDigit, setCurrentDigit] = useState<number | null>(null);
   const [results, setResults] = useState<RoundResult[]>([]);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const tappedThisRoundRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,14 +113,16 @@ export default function FocusScreen() {
       setEarnedCredits(credits);
       if (isDemo) setDemoGameScore(pct);
       else {
+        const passed = passByAccuracy(correct, ROUNDS, difficulty);
         recordFocusScore(pct);
         // completeDailyGame internally calls earnReward - don't double-award.
-        completeDailyGame(credits);
+        if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+        setResultMsg(pickResultMessage(passed));
         // Attention is the focus accuracy %.
         recordCognitiveScore('attention', pct);
-        // Lifetime tile-stat counter — drives "X played" on the games tab.
-        recordGame('focus', true, pct);
-        track(Events.GameCompleted, { game: 'focus', score_pct: pct, credits });
+        // Lifetime tile-stat counter - drives "X played" on the games tab.
+        recordGame('focus', passed, pct);
+        track(Events.GameCompleted, { game: 'focus', score_pct: pct, passed, credits: passed ? credits : 0 });
       }
       return prev;
     });
@@ -147,7 +154,7 @@ export default function FocusScreen() {
           Illustration={<FocusFlashIll size={88} />}
           title="Focus Flash"
           blurb={`Tap the screen for every number except 3. Stay alert.`}
-          rules={[`${ROUNDS} numbers`, "Don't tap on 3", 'Stay sharp']}
+          rules={[`🔢 ${ROUNDS} numbers`, "🚫 Don't tap on 3", '⚡ Stay sharp']}
           startLabel="Start"
           onStart={handleStart}
           isDemo={isDemo}
@@ -158,21 +165,25 @@ export default function FocusScreen() {
 
   // ── RESULT ──
   if (gameState === 'result') {
+    const passed = isDemo ? true : passByAccuracy(correct, ROUNDS, difficulty);
+    const resultHue = !isDemo && !passed ? '#EF4444' : HUE;
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Focus" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Target size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={label(pct)}
+          badgeIcon={<Target size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={isDemo ? label(pct) : resultMsg.title}
+          message={isDemo ? undefined : resultMsg.line}
+          passed={passed}
           bigStat={pct}
           bigStatSuffix="%"
           subtitle={`${correct} of ${ROUNDS} correct`}
-          credits={earnedCredits}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
           isDemo={isDemo}
           primaryLabel={isDemo ? 'Continue' : 'Done'}
           onPrimary={isDemo ? continueAfterDemo : goHome}
-          secondaryLabel={isDemo ? undefined : 'Play again'}
+          secondaryLabel={isDemo ? undefined : passed ? 'Play again' : 'Try again'}
           onSecondary={isDemo ? undefined : handleStart}
         />
       </View>

@@ -6,6 +6,8 @@ import {
   ChartBar, Clock, Cards, DotsSix, Hash,
   ArrowsLeftRight, GridFour, Crown, Stack, Equals,
   Polygon, MagnifyingGlass,
+  SortAscending, SoccerBall, Table,
+  Question, Flag,
 } from 'phosphor-react-native';
 
 interface Props { size: number; }
@@ -64,6 +66,13 @@ export const WordMemoryIll   = ({ size }: Props) => <PhIcon Icon={TextAa}       
 export const QuickMathIll    = ({ size }: Props) => <PhIcon Icon={Calculator}      color="#F97316" size={size} />;
 export const FocusFlashIll   = ({ size }: Props) => <PhIcon Icon={Flashlight}      color="#3B82F6" size={size} />;
 export const ReactionTestIll = ({ size }: Props) => <PhIcon Icon={Lightning}       color="#E53935" size={size} />;
+
+// ─── Viral batch ────────────────────────────────────────────────
+export const ChimpTestIll    = ({ size }: Props) => <PhIcon Icon={SortAscending}    color="#6366F1" size={size} />;
+export const CupShuffleIll   = ({ size }: Props) => <PhIcon Icon={SoccerBall}       color="#EAB308" size={size} />;
+export const SchulteIll      = ({ size }: Props) => <PhIcon Icon={Table}            color="#F43F5E" size={size} />;
+export const GeneralKnowledgeIll = ({ size }: Props) => <PhIcon Icon={Question}     color="#06B6D4" size={size} />;
+export const FlagsIll        = ({ size }: Props) => <PhIcon Icon={Flag}             color="#D946EF" size={size} />;
 
 // ─── Coming-soon games ──────────────────────────────────────────
 export const ShapeRecallIll     = ({ size }: Props) => <PhIcon Icon={Shapes}          color="#A855F7" size={size} />;

@@ -23,9 +23,12 @@ import BrainCoinsIcon from '../BrainCoinsIcon';
  * on larger tiers.
  */
 function getCoinSize(tier: number): number {
-  if (tier <= 3) return 40;
+  // Tiers run 15 -> 30 minutes. Spread the visual coin pile across that
+  // range so the grid still reads as a progression even with only 4 tiles.
   if (tier <= 15) return 52;
-  return 64;
+  if (tier <= 20) return 60;
+  if (tier <= 25) return 68;
+  return 76;
 }
 
 interface Props {
@@ -40,7 +43,7 @@ interface Props {
 
 /**
  * "Spend cells" sheet. Mirrors the competitor's how-long-are-we-scrolling
- * UX (3-col grid of duration tiles) but in Brain Lock voice - hairline
+ * UX (3-col grid of duration tiles) but in Brainlock voice - hairline
  * borders, accent red, no coin-pile illustrations, no green CTA.
  *
  * Tiers come from UNLOCK_TIERS in the store (1, 2, 3, 5, 10, 15, 20, 25, 30).
@@ -297,14 +300,16 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
+  // 4 tiers -> 2x2 grid. Width ~48% so the gap fits exactly between the two
+  // columns and rows stay tidy.
   tile: {
-    width: '31.33%',
-    aspectRatio: 0.85,
+    width: '48%',
+    aspectRatio: 0.95,
     borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'space-between',
   },

@@ -7,14 +7,20 @@ export type GameType =
   | 'memory'
   | 'word-recall'
   | 'focus'
-  | 'reaction'
   // Day-1 launch batch: one new game per cognitive area.
   | 'sequence'      // memory   - tap-sequence (Simon)
   | 'anagram'       // recall   - unscramble letters
   | 'color-match'   // attention - Stroop (word vs ink colour)
   | 'block-tap'     // speed     - tap targets as they appear
   | 'number-seq'    // problemSolving - "2, 4, 6, ?"
-  | 'tile-recall';  // memory (spatial) - Corsi block-tapping. Hero marketing game.
+  | 'tile-recall'   // memory (spatial) - Corsi block-tapping. Hero marketing game.
+  // Viral batch: sudden-death, escalating, built to be watched in clips.
+  | 'chimp'         // memory   - memorise numbered tiles, tap in order (Chimp Test)
+  | 'cup-shuffle'   // attention - follow the ball under shuffling cups
+  | 'schulte'       // attention - tap 1→25 on a scrambled grid before the clock
+  // Quiz challenges (Brainlock 2.0)
+  | 'general-knowledge' // trivia - multiple-choice general knowledge
+  | 'flags';            // identify the country from its flag
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameCategory = 'speed' | 'memory' | 'focus' | 'problem_solving';
 
@@ -35,15 +41,15 @@ export const CATEGORIES: Record<GameCategory, { label: string }> = {
   problem_solving: { label: 'Problem Solving' },
 };
 
-// Partial — we only configure the legacy `math` entry here. The newer
-// games (memory, focus, reaction, word-recall) carry their own metadata
+// Partial - we only configure the legacy `math` entry here. The newer
+// games (memory, focus, word-recall) carry their own metadata
 // inline in their respective screens; this map is kept for the legacy
 // `app/challenge/index.tsx` flow only.
 export const GAMES: Partial<Record<GameType, GameConfig>> = {
   math: {
     id: 'math',
     title: 'Math Blitz',
-    description: 'Quick arithmetic challenges',
+    description: 'Beat the clock with mental math',
     category: 'speed',
     color: '#00F0FF',
     gradient: ['#0D0221', '#2D1B69'],

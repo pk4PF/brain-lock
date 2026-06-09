@@ -26,7 +26,7 @@ export default function NameScreen() {
   };
 
   return (
-    <OnboardingLayout step={1}>
+    <OnboardingLayout step={4} totalSteps={12}>
       {/* No back button - this is the entry screen of the onboarding. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -52,7 +52,7 @@ export default function NameScreen() {
             <View style={{ height: 10 }} />
             <FadeUp delay={160}>
               <MutedText size="md">
-                You can change it later in your profile.
+                First name is fine.
               </MutedText>
             </FadeUp>
           </View>

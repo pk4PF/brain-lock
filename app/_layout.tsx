@@ -37,6 +37,7 @@ import {
   Geist_700Bold,
 } from '@expo-google-fonts/geist';
 import * as SplashScreen from 'expo-splash-screen';
+import { useNotifications } from '../src/hooks/useNotifications';
 
 // Prevent the native splash from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -75,7 +76,7 @@ export default function RootLayout() {
       });
 
       // Probe event. Used to verify the PostHog connection is healthy on
-      // every install — the first thing we look for in PostHog → Activity →
+      // every install - the first thing we look for in PostHog → Activity →
       // Live Events when investigating a silent funnel.
       track('app_launched', {
         version: Constants.expoConfig?.version ?? 'unknown',
@@ -176,6 +177,9 @@ function ThemedApp() {
   const pathname = usePathname();
   const params = useGlobalSearchParams();
   const previousPathname = useRef<string | undefined>(undefined);
+
+  // Register for push notifications (only prompts after onboarding).
+  useNotifications();
 
   // Manual screen tracking for Expo Router
   useEffect(() => {

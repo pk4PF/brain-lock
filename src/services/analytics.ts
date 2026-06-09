@@ -6,9 +6,9 @@ import Constants from 'expo-constants';
 const apiKey =
   process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
   (Constants.expoConfig?.extra?.posthogProjectToken as string | undefined);
-// Default to EU — that's where this project's PostHog instance lives.
+// Default to EU - that's where this project's PostHog instance lives.
 // Pointing at us.i.posthog.com silently 404s every event (the silent
-// killer that hid all our funnel data through builds 1–35).
+// killer that hid all our funnel data through builds 1-35).
 const host =
   process.env.EXPO_PUBLIC_POSTHOG_HOST ||
   (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
@@ -19,7 +19,7 @@ const isConfigured = !!apiKey && apiKey !== 'phc_YOUR_KEY_HERE';
 // flushAt: 1 means we POST every event individually. Slightly more network
 // chatter, but onboarding fires ~17 events and we cannot afford to lose
 // them when a tester backgrounds or quits before a 20-event batch fills.
-// Once daily volume is high we can raise flushAt back to 5–10.
+// Once daily volume is high we can raise flushAt back to 5-10.
 const posthog: PostHog | null = isConfigured
   ? new PostHog(apiKey!, {
       host,
@@ -67,10 +67,18 @@ export function identify(userId: string, properties?: Record<string, any>) {
 
 export function setPersonProperties(properties: Record<string, any>) {
   try {
+    // PostHog person properties are set via a `$set` payload on capture,
+    // not via `register` (which only adds super-properties to subsequent
+    // events, never to the person profile). Firing `$set` as its own
+    // event guarantees the values land on the person record and become
+    // available for breakdowns / cohorts.
+    posthog?.capture('$set', { $set: properties });
+    // Also register as super-properties so future events in this session
+    // carry the same values for event-level filtering.
     posthog?.register(properties);
-    if (__DEV__) console.log('[Analytics] register', properties);
+    if (__DEV__) console.log('[Analytics] setPersonProperties', properties);
   } catch (err) {
-    if (__DEV__) console.warn('[Analytics] register failed:', err);
+    if (__DEV__) console.warn('[Analytics] setPersonProperties failed:', err);
   }
 }
 
@@ -97,6 +105,7 @@ export const Events = {
   CommitmentLocked: 'commitment_locked',
   PaywallSkipped: 'paywall_skipped',
   ReferralSourceSelected: 'referral_source_selected',
+  DemoGameSkipped: 'demo_game_skipped',
 
   // Earn
   EarnCategoryOpened: 'earn_category_opened',

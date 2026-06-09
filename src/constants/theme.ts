@@ -11,15 +11,18 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 //   - One accent that already feels playful (warm orange)
 // ─────────────────────────────────────────────
 
+// Cool deep-navy dark mode (Elevate-style). Warm orange accent stays so
+// the brand pop reads the same; everything around it shifts to a cooler,
+// quieter blue-grey so the accent has somewhere to land.
 export const DarkColors = {
-  background: '#0E0D0C',     // warm near-black, not pure
-  card: '#161412',           // hint of warmth
-  cardAlt: '#1B1916',
-  border: '#231F1B',
-  borderStrong: '#2D2924',
-  muted: '#666058',
-  secondary: '#9A938A',
-  text: '#F5F1EC',           // warm off-white, easier on eyes
+  background: '#0B1220',     // deep cool navy
+  card: '#161E2C',           // card surface a touch lighter than bg
+  cardAlt: '#1F2937',        // raised / alt surface
+  border: '#243042',         // cool hairline, barely visible
+  borderStrong: '#374151',   // emphasised border, for highlighted cards
+  muted: '#6B7689',          // cool blue-grey muted text
+  secondary: '#9CA3AF',      // secondary text, still readable on bg
+  text: '#F1F5F9',           // cool off-white, no warm tint
   accent: '#FF6A1A',
   accentDark: '#E55A12',
   accentSoft: '#FF8A4A',
@@ -69,7 +72,6 @@ export const GameAccents = {
   'word-recall': { hue: '#10B981', tintLight: 'rgba(16,185,129,0.08)', tintDark: 'rgba(16,185,129,0.12)' },
   math:      { hue: '#F97316', tintLight: 'rgba(249,115,22,0.08)', tintDark: 'rgba(249,115,22,0.14)' },
   focus:     { hue: '#3B82F6', tintLight: 'rgba(59,130,246,0.08)', tintDark: 'rgba(59,130,246,0.12)' },
-  reaction:  { hue: '#E53935', tintLight: 'rgba(229,57,53,0.08)', tintDark: 'rgba(229,57,53,0.14)' },
   // Day-1 launch batch. Hues chosen to be distinct from the existing 5
   // while still living inside the warm/cool/saturation palette.
   sequence:    { hue: '#A855F7', tintLight: 'rgba(168,85,247,0.08)',  tintDark: 'rgba(168,85,247,0.12)' },
@@ -80,6 +82,13 @@ export const GameAccents = {
   // Hero marketing game. Deep teal so the lit tiles pop hard against the
   // warm cream background and don't collide with Memory Match's purple.
   'tile-recall': { hue: '#0EA5A5', tintLight: 'rgba(14,165,165,0.08)', tintDark: 'rgba(14,165,165,0.12)' },
+  // Viral batch. Indigo / gold / rose - distinct from every hue above.
+  chimp:        { hue: '#6366F1', tintLight: 'rgba(99,102,241,0.08)',  tintDark: 'rgba(99,102,241,0.14)' },
+  'cup-shuffle': { hue: '#EAB308', tintLight: 'rgba(234,179,8,0.08)',  tintDark: 'rgba(234,179,8,0.14)' },
+  schulte:      { hue: '#F43F5E', tintLight: 'rgba(244,63,94,0.08)',   tintDark: 'rgba(244,63,94,0.14)' },
+  // Quiz challenges
+  'general-knowledge': { hue: '#06B6D4', tintLight: 'rgba(6,182,212,0.08)', tintDark: 'rgba(6,182,212,0.14)' },
+  flags:        { hue: '#D946EF', tintLight: 'rgba(217,70,239,0.08)',  tintDark: 'rgba(217,70,239,0.14)' },
 } as const;
 
 export type GameAccentKey = keyof typeof GameAccents;
@@ -108,12 +117,12 @@ export const Gradients = {
   },
   dark: {
     cta: ['#FF6A1A', '#FF6A1A'] as [string, string],
-    heroPrimary: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
-    heroWarm: ['#0B0B0B', '#121212'] as [string, string],
-    cardWarm: ['#121212', '#0F0F0F'] as [string, string],
-    cardSurface: ['#121212', '#181818'] as [string, string],
-    heroDeep: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
-    heroGreen: ['#0B0B0B', '#121212', '#0B0B0B'] as [string, string, string],
+    heroPrimary: ['#0B1220', '#161E2C', '#0B1220'] as [string, string, string],
+    heroWarm: ['#0B1220', '#161E2C'] as [string, string],
+    cardWarm: ['#161E2C', '#0F151F'] as [string, string],
+    cardSurface: ['#161E2C', '#1F2937'] as [string, string],
+    heroDeep: ['#0B1220', '#161E2C', '#0B1220'] as [string, string, string],
+    heroGreen: ['#0B1220', '#161E2C', '#0B1220'] as [string, string, string],
   },
 };
 

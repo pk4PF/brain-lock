@@ -10,7 +10,7 @@ import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { hapticLight } from '../../src/utils/haptics';
 
 /**
- * Problem screen — paints the pain in the user's own words.
+ * Problem screen - paints the pain in the user's own words.
  *
  * Pattern: lowercase editorial typography, one accent word in the headline,
  * a quiet sub-line, and a tap-anywhere-to-continue affordance. Lifted from
@@ -28,7 +28,7 @@ export default function ProblemScreen() {
   };
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout step={1} totalSteps={12}>
       <Pressable
         onPress={next}
         style={[

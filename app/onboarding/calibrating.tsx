@@ -77,7 +77,7 @@ export default function CalibratingScreen() {
   const rotate = ringRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <OnboardingLayout step={4}>
+    <OnboardingLayout step={10} totalSteps={12}>
       <View style={styles.content}>
         <View style={styles.center}>
           {/* Spinning accent ring with a brain in the middle */}
@@ -97,11 +97,8 @@ export default function CalibratingScreen() {
             </View>
           </FadeUp>
 
-          <FadeUp delay={140}>
-            <Eyebrow style={{ textAlign: 'center', marginTop: 18 }}>One sec</Eyebrow>
-          </FadeUp>
           <FadeUp delay={220}>
-            <SectionHeading size="lg" align="center">
+            <SectionHeading size="lg" align="center" style={{ marginTop: 18 }}>
               Building your plan
             </SectionHeading>
           </FadeUp>

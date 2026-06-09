@@ -25,7 +25,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronLeft, Zap } from 'lucide-react-native';
+import { ChevronLeft, LockOpen } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FontFamily, FontSize, Spacing, GameAccents, type GameAccentKey } from '../../constants/theme';
@@ -210,6 +210,14 @@ export function GameIntro({
     >
       <View style={styles.introTop}>
         {Illustration && <View style={{ marginBottom: 18 }}>{Illustration}</View>}
+        {/* Demo eyebrow - surfaces "this isn't the real thing" so a user
+            doesn't think a 3-round tutorial is the full game. Shown for any
+            GameIntro rendered with isDemo. */}
+        {isDemo && (
+          <View style={[styles.introDemoBadge, { backgroundColor: `${hue}1F`, borderColor: `${hue}55` }]}>
+            <Text style={[styles.introDemoText, { color: hue }]}>QUICK DEMO</Text>
+          </View>
+        )}
         <Text style={[styles.introTitle, { color: colors.text }]}>{title}</Text>
         <Text style={[styles.introBlurb, { color: colors.secondary }]}>{blurb}</Text>
 
@@ -237,11 +245,11 @@ export function GameIntro({
 }
 
 // ─────────────────────────────────────────────────────────────
-// CreditsPill - animated +N brain cells badge. Spring-scales in, then
-// the number nudges up briefly. No confetti, no orbs - just a small
-// rewarding moment.
+// UnlockPill - animated "🔓 N min unlocked" badge shown when a challenge is
+// passed from the unlock flow. Spring-scales in. The reward is access, not
+// currency.
 // ─────────────────────────────────────────────────────────────
-export function CreditsPill({ credits, hue }: { credits: number; hue: string }) {
+export function UnlockPill({ minutes, hue }: { minutes: number; hue: string }) {
   const { colors } = useThemeColors();
   const scale = useRef(new Animated.Value(0.5)).current;
   const pop = useRef(new Animated.Value(0)).current;
@@ -267,17 +275,19 @@ export function CreditsPill({ credits, hue }: { credits: number; hue: string }) 
         },
       ]}
     >
-      <Zap size={14} color={hue} fill={hue} />
-      <Text style={[styles.creditsPillText, { color: hue }]}>+{credits}</Text>
-      <Text style={[styles.creditsPillSub, { color: colors.secondary }]}>brain cells</Text>
+      <LockOpen size={14} color={hue} />
+      <Text style={[styles.creditsPillText, { color: hue }]}>{minutes} min</Text>
+      <Text style={[styles.creditsPillSub, { color: colors.secondary }]}>unlocked</Text>
     </Animated.View>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
 // GameResult - celebratory result screen used by games that don't have
-// the GameComplete component (memory, focus, reaction).
+// the GameComplete component (memory, focus).
 // ─────────────────────────────────────────────────────────────
+const FAIL_HUE = '#EF4444';
+
 export function GameResult({
   hue,
   badgeIcon,
@@ -285,7 +295,9 @@ export function GameResult({
   bigStat,
   bigStatSuffix,
   subtitle,
-  credits,
+  message,
+  unlockMinutes,
+  passed = true,
   isDemo,
   primaryLabel,
   onPrimary,
@@ -298,7 +310,12 @@ export function GameResult({
   bigStat: string | number;
   bigStatSuffix?: string;
   subtitle?: string;
-  credits?: number;
+  /** Verdict flavour line (e.g. the "don't doomscroll" warning). */
+  message?: string;
+  /** When set on a pass, shows the "N min unlocked" pill (unlock flow only). */
+  unlockMinutes?: number;
+  /** Below the pass threshold → no unlock, red accent, "FAILED" eyebrow. */
+  passed?: boolean;
   isDemo?: boolean;
   primaryLabel: string;
   onPrimary: () => void;
@@ -307,6 +324,10 @@ export function GameResult({
 }) {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+
+  // On a fail the result wears a red tone instead of the game's accent so the
+  // outcome reads instantly. Demo runs never "fail".
+  const accent = !isDemo && !passed ? FAIL_HUE : hue;
 
   // Spring-in for the big number with a small overshoot, fade for the
   // surrounding chrome. Tighter friction + higher tension than before
@@ -337,33 +358,55 @@ export function GameResult({
           <View
             style={[
               styles.resultBadge,
-              { backgroundColor: `${hue}1F`, borderColor: `${hue}33` },
+              { backgroundColor: `${accent}1F`, borderColor: `${accent}33` },
             ]}
           >
             {badgeIcon}
           </View>
         )}
 
-        <Text style={[styles.resultEyebrow, { color: colors.muted }]}>RESULT</Text>
-        <Text style={[styles.resultTitle, { color: colors.text }]}>{title}</Text>
+        {/* A clean win = a real (non-demo) pass. We strip the verdict title and
+            the performance stat so the anti-doomscroll line is the whole point
+            of the screen. Fails (the video hook) and demo runs keep the stat. */}
+        {(() => {
+          const cleanWin = passed && !isDemo;
+          return (
+            <>
+              {!cleanWin && (
+                <Text style={[styles.resultEyebrow, { color: !isDemo && !passed ? FAIL_HUE : colors.muted }]}>
+                  {isDemo ? 'RESULT' : 'FAILED'}
+                </Text>
+              )}
+              <Text style={[styles.resultTitle, { color: colors.text }]}>
+                {cleanWin ? 'Passed' : title}
+              </Text>
 
-        <View style={{ alignItems: 'center', marginTop: 18 }}>
-          <Animated.View style={{ transform: [{ scale: numScale }], flexDirection: 'row', alignItems: 'baseline' }}>
-            <Text style={[styles.resultBig, { color: hue }]}>{bigStat}</Text>
-            {bigStatSuffix && (
-              <Text style={[styles.resultBigSuffix, { color: hue }]}>{bigStatSuffix}</Text>
-            )}
-          </Animated.View>
-          {subtitle && (
-            <Text style={[styles.resultSubtitle, { color: colors.secondary }]}>{subtitle}</Text>
-          )}
-        </View>
+              {!cleanWin && (
+                <View style={{ alignItems: 'center', marginTop: 18 }}>
+                  <Animated.View style={{ transform: [{ scale: numScale }], flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={[styles.resultBig, { color: accent }]}>{bigStat}</Text>
+                    {bigStatSuffix && (
+                      <Text style={[styles.resultBigSuffix, { color: accent }]}>{bigStatSuffix}</Text>
+                    )}
+                  </Animated.View>
+                  {subtitle && (
+                    <Text style={[styles.resultSubtitle, { color: colors.secondary }]}>{subtitle}</Text>
+                  )}
+                </View>
+              )}
 
-        {!isDemo && credits !== undefined && credits > 0 && (
-          <View style={{ marginTop: 22 }}>
-            <CreditsPill credits={credits} hue={hue} />
-          </View>
-        )}
+              {!isDemo && unlockMinutes !== undefined && (
+                <View style={{ marginTop: 22 }}>
+                  <UnlockPill minutes={unlockMinutes} hue={hue} />
+                </View>
+              )}
+
+              {message && !cleanWin && (
+                <Text style={[styles.resultMessage, { color: colors.muted }]}>{message}</Text>
+              )}
+            </>
+          );
+        })()}
       </View>
 
       <View style={{ flex: 1 }} />
@@ -443,6 +486,18 @@ const styles = StyleSheet.create({
 
   // Intro
   introTop: { alignItems: 'center', paddingTop: 12 },
+  introDemoBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  introDemoText: {
+    fontSize: 11,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 1.6,
+  },
   introTitle: {
     fontSize: 34,
     fontFamily: FontFamily.medium,
@@ -538,6 +593,27 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     marginTop: 6,
     textAlign: 'center',
+  },
+  resultMessage: {
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    lineHeight: 20,
+    marginTop: 18,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    maxWidth: 340,
+  },
+  rankChip: {
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  rankChipText: {
+    fontSize: 13,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 0.2,
   },
 
   // Credits pill

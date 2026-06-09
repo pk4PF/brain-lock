@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { GameType } from '../constants/games';
+import { GameType, Difficulty } from '../constants/games';
 import { ThemeMode } from '../constants/theme';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
@@ -28,9 +28,25 @@ export const CELL_DISPLAY_CAPACITY = 100;
  *  bounded so the loop stays a loop. */
 export const UNLOCK_MAX_CELLS = 30;
 /** The duration tiers shown on the Spend Cells sheet. Each value is both the
- *  cell cost AND the minutes granted (1:1). Order is the visual grid order. */
-export const UNLOCK_TIERS: ReadonlyArray<number> = [1, 2, 3, 5, 10, 15, 20, 25, 30];
+ *  cell cost AND the minutes granted (1:1). Order is the visual grid order.
+ *
+ *  Floor is 15 because iOS DeviceActivitySchedule silently drops monitoring
+ *  for sub-15-minute windows - the unlock would expire but apps would stay
+ *  unlocked until Brainlock was reopened (a real bug a paying user hit).
+ *  Anything below 15 min is unsupported on the platform. */
+export const UNLOCK_TIERS: ReadonlyArray<number> = [15, 20, 25, 30];
 export const GAME_REWARD = 5;
+
+/**
+ * Brainlock 2.0: difficulty maps directly to how long the app unlocks.
+ * Floors at 15 because iOS DeviceActivitySchedule silently drops monitoring
+ * for sub-15-min windows (see UNLOCK_TIERS note) - so Easy is 15, not 5.
+ */
+export const DIFFICULTY_UNLOCK_MINUTES: Record<Difficulty, number> = {
+  easy: 15,
+  medium: 30,
+  hard: 60,
+};
 
 // Back-compat aliases (callers may still import old names)
 export const UNLOCK_XP_COST = UNLOCK_CREDIT_COST;
@@ -129,6 +145,8 @@ interface AppState {
    *  length (1-30 min) instead of always 20. Null when no unlock is active. */
   unlockTotalMs: number | null;
   reviewPromptShownAt: number | null;
+  /** True once we've asked for a review at the first successful unlock. */
+  firstUnlockReviewed: boolean;
   /** Whether the post-onboarding welcome bonus (30 brain cells) has been
    *  shown and claimed. False until the user taps "Claim" on the modal. */
   welcomeBonusClaimed: boolean;
@@ -163,6 +181,12 @@ interface AppState {
   gamesRemainingToday: () => number;
   earnReward: (amount: number) => void;
   spendCredits: (amount?: number) => boolean;
+  /** Brainlock 2.0: pass a challenge → unlock blocked apps for the duration
+   *  mapped from the chosen difficulty (Easy 15 / Med 30 / Hard 60 min). */
+  unlockApps: (difficulty: Difficulty) => void;
+  /** Re-block immediately, ending the current unlock early (user is done
+   *  scrolling and wants the timer to stop). */
+  relockApps: () => void;
   // Aliases kept for older callers
   earnXP: (amount: number) => void;
   spendXP: (amount?: number) => boolean;
@@ -177,6 +201,10 @@ interface AppState {
   /** Grants the post-onboarding 30-cell welcome bonus exactly once.
    *  Returns true if the bonus was granted, false if already claimed. */
   claimWelcomeBonus: () => boolean;
+  /** Expo push token string, e.g. "ExponentPushToken[xxx]". Null until
+   *  the user grants notification permission and registration succeeds. */
+  expoPushToken: string | null;
+  setExpoPushToken: (token: string | null) => void;
   showPaywall: boolean;
   setShowPaywall: (show: boolean) => void;
   updateSettings: (partial: Partial<Settings>) => void;
@@ -189,13 +217,17 @@ const defaultGameStats: Record<GameType, GameStats> = {
   memory:        { played: 0, won: 0, bestTime: 999 },
   'word-recall': { played: 0, won: 0, bestTime: 999 },
   focus:         { played: 0, won: 0, bestTime: 999 },
-  reaction:      { played: 0, won: 0, bestTime: 999 },
   sequence:      { played: 0, won: 0, bestTime: 999 },
   anagram:       { played: 0, won: 0, bestTime: 999 },
   'color-match': { played: 0, won: 0, bestTime: 999 },
   'block-tap':   { played: 0, won: 0, bestTime: 999 },
   'number-seq':  { played: 0, won: 0, bestTime: 999 },
   'tile-recall': { played: 0, won: 0, bestTime: 999 },
+  chimp:         { played: 0, won: 0, bestTime: 999 },
+  'cup-shuffle': { played: 0, won: 0, bestTime: 999 },
+  schulte:       { played: 0, won: 0, bestTime: 999 },
+  'general-knowledge': { played: 0, won: 0, bestTime: 999 },
+  flags:         { played: 0, won: 0, bestTime: 999 },
 };
 
 /**
@@ -261,7 +293,9 @@ export const useStore = create<AppState>()(
       unlockExpiresAt: null,
       unlockTotalMs: null,
       reviewPromptShownAt: null,
+      firstUnlockReviewed: false,
       welcomeBonusClaimed: false,
+      expoPushToken: null,
       showPaywall: false,
       settings: {
         enabledGames: ['math'],
@@ -361,7 +395,7 @@ export const useStore = create<AppState>()(
         //
         // Goals:
         //  - A great first run is rewarded (no "0 → 10 after a perfect game").
-        //  - A great FIRST run alone shouldn't peg the bar at 100 — we want
+        //  - A great FIRST run alone shouldn't peg the bar at 100 - we want
         //    headroom so 5+ great runs can climb toward Elite.
         //  - Bad days don't hurt: only upward movement is recorded.
         //
@@ -418,6 +452,8 @@ export const useStore = create<AppState>()(
         get().checkUnlockExpiry();
       },
 
+      setExpoPushToken: (token) => set({ expoPushToken: token }),
+
       // Paywall now lives only in onboarding - once a user is past it, every
       // earn / game / unlock action is unconditionally available. We keep the
       // setter and the can* predicates so all the existing call sites stay
@@ -443,8 +479,10 @@ export const useStore = create<AppState>()(
 
       earnReward: (amount) => {
         const { credits, totalXpEarned } = get();
+        // Cap stored credits at the display capacity (100). Lifetime XP
+        // keeps accumulating uncapped — it's a stat, not a currency.
         set({
-          credits: credits + amount,
+          credits: Math.min(CELL_DISPLAY_CAPACITY, credits + amount),
           totalXpEarned: totalXpEarned + amount,
         });
       },
@@ -477,6 +515,44 @@ export const useStore = create<AppState>()(
       },
 
       spendXP: (amount = UNLOCK_CREDIT_COST) => get().spendCredits(amount),
+
+      unlockApps: (difficulty) => {
+        const minutes = DIFFICULTY_UNLOCK_MINUTES[difficulty] ?? 15;
+        const totalMs = minutes * 60 * 1000;
+        const expiresAt = Date.now() + totalMs;
+        set({
+          appsUnlocked: true,
+          unlockExpiresAt: expiresAt,
+          unlockTotalMs: totalMs,
+        });
+        try {
+          const { ScreenTime } = require('screen-time-module');
+          ScreenTime.removeShieldNow().catch(() => { });
+          // Native re-block via the DeviceActivityMonitor extension - survives
+          // the app being backgrounded or killed.
+          ScreenTime.scheduleUnlockExpiry(minutes).catch(() => { });
+        } catch { }
+
+        // First successful unlock = the payoff moment → ask for a review (once).
+        if (!get().firstUnlockReviewed) {
+          set({ firstUnlockReviewed: true });
+          setTimeout(() => {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              require('../services/review').requestReviewNow?.('first_unlock');
+            } catch { }
+          }, 1200);
+        }
+      },
+
+      relockApps: () => {
+        set({ appsUnlocked: false, unlockExpiresAt: null, unlockTotalMs: null });
+        try {
+          const { ScreenTime } = require('screen-time-module');
+          ScreenTime.applyShieldNow().catch(() => { });
+          ScreenTime.cancelUnlockExpiry().catch(() => { });
+        } catch { }
+      },
 
       getLevel: () => {
         const { totalXpEarned } = get();
@@ -515,10 +591,13 @@ export const useStore = create<AppState>()(
       claimWelcomeBonus: () => {
         const { welcomeBonusClaimed, credits, totalXpEarned } = get();
         if (welcomeBonusClaimed) return false;
-        const BONUS = 30;
+        // 25 cells. Combined with the 5 cells the user banked from the
+        // demo Memory Tiles play, that's 30 total on first Home land -
+        // exactly one 30-min unlock or two 15-min ones.
+        const BONUS = 25;
         set({
           welcomeBonusClaimed: true,
-          credits: credits + BONUS,
+          credits: Math.min(CELL_DISPLAY_CAPACITY, credits + BONUS),
           totalXpEarned: totalXpEarned + BONUS,
         });
         return true;
@@ -546,7 +625,7 @@ export const useStore = create<AppState>()(
     {
       name: 'brainlock-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 9,
+      version: 10,
       migrate: (persistedState: any, version: number) => {
         if (!persistedState) return persistedState;
         let state = persistedState;
@@ -624,6 +703,13 @@ export const useStore = create<AppState>()(
           state = {
             ...state,
             welcomeBonusClaimed: state.onboardingComplete === true ? true : false,
+          };
+        }
+        // v9 → v10: add expoPushToken for push notification support.
+        if (version < 10) {
+          state = {
+            ...state,
+            expoPushToken: state.expoPushToken ?? null,
           };
         }
         return state;

@@ -26,7 +26,6 @@ const ATTRIBUTES: AttributeMeta[] = [
   { key: 'memory',         label: 'Memory',         blurb: 'Visual pattern recall',  hue: GameAccents.memory.hue,        source: 'Memory Match' },
   { key: 'recall',         label: 'Verbal Recall',  blurb: 'Word memory in 5s',      hue: GameAccents['word-recall'].hue, source: 'Word Recall' },
   { key: 'attention',      label: 'Attention',      blurb: 'Filtering distraction',  hue: GameAccents.focus.hue,         source: 'Focus Flash' },
-  { key: 'speed',          label: 'Speed',          blurb: 'Reaction time',          hue: GameAccents.reaction.hue,      source: 'Reaction Test' },
   { key: 'problemSolving', label: 'Problem Solving',blurb: 'Math under pressure',    hue: GameAccents.math.hue,          source: 'Quick Math' },
 ];
 
@@ -39,7 +38,7 @@ function band(score: number): string {
   return 'Untested';
 }
 
-// Secondary label shown under the score on each row. Always forward-leaning —
+// Secondary label shown under the score on each row. Always forward-leaning -
 // no "below average" or "bottom tier" copy, since those tank retention for new
 // players who haven't had time to climb yet.
 function tier(score: number): string {
@@ -48,7 +47,7 @@ function tier(score: number): string {
   if (score >= 60) return 'Steady';
   if (score >= 40) return 'Building';
   if (score > 0)   return 'Warming up';
-  return '—';
+  return '-';
 }
 
 function avgScore(scores: CognitiveScores): number {
@@ -202,7 +201,7 @@ export default function StatsScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.gamesCount, { color: colors.muted }]}>
-                  {progress.gamesPlayed} games played
+                  {progress.gamesPlayed} tests taken
                 </Text>
               </View>
             </View>
@@ -280,10 +279,10 @@ export default function StatsScreen() {
             <View style={{ height: Spacing.lg }} />
             <View style={[styles.emptyHint, { borderColor: colors.border }]}>
               <Text style={[styles.emptyHintTitle, { color: colors.text }]}>
-                Five short games. Five measurements.
+                Five short tests. Five measurements.
               </Text>
               <Text style={[styles.emptyHintBody, { color: colors.muted }]}>
-                Each game is a real cognitive test - the same kind sports
+                Each one is a real cognitive test - the same kind sports
                 neurology clinics use. After one round of each, you'll have
                 a baseline you can train.
               </Text>

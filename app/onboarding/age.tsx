@@ -33,7 +33,7 @@ export default function AgeScreen() {
   };
 
   return (
-    <OnboardingLayout step={2}>
+    <OnboardingLayout step={5} totalSteps={12}>
       <OnboardingBackButton />
       {/* ScrollView wrap so iOS Display Zoom + Dynamic Type users can still
           reach the Continue button. Slider PanResponder still wins on
@@ -55,7 +55,7 @@ export default function AgeScreen() {
           <View style={{ height: 10 }} />
           <FadeUp delay={160}>
             <MutedText size="md">
-              We'll use this to project your real lifetime cost.
+              Used for your personalised plan.
             </MutedText>
           </FadeUp>
         </View>

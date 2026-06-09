@@ -126,12 +126,12 @@ export default function LockScreen() {
         hapticSuccess();
       } else if (status === 'denied') {
         Alert.alert(
-          'Permission Denied',
-          `Brain Lock needs Screen Time access to block apps.${reason ? `\n\nReason: ${reason}` : ''}\n\nYou can enable it in Settings, Screen Time, Brain Lock.`,
+          'Access not granted',
+          `Brainlock needs Screen Time access to block apps.${reason ? `\n\n${reason}` : ''}\n\nEnable it in Settings → Screen Time → Brainlock.`,
         );
       }
     } catch (e: any) {
-      Alert.alert('Error', `Could not request Screen Time permission.\n\nDetails: ${e?.message || String(e)}`);
+      Alert.alert('Something went wrong', `Couldn't reach Screen Time.\n\n${e?.message || String(e)}`);
     } finally {
       setLoading(false);
     }
@@ -153,7 +153,7 @@ export default function LockScreen() {
       track(Events.ScheduleDisabled);
       showToast('Blocking turned off');
     } catch {
-      Alert.alert('Error', 'Could not turn off blocking.');
+      Alert.alert('Something went wrong', 'Couldn\'t turn off blocking. Try again.');
     } finally {
       setUnblocking(false);
     }
@@ -206,12 +206,12 @@ export default function LockScreen() {
 
   const handleCancelCountdown = useCallback(() => {
     Alert.alert(
-      'Cancel Countdown?',
-      "The timer will reset. You'll need to wait again next time.",
+      'Stop the timer?',
+      "It'll reset. You'll wait the full duration next time.",
       [
-        { text: 'Keep Waiting', style: 'cancel' },
+        { text: 'Keep waiting', style: 'cancel' },
         {
-          text: 'Cancel',
+          text: 'Stop',
           style: 'destructive',
           onPress: () => {
             if (countdownInterval.current) clearInterval(countdownInterval.current);
@@ -331,8 +331,8 @@ export default function LockScreen() {
                     </Text>
                     <Text style={[styles.rowDescription, { color: colors.muted }]}>
                       {isAuthorized
-                        ? "Brain Lock can block apps you pick. It can't see what you do in them."
-                        : "Required to block apps. Brain Lock can't see what you do inside them."}
+                        ? "Brainlock can block apps you pick. It can't see what you do in them."
+                        : "Required to block apps. Brainlock can't see what you do inside them."}
                     </Text>
                   </View>
                   {!isAuthorized && (loading

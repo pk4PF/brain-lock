@@ -24,7 +24,7 @@ import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
  * swapping components. The native prompt fires in the background after a
  * short delay; if it fails (Expo Go, missing native module, simulator,
  * throttled), we silently swallow the error. The user controls the flow
- * via the Continue button — no flicker, no auto-advance, no AppState
+ * via the Continue button - no flicker, no auto-advance, no AppState
  * gymnastics.
  */
 
@@ -75,7 +75,7 @@ export default function ReviewScreen() {
   };
 
   // Fire the native prompt once on mount, in the background. We don't react
-  // to its outcome — the user advances via the Continue button.
+  // to its outcome - the user advances via the Continue button.
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
@@ -90,7 +90,7 @@ export default function ReviewScreen() {
   }, []);
 
   return (
-    <OnboardingLayout step={12}>
+    <OnboardingLayout step={9} totalSteps={12}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.center}>
@@ -112,23 +112,20 @@ export default function ReviewScreen() {
             ))}
           </View>
 
-          <FadeUp delay={420}>
-            <Eyebrow style={styles.eyebrowCenter}>One small ask</Eyebrow>
-          </FadeUp>
           <FadeUp delay={500}>
             <SectionHeading size="lg" align="center">
-              Loving BrainLock?
+              Rate Brainlock
             </SectionHeading>
           </FadeUp>
           <View style={{ height: 12 }} />
           <FadeUp delay={580}>
             <MutedText size="md" align="center" style={styles.sub}>
-              If we've earned five stars, leave us a rating. It's the only way people find us.
+              A quick rating helps others find us.
             </MutedText>
           </FadeUp>
         </View>
 
-        {/* Single persistent button — never swaps, never flickers. */}
+        {/* Single persistent button - never swaps, never flickers. */}
         <View style={styles.bottomContainer}>
           <OnboardingButton label="Continue" onPress={advance} />
         </View>

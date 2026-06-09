@@ -47,7 +47,7 @@ export default function DisableCountdownScreen({
         marginTop={32}
         marginBottom={8}
       >
-        Waiting to Disable
+        Disabling…
       </Text>
 
       <Text
@@ -57,7 +57,7 @@ export default function DisableCountdownScreen({
         marginBottom={40}
         paddingHorizontal={20}
       >
-        Take a moment to think.{'\n'}Do you really want to disable app blocking?
+        Blocking turns off when this timer hits zero.
       </Text>
 
       {/* Large countdown */}

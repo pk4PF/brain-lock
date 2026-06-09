@@ -43,3 +43,7 @@ yarn-error.*
 .claude/worktrees/
 .claude/plans/
 promo-image.html
+
+# EAS local credentials (contains signing secrets)
+credentials.json
+credentials/

@@ -5,6 +5,8 @@ import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
 import { generateProblem, type Problem } from '../../src/utils/mathProblem';
 import { soundTap, soundCorrect, soundWrong, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
@@ -12,16 +14,16 @@ import { QuickMathIll } from '../../src/components/games/GameIllustrations';
 import { router } from 'expo-router';
 
 const HUE = GameAccents.math.hue;
-const TOTAL_ROUNDS = 10;
+const TOTAL_ROUNDS = 12;
 
 type Phase = 'intro' | 'playing' | 'result';
 
 /**
- * Performance-based 2–5 cells. Single curve (difficulty + timer removed) —
+ * Performance-based 2-5 cells. Single curve (difficulty + timer removed) -
  * accuracy alone determines the reward.
  *   100%  → 5
- *   80–99% → 4
- *   60–79% → 3
+ *   80-99% → 4
+ *   60-79% → 3
  *   below → 2
  */
 function creditsForMath(correct: number, total: number): number {
@@ -34,7 +36,8 @@ function creditsForMath(correct: number, total: number): number {
 
 export default function MathGame() {
   const { colors } = useThemeColors();
-  const { addPoints, recordGame, completeDailyGame, canEarnToday, setShowPaywall, recordCognitiveScore } = useStore();
+  const { addPoints, recordGame, recordCognitiveScore } = useStore();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
 
   const [phase, setPhase] = useState<Phase>('intro');
 
@@ -44,6 +47,7 @@ export default function MathGame() {
   const [correct, setCorrect] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(Date.now());
   const problemScale = useRef(new Animated.Value(1)).current;
@@ -58,10 +62,15 @@ export default function MathGame() {
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
-    const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
-    recordGame('math', won, timeTaken);
     const credits = creditsForMath(finalCorrect, TOTAL_ROUNDS);
-    completeDailyGame(credits);
+    // Math is binary: one wrong answer fails the round. This overrides the
+    // shared ACCURACY_PASS bands (60/80/100) because the spec is now
+    // perfect-or-bust at every difficulty - if you can't do mental
+    // arithmetic without errors, you don't get to unlock anything.
+    const passed = finalCorrect === TOTAL_ROUNDS;
+    recordGame('math', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     // Problem solving = math accuracy %.
     const accuracy = (finalCorrect / TOTAL_ROUNDS) * 100;
     recordCognitiveScore('problemSolving', accuracy);
@@ -70,8 +79,8 @@ export default function MathGame() {
       score: finalScore,
       correct: finalCorrect,
       total: TOTAL_ROUNDS,
-      won,
-      credits_earned: credits,
+      passed,
+      credits_earned: passed ? credits : 0,
       time_taken_seconds: Math.round(timeTaken),
     });
     setPhase('result');
@@ -108,7 +117,6 @@ export default function MathGame() {
   };
 
   const handleStart = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     setProblem(generateProblem(1));
     setRound(1);
     setScore(0);
@@ -131,8 +139,8 @@ export default function MathGame() {
           hue={HUE}
           Illustration={<QuickMathIll size={88} />}
           title="Quick Math"
-          blurb="Ten problems. No clock — take your time. Each round gets a touch harder."
-          rules={['10 rounds', 'No timer', 'Builds gradually']}
+          blurb="Ten problems. No clock - take your time. Each round gets a touch harder."
+          rules={['🔢 10 rounds', '🚫 No timer', '📈 Builds gradually']}
           startLabel="Start"
           onStart={handleStart}
         />
@@ -143,18 +151,21 @@ export default function MathGame() {
   // ── RESULT ──
   if (phase === 'result') {
     const credits = creditsForMath(correct, TOTAL_ROUNDS);
-    const isGood = correct >= TOTAL_ROUNDS * 0.7;
+    const passed = correct === TOTAL_ROUNDS;
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Math" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Calculator size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={isGood ? 'Sharp arithmetic' : correct > 5 ? 'Solid round' : 'Keep training'}
+          badgeIcon={<Calculator size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={`${correct}/${TOTAL_ROUNDS}`}
           subtitle={`${score} points`}
-          credits={credits}
-          primaryLabel="Play again"
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
           onPrimary={playAgain}
           secondaryLabel="Back to home"
           onSecondary={() => router.replace('/(tabs)')}

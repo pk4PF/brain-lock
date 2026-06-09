@@ -44,3 +44,24 @@ export async function maybeShowReviewPrompt() {
     if (__DEV__) console.warn('[Review] failed:', err);
   }
 }
+
+/**
+ * Best-effort native review prompt for a specific high-intent moment (e.g. the
+ * first successful unlock). NOT gated by `reviewPromptShownAt` — the caller
+ * guards "once" itself (the store does, via `firstUnlockReviewed`). Apple's
+ * SKStoreReviewController rate-limits to a few prompts/year regardless, so
+ * calling this in addition to the onboarding ask is safe.
+ */
+export async function requestReviewNow(source: string) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const StoreReview = require('expo-store-review');
+    if (!(await StoreReview.isAvailableAsync())) return;
+    if (!(await StoreReview.hasAction())) return;
+    await StoreReview.requestReview();
+    track(Events.ReviewPromptShown, { source });
+    if (__DEV__) console.log('[Review] prompt shown', source);
+  } catch (err) {
+    if (__DEV__) console.warn('[Review] requestReviewNow failed:', err);
+  }
+}

@@ -9,13 +9,11 @@ import OnboardingBackButton from '../../src/components/onboarding/OnboardingBack
 import FadeUp from '../../src/components/onboarding/FadeUp';
 import { Eyebrow, SectionHeading } from '../../src/components/ui/anvil';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
-import BrainCoinsIcon from '../../src/components/BrainCoinsIcon';
-
-const CELLS_EARNED = 5;
+import { Check } from 'lucide-react-native';
 
 /**
  * Celebration screen after the tile-recall demo. Shows the user that
- * playing the brain game just earned them cells — closes the loop:
+ * playing the brain game just earned them cells - closes the loop:
  * "I trained → I got paid in currency". A short confetti burst sells
  * the dopamine moment without overwhelming the page.
  *
@@ -26,7 +24,7 @@ export default function DemoEarnScreen() {
   const { colors } = useThemeColors();
 
   return (
-    <OnboardingLayout step={10}>
+    <OnboardingLayout step={11} totalSteps={16}>
       <OnboardingBackButton />
       <View style={styles.content}>
         {/* Confetti sits absolute behind the headline so it doesn't push
@@ -39,28 +37,23 @@ export default function DemoEarnScreen() {
           </FadeUp>
           <FadeUp delay={80}>
             <SectionHeading size="lg">
-              You earned{' '}
-              <Text style={{ color: colors.accent }}>5 cells.</Text>
+              You{' '}
+              <Text style={{ color: colors.accent }}>earned it.</Text>
             </SectionHeading>
           </FadeUp>
         </View>
 
-        {/* Hero — coin stack + the count. The visual carries the weight
+        {/* Hero - coin stack + the count. The visual carries the weight
             so we don't need a body paragraph beneath it. */}
         <View style={styles.heroWrap}>
           <FadeUp delay={200}>
-            <View style={styles.heroCoin}>
-              <BrainCoinsIcon size={140} />
+            <View style={[styles.heroCheck, { backgroundColor: `${colors.accent}1A`, borderColor: `${colors.accent}40` }]}>
+              <Check size={84} color={colors.accent} strokeWidth={2.6} />
             </View>
-          </FadeUp>
-          <FadeUp delay={320}>
-            <Text style={[styles.plus, { color: colors.accent }]}>
-              +{CELLS_EARNED}
-            </Text>
           </FadeUp>
           <FadeUp delay={400}>
             <Text style={[styles.equation, { color: colors.muted }]}>
-              = {CELLS_EARNED} minutes of screen time
+              That time’s yours — you earned it.
             </Text>
           </FadeUp>
         </View>
@@ -77,7 +70,7 @@ export default function DemoEarnScreen() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Confetti — 14 little squares fall + spin + fade out. Pure RN
+// Confetti - 14 little squares fall + spin + fade out. Pure RN
 // Animated, no extra dependency. Subtle on purpose: a brief burst,
 // not a permanent storm.
 // ─────────────────────────────────────────────────────────────
@@ -169,6 +162,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   heroCoin: {
+    marginBottom: 18,
+  },
+  heroCheck: {
+    width: 160,
+    height: 160,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 18,
   },
   plus: {

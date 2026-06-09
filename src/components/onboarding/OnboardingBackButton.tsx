@@ -29,12 +29,14 @@ export default function OnboardingBackButton({ onPress }: OnboardingBackButtonPr
 
     return (
         <TouchableOpacity
-            // The progress bar lives at ~insets.top + 22, with a 4px track.
-            // Sit clearly below it so they never overlap.
+            // The progress block now contains a STEP X OF Y label (~19pt)
+            // above a 6pt track, plus the OnboardingLayout's insets.top + 6
+            // top padding. Total stack bottoms out around insets.top + 47;
+            // sit at +60 to leave a clean gap.
             style={[
                 styles.button,
                 {
-                    top: insets.top + 38,
+                    top: insets.top + 60,
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                     ...Platform.select({

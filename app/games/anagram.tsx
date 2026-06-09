@@ -9,6 +9,9 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { WordMemoryIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { passByAccuracy } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents.anagram.hue;
 const TOTAL_ROUNDS = 6;
@@ -69,6 +72,7 @@ function creditsForScore(correct: number, total: number): number {
  */
 export default function AnagramScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -78,6 +82,7 @@ export default function AnagramScreen() {
   const [input, setInput] = useState('');
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(0);
   const inputRef = useRef<TextInput>(null);
@@ -136,12 +141,13 @@ export default function AnagramScreen() {
   const finishGame = (finalCorrect: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForScore(finalCorrect, TOTAL_ROUNDS);
-    const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
-    recordGame('anagram', won, timeTaken);
-    completeDailyGame(credits);
+    const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
+    recordGame('anagram', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     recordCognitiveScore('recall', (finalCorrect / TOTAL_ROUNDS) * 100);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'anagram', correct: finalCorrect, total: TOTAL_ROUNDS, credits });
+    track(Events.GameCompleted, { game: 'anagram', correct: finalCorrect, total: TOTAL_ROUNDS, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -157,7 +163,7 @@ export default function AnagramScreen() {
           Illustration={<WordMemoryIll size={88} />}
           title="Anagram"
           blurb="Unscramble the letters into a word."
-          rules={['Verbal recall', `${TOTAL_ROUNDS} words`, 'Skip if stuck']}
+          rules={['🔤 Verbal recall', `📝 ${TOTAL_ROUNDS} words`, '⏭️ Skip if stuck']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -167,21 +173,24 @@ export default function AnagramScreen() {
 
   // ── RESULT ──
   if (phase === 'result') {
-    const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+    const passed = passByAccuracy(correct, TOTAL_ROUNDS, difficulty);
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Anagram" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<TextAa size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={pct >= 100 ? 'Wordsmith' : pct >= 80 ? 'Quick recall' : pct >= 60 ? 'Solid run' : 'Keep training'}
+          badgeIcon={<TextAa size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={`${correct}/${TOTAL_ROUNDS}`}
           subtitle="Words solved"
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );

@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, AccessibilityInfo } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, AccessibilityInfo, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Brain } from 'phosphor-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
+import { hapticLight } from '../../src/utils/haptics';
+import { track, Events } from '../../src/services/analytics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
@@ -13,6 +16,17 @@ import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 export default function DemoGameScreen() {
   useOnboardingStepView('demo_game');
   const { colors } = useThemeColors();
+  const insets = useSafeAreaInsets();
+
+  // Skip = bail on the whole game-demo trio (game + earn celebration)
+  // and jump straight to the unlock demo. Tracked separately so we can
+  // see the skip rate in PostHog and decide whether the game-demo path
+  // is converting better than the skip path.
+  const handleSkip = () => {
+    hapticLight();
+    track(Events.DemoGameSkipped);
+    router.push('/onboarding/demo-spend');
+  };
 
   // Big bouncy brain entrance + a slow idle bob.
   // Spring scale-in from 0.6 + a sine-wave bob keep the screen feeling
@@ -45,8 +59,19 @@ export default function DemoGameScreen() {
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
 
   return (
-    <OnboardingLayout step={10}>
+    <OnboardingLayout step={11} totalSteps={16}>
       <OnboardingBackButton />
+
+      {/* Skip - mirrors the back button on the right. Plain text link
+          so it reads as an escape hatch, not a peer of the primary CTA. */}
+      <TouchableOpacity
+        style={[styles.skipBtn, { top: insets.top + 60 }]}
+        onPress={handleSkip}
+        activeOpacity={0.6}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
+      </TouchableOpacity>
 
       <View style={styles.content}>
         <View style={styles.center}>
@@ -67,7 +92,7 @@ export default function DemoGameScreen() {
           </Animated.View>
 
           <FadeUp delay={120}>
-            <Eyebrow style={styles.eyebrowCenter}>Try a round</Eyebrow>
+            <Eyebrow style={styles.eyebrowCenter}>Try a challenge</Eyebrow>
           </FadeUp>
 
           <FadeUp delay={200}>
@@ -177,4 +202,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingBottom: 40,
   },
+  // Skip text link - mirrors OnboardingBackButton's positioning on the
+  // right edge, but renders as plain text instead of a circular icon
+  // so it reads as a quiet escape hatch.
+  skipBtn: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
+    height: 40,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skipText: {
+    fontSize: 15,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.1,
+  },
 });
+

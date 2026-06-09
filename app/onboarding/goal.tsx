@@ -64,13 +64,13 @@ export default function GoalScreen() {
       has_custom: trimmed.length > 0,
       total_count: final.length,
     });
-    router.push('/onboarding/commitment');
+    router.push('/onboarding/review');
   };
 
   const totalCount = selected.length + (customText.trim().length > 0 ? 1 : 0);
 
   return (
-    <OnboardingLayout step={4}>
+    <OnboardingLayout step={8} totalSteps={12}>
       <OnboardingBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

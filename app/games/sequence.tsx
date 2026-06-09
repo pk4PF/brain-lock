@@ -9,6 +9,9 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { SequenceMemoryIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { SEQUENCE_LEVEL } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents.sequence.hue;
 const PADS = 4;             // 2x2 grid
@@ -18,6 +21,10 @@ const START_LENGTH = 3;     // first round length
 const MAX_LENGTH = 12;      // hard cap (round 10 = length 12)
 
 const PAD_COLORS = ['#A855F7', '#EC4899', '#22C55E', '#F59E0B'];
+/** Per-pad emoji glyph. Each colour gets a thematic "object" so the user
+ *  can remember the sequence by symbol *or* colour, not just position -
+ *  and the grid pops in screenshots/demos. */
+const PAD_EMOJI = ['💎', '🌸', '🍀', '⭐'];
 
 type Phase = 'intro' | 'show' | 'input' | 'result';
 
@@ -40,6 +47,7 @@ function creditsForLength(maxLen: number): number {
  */
 export default function SequenceScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -48,6 +56,7 @@ export default function SequenceScreen() {
   const [flashing, setFlashing] = useState<number | null>(null);
   const [maxLength, setMaxLength] = useState(0);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(0);
   const playbackRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -125,14 +134,15 @@ export default function SequenceScreen() {
     playbackRef.current.forEach((t) => clearTimeout(t));
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForLength(finalMax);
-    const won = finalMax >= 5;
-    recordGame('sequence', won, timeTaken);
-    completeDailyGame(credits);
+    const passed = finalMax >= SEQUENCE_LEVEL[difficulty];
+    recordGame('sequence', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     // Memory map: each pad in the longest sequence = ~10 points. 10 pads = 100.
     const memoryScore = Math.min(100, finalMax * 10);
     recordCognitiveScore('memory', memoryScore);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'sequence', max_length: finalMax, credits });
+    track(Events.GameCompleted, { game: 'sequence', max_length: finalMax, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -148,7 +158,7 @@ export default function SequenceScreen() {
           Illustration={<SequenceMemoryIll size={88} />}
           title="Tap Sequence"
           blurb="Watch the pads flash. Repeat the order. Each round adds one."
-          rules={['Sequential memory', `Starts at ${START_LENGTH}`, 'One mistake ends it']}
+          rules={['🧠 Sequential memory', `▶️ Starts at ${START_LENGTH}`, '❌ One mistake ends it']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -158,21 +168,25 @@ export default function SequenceScreen() {
 
   // ── RESULT ──
   if (phase === 'result') {
+    const passed = maxLength >= SEQUENCE_LEVEL[difficulty];
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Tap Sequence" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Brain size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={maxLength >= 9 ? 'Mind palace' : maxLength >= 7 ? 'Strong recall' : maxLength >= 5 ? 'Solid run' : 'Keep training'}
+          badgeIcon={<Brain size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={maxLength}
           bigStatSuffix=" pads"
           subtitle="Longest sequence you nailed"
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );
@@ -209,7 +223,9 @@ export default function SequenceScreen() {
                     opacity: phase === 'show' && !isOn ? 0.55 : 1,
                   },
                 ]}
-              />
+              >
+                <Text style={styles.padEmoji}>{PAD_EMOJI[i]}</Text>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -239,6 +255,12 @@ const styles = StyleSheet.create({
     height: PAD_SIZE,
     borderRadius: 24,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  padEmoji: {
+    fontSize: 56,
+    lineHeight: 66,
   },
   hint: {
     marginTop: 36,

@@ -1,6 +1,7 @@
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useRef, useEffect } from 'react';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { FontFamily } from '../../constants/theme';
 
 interface OnboardingProgressProps {
     currentStep: number;
@@ -25,12 +26,18 @@ export default function OnboardingProgress({
 
     return (
         <View style={styles.container}>
+            {/* Small uppercase counter above the bar - tells the user
+                exactly where they are without having to count notches. */}
+            <Text style={[styles.label, { color: colors.muted }]}>
+                STEP {currentStep} OF {totalSteps}
+            </Text>
+
             <View style={[styles.track, { backgroundColor: colors.cardAlt }]}>
                 <Animated.View
                     style={[
                         styles.fill,
                         {
-                            backgroundColor: colors.text,
+                            backgroundColor: colors.accent,
                             width: widthAnim.interpolate({
                                 inputRange: [0, 100],
                                 outputRange: ['0%', '100%'],
@@ -48,13 +55,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 16,
     },
+    // Eyebrow-style label - matches the rest of the system primitives
+    // (Eyebrow in anvil.tsx). 11pt, medium weight, 1.6 tracking.
+    label: {
+        fontSize: 11,
+        fontFamily: FontFamily.medium,
+        letterSpacing: 1.6,
+        marginBottom: 8,
+    },
     track: {
-        height: 4,
-        borderRadius: 2,
+        height: 6,
+        borderRadius: 3,
         overflow: 'hidden',
     },
     fill: {
         height: '100%',
-        borderRadius: 2,
+        borderRadius: 3,
     },
 });

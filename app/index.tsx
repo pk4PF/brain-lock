@@ -41,14 +41,14 @@ export default function Index() {
       return;
     }
 
-    // Version mismatch - reset onboarding so returning users see the new flow
+    // Track the last-seen app version for analytics / future "What's new"
+    // gating, but DO NOT reset onboardingComplete. A returning user (especially
+    // a paying customer) must never be force-routed back through onboarding +
+    // paywall on update - that's a refund-request UX. If we ever need to show
+    // returning users a new flow, do it via a What's New modal gated on
+    // version delta, not by wiping their progress.
     if (lastAppVersion !== APP_VERSION) {
-      useStore.setState({
-        onboardingComplete: false,
-        lastAppVersion: APP_VERSION,
-      });
-      router.replace('/onboarding');
-      return;
+      useStore.setState({ lastAppVersion: APP_VERSION });
     }
 
     if (onboardingComplete) {

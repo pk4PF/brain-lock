@@ -123,16 +123,20 @@ public class ScreenTimeModule: Module {
 
         AsyncFunction("scheduleUnlockExpiry") { (minutes: Int) -> Void in
             guard #available(iOS 16.0, *) else { return }
-            let now = Date()
-            // iOS requires intervalStart to be at least 15 minutes from intervalEnd
-            // for repeating schedules. For non-repeating one-shot, the minimum is
-            // unlockable but the schedule must not fire instantly. We cap minimum
-            // at 1 min and use a tiny window starting "now" using calendar comps.
             let cal = Calendar.current
             let minutes = max(1, minutes)
-            let endDate = now.addingTimeInterval(TimeInterval(minutes * 60))
-            let startComps = cal.dateComponents([.hour, .minute, .second], from: now)
-            let endComps = cal.dateComponents([.hour, .minute, .second], from: endDate)
+
+            // Nudge intervalStart 2 seconds into the future so iOS never
+            // considers it "already passed" by the time startMonitoring runs.
+            let startDate = Date().addingTimeInterval(2)
+            let endDate = startDate.addingTimeInterval(TimeInterval(minutes * 60))
+
+            // Include year/month/day/hour/minute/second so the schedule is
+            // anchored to today rather than interpreted as a recurring daily
+            // time-of-day window.
+            let anchorComps: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
+            let startComps = cal.dateComponents(anchorComps, from: startDate)
+            let endComps = cal.dateComponents(anchorComps, from: endDate)
 
             let schedule = DeviceActivitySchedule(
                 intervalStart: startComps,

@@ -10,11 +10,11 @@ interface OnboardingLayoutProps {
     children: ReactNode;
     /** Current step index (1-based) for the top progress bar. Omit to hide bar. */
     step?: number;
-    /** Total step count for the progress bar. Defaults to 13 (matches the new flow). */
+    /** Total step count for the progress bar. Defaults to 18 (matches the full flow). */
     totalSteps?: number;
 }
 
-export default function OnboardingLayout({ children, step, totalSteps = 13 }: OnboardingLayoutProps) {
+export default function OnboardingLayout({ children, step, totalSteps = 18 }: OnboardingLayoutProps) {
     const { colors } = useThemeColors();
     const insets = useSafeAreaInsets();
     const showProgress = typeof step === 'number';

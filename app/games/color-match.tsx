@@ -9,6 +9,9 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { ColorRecallIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { passByAccuracy } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['color-match'].hue;
 const TOTAL_ROUNDS = 20;
@@ -19,13 +22,16 @@ type Phase = 'intro' | 'playing' | 'result';
 interface ColorOption {
   name: string;
   hex: string;
+  /** Coloured-circle emoji used in place of a flat swatch. Reads as a
+   *  "thing" rather than a UI rectangle and pops in screenshots. */
+  emoji: string;
 }
 
 const COLORS_LIST: ColorOption[] = [
-  { name: 'RED',    hex: '#EF4444' },
-  { name: 'BLUE',   hex: '#3B82F6' },
-  { name: 'GREEN',  hex: '#22C55E' },
-  { name: 'YELLOW', hex: '#EAB308' },
+  { name: 'RED',    hex: '#EF4444', emoji: '🔴' },
+  { name: 'BLUE',   hex: '#3B82F6', emoji: '🔵' },
+  { name: 'GREEN',  hex: '#22C55E', emoji: '🟢' },
+  { name: 'YELLOW', hex: '#EAB308', emoji: '🟡' },
 ];
 
 interface Round {
@@ -71,6 +77,7 @@ function creditsForScore(pct: number): number {
  */
 export default function ColorMatchScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -79,6 +86,7 @@ export default function ColorMatchScreen() {
   const [current, setCurrent] = useState<Round>(() => generateRound());
   const [picked, setPicked] = useState<string | null>(null);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,12 +139,13 @@ export default function ColorMatchScreen() {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const pct = Math.round((finalCorrect / TOTAL_ROUNDS) * 100);
     const credits = creditsForScore(pct);
-    const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
-    recordGame('color-match', won, timeTaken);
-    completeDailyGame(credits);
+    const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
+    recordGame('color-match', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     recordCognitiveScore('attention', pct);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'color-match', correct: finalCorrect, total: TOTAL_ROUNDS, credits });
+    track(Events.GameCompleted, { game: 'color-match', correct: finalCorrect, total: TOTAL_ROUNDS, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -152,7 +161,7 @@ export default function ColorMatchScreen() {
           Illustration={<ColorRecallIll size={88} />}
           title="Color Match"
           blurb="Tap the INK colour, not the word. The word will lie to you."
-          rules={['Selective attention', `${TOTAL_ROUNDS} rounds`, 'Beat the clock']}
+          rules={['🎯 Selective attention', `🔁 ${TOTAL_ROUNDS} rounds`, '⏱️ Beat the clock']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -163,21 +172,25 @@ export default function ColorMatchScreen() {
   // ── RESULT ──
   if (phase === 'result') {
     const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+    const passed = passByAccuracy(correct, TOTAL_ROUNDS, difficulty);
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Color Match" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Palette size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={pct >= 95 ? 'Inhibition god' : pct >= 80 ? 'Sharp focus' : pct >= 60 ? 'Solid run' : 'Keep training'}
+          badgeIcon={<Palette size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={pct}
           bigStatSuffix="%"
           subtitle={`${correct} of ${TOTAL_ROUNDS} correct`}
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );
@@ -224,7 +237,7 @@ export default function ColorMatchScreen() {
                   },
                 ]}
               >
-                <View style={[styles.swatch, { backgroundColor: opt.hex }]} />
+                <Text style={styles.swatchEmoji}>{opt.emoji}</Text>
                 <Text style={[styles.optionText, { color: colors.text }]}>{opt.name}</Text>
               </TouchableOpacity>
             );
@@ -275,6 +288,10 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 4,
+  },
+  swatchEmoji: {
+    fontSize: 22,
+    lineHeight: 26,
   },
   optionText: {
     fontSize: 15,

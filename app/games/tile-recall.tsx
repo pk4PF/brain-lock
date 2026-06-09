@@ -11,9 +11,12 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { ShapeRecallIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { TILE_LEVEL } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['tile-recall'].hue;
-// Lighter gradient stop for the lit-tile fill. Same hue, brighter — gives
+// Lighter gradient stop for the lit-tile fill. Same hue, brighter - gives
 // each lit tile a saturated face that reads "alive" in screenshots.
 const HUE_LIGHT = '#34D6D6';
 const GRID = 4;                  // 4x4 = 16 cells
@@ -54,11 +57,12 @@ function creditsForLevel(maxLevel: number): number {
  */
 export default function TileRecallScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const params = useLocalSearchParams<{ demo?: string }>();
   const isDemo = params.demo === '1';
 
   const {
-    completeDailyGame, recordGame, recordCognitiveScore,
+    completeDailyGame, recordGame, recordCognitiveScore, earnReward,
     canEarnToday, setShowPaywall,
   } = useStore();
 
@@ -72,6 +76,7 @@ export default function TileRecallScreen() {
   const [feedback, setFeedback] = useState<{ idx: number; right: boolean } | null>(null);
   const [maxLevel, setMaxLevel] = useState(0);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(0);
   const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -239,13 +244,14 @@ export default function TileRecallScreen() {
     if (phaseTimerRef.current) { clearTimeout(phaseTimerRef.current); phaseTimerRef.current = null; }
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForLevel(finalMax);
-    const won = finalMax >= 4;
-    recordGame('tile-recall', won, timeTaken);
-    completeDailyGame(credits);
+    const passed = finalMax >= TILE_LEVEL[difficulty];
+    recordGame('tile-recall', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     // Memory map: each level cleared = ~12 points. Level 8 = 96.
     recordCognitiveScore('memory', Math.min(100, finalMax * 12));
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'tile-recall', max_level: finalMax, credits });
+    track(Events.GameCompleted, { game: 'tile-recall', max_level: finalMax, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -256,6 +262,10 @@ export default function TileRecallScreen() {
     // this around 8-15 in the bar (Warming up tier) - intentional open loop.
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
     recordCognitiveScore('memory', pct);
+    // Real reward so the demo-earn screen's "+5 cells" claim is truthful.
+    // Bypasses completeDailyGame deliberately - we don't want the demo play
+    // to burn the daily counter or to gate further free plays.
+    earnReward(5);
     track(Events.GameCompleted, { game: 'tile-recall', demo: true, correct, total });
     router.push(DEMO_NEXT_ROUTE);
   };
@@ -278,8 +288,8 @@ export default function TileRecallScreen() {
           }
           rules={
             isDemo
-              ? ['Spatial memory', '2 quick rounds', 'No wrong answers']
-              : ['Spatial memory', `Starts at ${START_LEVEL} tiles`, 'One miss ends it']
+              ? ['🧠 Spatial memory', `⚡ ${DEMO_LEVELS.length} quick rounds`, '✅ No wrong answers']
+              : ['🧠 Spatial memory', `▶️ Starts at ${START_LEVEL} tiles`, '❌ One miss ends it']
           }
           startLabel={isDemo ? 'Try it' : 'Start'}
           onStart={startGame}
@@ -291,25 +301,25 @@ export default function TileRecallScreen() {
 
   // ── RESULT (production only) ──
   if (phase === 'result') {
+    const passed = maxLevel >= TILE_LEVEL[difficulty];
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Memory Tiles" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Brain size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={
-            maxLevel >= 7 ? 'Mind palace' :
-            maxLevel >= 5 ? 'Strong recall' :
-            maxLevel >= 4 ? 'Solid run' : 'Keep training'
-          }
+          badgeIcon={<Brain size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={maxLevel}
           bigStatSuffix={maxLevel === 1 ? ' tile' : ' tiles'}
           subtitle="Furthest level cleared"
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );
@@ -373,7 +383,7 @@ export default function TileRecallScreen() {
                   styles.cellWrap,
                   {
                     transform: [{ scale: scaleAnims[i] }],
-                    // Native iOS shadow — soft elevation on idle so tiles
+                    // Native iOS shadow - soft elevation on idle so tiles
                     // read as cards, not flat boxes. Coloured shadow when
                     // lit gives the marketing-friendly glow.
                     ...Platform.select({
@@ -428,7 +438,7 @@ export default function TileRecallScreen() {
                     )}
                   </Animated.View>
 
-                  {/* Glow ring — a fading inner-ish ring that softens the
+                  {/* Glow ring - a fading inner-ish ring that softens the
                       hard edge of the gradient and sells the "alive" feel. */}
                   <Animated.View
                     pointerEvents="none"
@@ -443,7 +453,7 @@ export default function TileRecallScreen() {
                     ]}
                   />
 
-                  {/* Tap feedback icon — sits above the overlay. */}
+                  {/* Tap feedback icon - sits above the overlay. */}
                   {tappedRight && (
                     <Check size={26} color="#FFFFFF" strokeWidth={3.2} />
                   )}

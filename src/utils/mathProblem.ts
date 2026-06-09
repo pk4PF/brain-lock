@@ -1,5 +1,5 @@
 export type Operation = '+' | '-' | '×' | '÷';
-// Difficulty modes were removed — math is now a single progressive curve.
+// Difficulty modes were removed - math is now a single progressive curve.
 // Type kept for back-compat with any stale imports; no longer used by the
 // generator.
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -14,28 +14,64 @@ export interface Problem {
 
 interface DifficultyBand {
   ops: Operation[];
+  /** Floor for + / - operands. Without this, the uniform picker keeps
+   *  producing trivial small-number problems even when the ceiling is high. */
+  addSubMin: number;
   addSubMax: number;
+  /** Floor for × / ÷ operands. Forces real two-digit-times-one-digit
+   *  problems (13 × 9) instead of fall-back-on-times-tables (3 × 5). */
+  multMin: number;
   multMax: number;
   optionSpread: number;
 }
 
 /**
- * Single progressive curve, rounds 1–10. We deliberately stop short of
- * "hard": no division (it's a confidence-killer), multiplication caps at
- * 10×10. The curve goes "easy warm-up → medium core → light challenge"
- * so the game stays approachable for the casual brain-game audience.
+ * Single progressive curve, rounds 1-12. Hard means hard:
+ *   - Warm-up: two-digit add/sub, multiplication up to 12×12, no division.
+ *   - Mid: two-digit add/sub up to 99, multiplication 6-13, division.
+ *   - Late: 3-digit subtraction (240 - 132 style), multiplication 9-15
+ *     (forces non-memorised products like 13 × 9 = 117), tight options.
+ *
+ * Floors on every band so the generator can't accidentally produce a
+ * trivial problem mid-game.
  */
 function bandFor(round: number): DifficultyBand {
   if (round <= 3) {
-    // Warm-up: simple + and -
-    return { ops: ['+', '-'], addSubMax: 15, multMax: 0, optionSpread: 5 };
+    return {
+      ops: ['+', '-', '×'],
+      addSubMin: 12,
+      addSubMax: 50,
+      multMin: 4,
+      multMax: 12,
+      optionSpread: 3,
+    };
   }
   if (round <= 6) {
-    // Mid: introduces multiplication, slightly bigger numbers
-    return { ops: ['+', '-', '×'], addSubMax: 30, multMax: 8, optionSpread: 7 };
+    return {
+      ops: ['+', '-', '×', '÷'],
+      addSubMin: 30,
+      addSubMax: 99,
+      multMin: 6,
+      multMax: 13,
+      optionSpread: 3,
+    };
   }
-  // Late: bigger numbers, still no division
-  return { ops: ['+', '-', '×'], addSubMax: 60, multMax: 10, optionSpread: 9 };
+  // Late band - this is where it bites.
+  return {
+    ops: ['+', '-', '×', '÷'],
+    addSubMin: 80,
+    addSubMax: 250,
+    multMin: 9,
+    multMax: 15,
+    optionSpread: 2,
+  };
+}
+
+/** Inclusive random int in [min, max]. */
+function randIntInclusive(min: number, max: number): number {
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
 }
 
 /** Generate a math problem on the progressive single-mode curve.
@@ -48,27 +84,32 @@ export function generateProblem(round: number, _difficulty?: Difficulty): Proble
 
   switch (op) {
     case '+':
-      a = Math.floor(Math.random() * band.addSubMax) + 1;
-      b = Math.floor(Math.random() * band.addSubMax) + 1;
+      a = randIntInclusive(band.addSubMin, band.addSubMax);
+      b = randIntInclusive(band.addSubMin, band.addSubMax);
       answer = a + b;
       break;
-    case '-':
-      a = Math.floor(Math.random() * band.addSubMax) + 2;
-      b = Math.floor(Math.random() * a) + 1;
+    case '-': {
+      // Pick a in the band, then constrain b so the subtraction is
+      // meaningful. b lands in [addSubMin/2, a - addSubMin/2] which
+      // means you never get `240 - 3` (trivial) or `200 - 197` (trick).
+      a = randIntInclusive(band.addSubMin, band.addSubMax);
+      const halfMin = Math.max(1, Math.floor(band.addSubMin / 2));
+      const bMax = Math.max(halfMin, a - halfMin);
+      b = randIntInclusive(halfMin, bMax);
       answer = a - b;
       break;
-    case '×': {
-      const max = Math.max(2, band.multMax);
-      a = Math.floor(Math.random() * (max - 1)) + 2;
-      b = Math.floor(Math.random() * (max - 1)) + 2;
+    }
+    case '×':
+      a = randIntInclusive(band.multMin, band.multMax);
+      b = randIntInclusive(band.multMin, band.multMax);
       answer = a * b;
       break;
-    }
     case '÷': {
       // Build from the answer so we always get clean integer results.
-      const max = Math.max(3, band.multMax);
-      const divisor = Math.floor(Math.random() * (max - 1)) + 2;
-      const quotient = Math.floor(Math.random() * (max - 1)) + 2;
+      // Both divisor and quotient drawn from [multMin, multMax] so the
+      // dividend can be sizeable (e.g. 12 × 9 = 108, then 108 ÷ 9 = 12).
+      const divisor = randIntInclusive(band.multMin, band.multMax);
+      const quotient = randIntInclusive(band.multMin, band.multMax);
       a = divisor * quotient;
       b = divisor;
       answer = quotient;

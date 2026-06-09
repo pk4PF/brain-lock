@@ -31,15 +31,15 @@ class BrainLockShieldDataSource: ShieldConfigurationDataSource {
             backgroundColor: accentRed,
             icon: UIImage(named: "ShieldIcon"),
             title: ShieldConfiguration.Label(
-                text: "Locked by Brain Lock",
+                text: "Locked by Brainlock",
                 color: .white
             ),
             subtitle: ShieldConfiguration.Label(
-                text: "Earn brain cells in Brain Lock to unlock.",
+                text: "Earn brain cells in Brainlock to unlock.",
                 color: UIColor.white.withAlphaComponent(0.85)
             ),
             primaryButtonLabel: ShieldConfiguration.Label(
-                text: "Open Brain Lock",
+                text: "Open Brainlock",
                 color: accentRed
             ),
             primaryButtonBackgroundColor: .white,

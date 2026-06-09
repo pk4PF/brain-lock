@@ -1,5 +1,5 @@
 /**
- * Brain Coins icon — gold-coin stack with brain illustration on the face.
+ * Brain Coins icon - gold-coin stack with brain illustration on the face.
  * The SVG is inlined as a string so we don't need react-native-svg-transformer
  * + a metro config change. Source: assets/brain-coins.svg (90 paths, 42KB).
  *

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lock Apps Promo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    background: #FAF6F0;
+  }
+
+  .container {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(165deg, #FF8A4A 0%, #FF6A1A 35%, #E55A12 70%, #C44A0A 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Soft radial glow */
+  .container::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 95px);
+    gap: 20px;
+    transform: rotate(-8deg);
+    position: relative;
+  }
+
+  .app {
+    position: relative;
+    width: 95px;
+    height: 95px;
+  }
+
+  .app-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 120px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lock-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 30px;
+    height: 30px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 2;
+  }
+
+  .lock-badge svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  /* App icon colors - mimicking real apps */
+  .whatsapp { background: linear-gradient(135deg, #25D366, #128C7E); }
+  .instagram { background: linear-gradient(135deg, #F58529, #DD2A7B, #8134AF, #515BD4); }
+  .photos { background: linear-gradient(135deg, #FFFFFF, #F0F0F0); border: 1px solid #E0E0E0; }
+  .tinder { background: linear-gradient(135deg, #FF6B6B, #FE3C72); }
+  .tiktok { background: linear-gradient(135deg, #010101, #1a1a1a); }
+  .notes { background: linear-gradient(135deg, #FFCC02, #FFB800); }
+  .facebook { background: linear-gradient(135deg, #1877F2, #1565D8); }
+  .youtube { background: linear-gradient(135deg, #FFFFFF, #F8F8F8); border: 1px solid #E0E0E0; }
+  .twitter { background: linear-gradient(135deg, #1A1A1A, #000000); }
+  .snapchat { background: linear-gradient(135deg, #FFFC00, #FFE600); }
+  .reddit { background: linear-gradient(135deg, #FF4500, #FF5722); }
+  .discord { background: linear-gradient(135deg, #5865F2, #4752C4); }
+
+  .app-icon .icon-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* SVG icons inside app tiles */
+  .app-icon svg.app-svg {
+    width: 52px;
+    height: 52px;
+  }
+
+  .app-icon svg.app-svg-sm {
+    width: 44px;
+    height: 44px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="grid">
+    <!-- Row 1 -->
+    <div class="app">
+      <div class="app-icon whatsapp">
+        <svg class="app-svg" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon instagram">
+        <svg class="app-svg" viewBox="0 0 24 24" fill="white"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="white" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="white" stroke-width="1.5"/><circle cx="17.5" cy="6.5" r="1.2" fill="white"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon snapchat">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="none"/><path d="M12.166 18.002c-.086 0-.172-.003-.257-.009-.482-.031-.96-.158-1.423-.297-.352-.106-.684-.206-.988-.206-.135 0-.274.021-.425.064-.307.089-.56.203-.8.312-.33.15-.632.288-.952.288-.106 0-.207-.016-.3-.05-.356-.127-.476-.395-.536-.573-.057-.167-.07-.334-.073-.404-.004-.1-.018-.13-.142-.168-.516-.156-.82-.349-.93-.592-.025-.056-.037-.11-.037-.163 0-.1.054-.178.138-.21.784-.296 1.448-.816 1.973-1.543.483-.67.71-1.3.726-1.34.001-.003.193-.442.1-.838-.111-.474-.567-.686-.782-.785l-.036-.017c-.147-.07-.477-.228-.446-.506.023-.207.229-.355.389-.355.037 0 .07.007.098.021.357.172.682.26.966.26.181 0 .298-.043.353-.071-.034-.504-.1-1.283-.1-1.283-.062-.786-.014-2.085.758-3.16C8.281 5.395 9.704 4.8 11.46 4.78h.536c1.755.02 3.178.615 4.109 1.72.772 1.076.82 2.375.758 3.161 0 0-.065.768-.099 1.268.069.034.21.082.42.082.246 0 .542-.07.882-.21a.308.308 0 01.121-.025c.076 0 .278.028.365.267.044.12.009.271-.104.45-.158.249-.442.36-.66.445l-.04.016c-.214.1-.67.311-.781.785-.093.396.099.835.1.838.005.012.244.672.727 1.34.525.728 1.189 1.248 1.973 1.544.06.023.138.082.138.18a.266.266 0 01-.037.133c-.11.243-.414.436-.93.592-.124.038-.138.069-.142.168-.003.07-.016.237-.073.404-.06.178-.18.446-.535.573a.692.692 0 01-.301.05c-.32 0-.623-.138-.952-.288-.24-.11-.493-.223-.8-.312a1.586 1.586 0 00-.425-.064c-.304 0-.636.1-.988.206-.463.139-.94.266-1.423.297a3.3 3.3 0 01-.293.01z" fill="#333"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="app">
+      <div class="app-icon tinder">
+        <svg class="app-svg" viewBox="0 0 24 24" fill="white"><path d="M12.004 2C8.09 5.2 9.16 8.6 9.84 9.96c-1.92-1.44-2.16-4.08-2.16-4.08C4.8 9.24 4.8 13.92 6.72 16.44 8.4 18.72 11.28 19.2 11.28 19.2v-.12c-.36-.24-2.04-1.56-2.04-3.6 0-2.88 2.76-4.68 2.76-4.68s2.76 1.8 2.76 4.68c0 2.04-1.68 3.36-2.04 3.6v.12s2.88-.48 4.56-2.76c1.92-2.52 1.92-7.2-1-10.56 0 0-.24 2.64-2.16 4.08.68-1.36 1.76-4.76-2.12-7.96z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon tiktok">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V9.22a8.16 8.16 0 0 0 4.76 1.52V7.3a4.85 4.85 0 0 1-1-.61z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon discord">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="app">
+      <div class="app-icon facebook">
+        <svg class="app-svg" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon youtube">
+        <svg class="app-svg-sm" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" fill="#FF0000"/><path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="white"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon twitter">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <!-- Row 4 -->
+    <div class="app">
+      <div class="app-icon reddit">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon" style="background: linear-gradient(135deg, #0088CC, #0077B5);">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="app-icon" style="background: linear-gradient(135deg, #7C3AED, #5B21B6);">
+        <svg class="app-svg-sm" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.546 20.2A1.5 1.5 0 0 0 3.8 21.454l3.032-.892A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FF6A1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

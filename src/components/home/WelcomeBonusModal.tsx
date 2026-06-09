@@ -23,7 +23,7 @@ interface Props {
  *
  * Hybrid celebratory tone (per the user's pick): we *do* allow some pop -
  * the big "30" springs in, the accent ring pulses once, a few sparkles
- * fade up around the number. But the copy stays Brain Lock voice: numbers
+ * fade up around the number. But the copy stays Brainlock voice: numbers
  * over adjectives, no "Amazing work!", no flame emoji, no jar of gold
  * coins. The bonus is framed as *earned* (you finished onboarding - that
  * was the work), not as a free dopamine gift.
@@ -169,7 +169,7 @@ export default function WelcomeBonusModal({ visible, onClaim }: Props) {
                 },
               ]}
             >
-              30
+              25
             </Animated.Text>
 
             <Animated.View style={sparkleStyle(sparkleA, -28, -10, -18)}>
@@ -187,8 +187,8 @@ export default function WelcomeBonusModal({ visible, onClaim }: Props) {
 
           {/* Body */}
           <Text style={[styles.body, { color: colors.text }]}>
-            That's 30 minutes of unlock time. Or save them, earn more, and
-            spend bigger.
+            Your starting balance. Spend them now to unlock 15-30 minutes,
+            or save up and earn more.
           </Text>
 
           {/* CTA */}

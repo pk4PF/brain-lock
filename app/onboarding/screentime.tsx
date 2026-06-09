@@ -39,7 +39,7 @@ export default function ScreentimeScreen() {
 
 
   return (
-    <OnboardingLayout step={2}>
+    <OnboardingLayout step={6} totalSteps={12}>
       <OnboardingBackButton />
       {/* ScrollView wrap for accessibility (zoom + Dynamic Type). Slider
           PanResponder still captures horizontal drags because it sets
@@ -50,7 +50,7 @@ export default function ScreentimeScreen() {
       >
         <View style={styles.top}>
           <FadeUp delay={0}>
-            <Eyebrow>Step 1 of 3</Eyebrow>
+            <Eyebrow>About you</Eyebrow>
           </FadeUp>
           <FadeUp delay={80}>
             <SectionHeading size="lg">
@@ -62,7 +62,7 @@ export default function ScreentimeScreen() {
           <View style={{ height: 10 }} />
           <FadeUp delay={160}>
             <MutedText size="md">
-              Estimate your daily average. No need to check.
+              Just a rough estimate.
             </MutedText>
           </FadeUp>
         </View>

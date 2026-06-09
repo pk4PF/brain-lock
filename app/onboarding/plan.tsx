@@ -43,29 +43,25 @@ const WEEKS: Week[] = [
   {
     num: 1,
     title: 'Foundation',
-    body:
-      'Your brain stops opening apps on autopilot. Every pickup has to clear a 60-second brain game first, so the unconscious tap dies in the first week. Most automatic opens never happen.',
+    body: 'Auto-pickups die. Every tap clears a 60-second pause first.',
     toneKey: 'warmup',
   },
   {
     num: 2,
     title: 'The Shift',
-    body:
-      'Focus stretches. Tasks feel doable again. Reaching for the phone stops being the default move, and your screen time drops significantly without you trying.',
+    body: 'Focus stretches. Screen time drops without you trying.',
     toneKey: 'shift',
   },
   {
     num: 3,
     title: 'The Rewire',
-    body:
-      'The new habit solidifies. Your brain starts to enjoy hard things — finishing what you start, sitting with focus, choosing instead of reacting.',
+    body: 'The habit sticks. Hard things start feeling good.',
     toneKey: 'rewire',
   },
   {
     num: 4,
     title: 'The Comeback',
-    body:
-      'Your brain is back in charge. By week four, screen time is cut in half — some users even report reductions up to 90%. Without willpower, without restriction. The phone works for you, not the other way around.',
+    body: 'Screen time cut in half. Some users hit 90% less.',
     toneKey: 'comeback',
   },
 ];
@@ -76,7 +72,7 @@ export default function PlanScreen() {
   const { userName, dailyScreenTimeHours } = useStore();
   const firstName = FIRST_NAME(userName);
   const baseline = dailyScreenTimeHours || 4;
-  // 50% reduction by week 4 — the "cut in half" promise. Believable, still
+  // 50% reduction by week 4 - the "cut in half" promise. Believable, still
   // transformational, matches the user-reported outcome in the Comeback
   // paragraph. Keep these in sync if you change one.
   const week4Target = baseline * 0.50;
@@ -108,7 +104,7 @@ export default function PlanScreen() {
   });
 
   return (
-    <OnboardingLayout step={13}>
+    <OnboardingLayout step={11} totalSteps={12}>
       {/* No back button - calibrating used router.replace, going back
           would just bounce into the loading animation. */}
       <View style={styles.content}>
@@ -176,17 +172,12 @@ export default function PlanScreen() {
             })}
           </View>
 
-          <View style={[styles.signoff, { borderColor: colors.border }]}>
-            <Text style={[styles.signoffEyebrow, { color: colors.muted }]}>
-              ✓  YOUR 4-WEEK COMEBACK IS READY
-            </Text>
-          </View>
         </ScrollView>
 
         <View style={[styles.bottomContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
           <OnboardingButton
             label="Let's go"
-            onPress={() => router.push('/onboarding/paywall')}
+            onPress={() => router.push('/onboarding/commitment')}
           />
         </View>
       </View>

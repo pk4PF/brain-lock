@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Easing } from 'react-native';
 import { router } from 'expo-router';
-import { Lock, Unlock, Zap, ArrowRight } from 'lucide-react-native';
+import { Lock, Unlock, Check, ArrowRight } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticMedium } from '../../src/utils/haptics';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
-import { SectionHeading } from '../../src/components/ui/anvil';
+import { SectionHeading, MutedText } from '../../src/components/ui/anvil';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 
+/**
+ * Demo of the spend flow. The user taps the lock to see it animate open -
+ * pure visual demo, NO real spend or unlock happens. Copy makes it clear
+ * the actual unlock happens once they're in the app proper.
+ *
+ * Numbers (5 cells -> 5 minutes) are illustrative since this is a preview.
+ * Real tiers are 15-30 min on Home.
+ */
 export default function DemoSpendScreen() {
   useOnboardingStepView('demo_spend');
   const { colors } = useThemeColors();
@@ -27,86 +35,93 @@ export default function DemoSpendScreen() {
     Animated.parallel([
       Animated.timing(lockOpacity, {
         toValue: 0,
-        duration: 350,
+        duration: 380,
         useNativeDriver: true,
       }),
       Animated.timing(unlockOpacity, {
         toValue: 1,
-        duration: 500,
-        delay: 100,
+        duration: 520,
+        delay: 80,
         useNativeDriver: true,
       }),
       Animated.timing(swapAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 620,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
   };
 
-  // Auto-advance to review after a brief celebratory pause
+  // Auto-advance to review after a brief celebratory pause once the user
+  // has played out the lock -> unlock animation.
   useEffect(() => {
     if (!unlocked) return;
-    const t = setTimeout(() => {
-      router.push('/onboarding/review');
-    }, 1500);
+    const t = setTimeout(() => router.push('/onboarding/review'), 1500);
     return () => clearTimeout(t);
   }, [unlocked]);
 
   return (
-    <OnboardingLayout step={11}>
+    <OnboardingLayout step={12} totalSteps={16}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.top}>
           <FadeUp delay={0}>
             <SectionHeading size="lg">
-              Now spend them.
+              You earned it.
             </SectionHeading>
+          </FadeUp>
+          <View style={{ height: 8 }} />
+          <FadeUp delay={100}>
+            <MutedText size="md">
+              Tap the lock to see how it works. Real unlocks happen in the main app.
+            </MutedText>
           </FadeUp>
         </View>
 
         <View style={styles.center}>
-          {/* Visual: lock → unlock. Locked uses neutral surface (it's the
-              default state, not an error). Unlocked uses brand accent
-              because that's the success moment. Semantic green is reserved
-              for the "Unlocked. Easy." confirmation line below. */}
+          {/* Visual: lock -> unlock. Locked uses neutral surface (default
+              state, not an error). Unlocked uses brand accent because that's
+              the success moment. The whole stack is tappable so the user
+              can play out the visual once. */}
           <FadeUp delay={260}>
-            <View style={styles.demo}>
-              <Animated.View
-                style={[
-                  styles.bigIcon,
-                  {
-                    backgroundColor: colors.cardAlt,
-                    borderColor: colors.border,
-                    opacity: lockOpacity,
-                  },
-                ]}
-              >
-                <Lock size={48} color={colors.muted} strokeWidth={1.6} />
-              </Animated.View>
-              <Animated.View
-                style={[
-                  styles.bigIcon,
-                  styles.unlockOverlay,
-                  {
-                    backgroundColor: colors.accentLight,
-                    borderColor: colors.accent,
-                    opacity: unlockOpacity,
-                    transform: [
-                      {
-                        scale: swapAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.8, 1],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Unlock size={48} color={colors.accent} strokeWidth={1.6} />
-              </Animated.View>
-            </View>
+            <TouchableOpacity activeOpacity={0.85} onPress={handleUnlock} disabled={unlocked}>
+              <View style={styles.demo}>
+                <Animated.View
+                  style={[
+                    styles.bigIcon,
+                    {
+                      backgroundColor: colors.cardAlt,
+                      borderColor: colors.border,
+                      opacity: lockOpacity,
+                    },
+                  ]}
+                >
+                  <Lock size={48} color={colors.muted} strokeWidth={1.6} />
+                </Animated.View>
+                <Animated.View
+                  style={[
+                    styles.bigIcon,
+                    styles.unlockOverlay,
+                    {
+                      backgroundColor: colors.accentLight,
+                      borderColor: colors.accent,
+                      opacity: unlockOpacity,
+                      transform: [
+                        {
+                          scale: swapAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Unlock size={48} color={colors.accent} strokeWidth={1.6} />
+                </Animated.View>
+              </View>
+            </TouchableOpacity>
           </FadeUp>
 
           <FadeUp delay={360}>
@@ -115,34 +130,32 @@ export default function DemoSpendScreen() {
                 styles.creditsCard,
                 {
                   backgroundColor: colors.card,
-                  borderColor: unlocked ? colors.success : colors.border,
+                  borderColor: unlocked ? colors.accent : colors.border,
                   borderWidth: unlocked ? 1.5 : 1,
                 },
               ]}
             >
               <View style={styles.creditsRow}>
-                <Zap
-                  size={16}
-                  color={unlocked ? colors.muted : colors.accent}
-                  fill={unlocked ? 'transparent' : colors.accent}
-                />
-                <Text
-                  style={[
-                    styles.creditsLabel,
-                    {
-                      color: unlocked ? colors.muted : colors.text,
-                      textDecorationLine: unlocked ? 'line-through' : 'none',
-                    },
-                  ]}
-                >
-                  5 brain cells
+                <Check size={16} color={colors.accent} strokeWidth={3} />
+                <Text style={[styles.creditsLabel, { color: colors.text }]}>
+                  Pass
                 </Text>
               </View>
               <ArrowRight size={14} color={colors.muted} strokeWidth={2} />
-              <Text style={[styles.creditsValue, { color: unlocked ? colors.success : colors.text }]}>
-                5 minutes
+              <Text style={[styles.creditsValue, { color: colors.text }]}>
+                15–60 min
               </Text>
             </View>
+          </FadeUp>
+
+          {/* Preview tag - small, muted, sits below the card so the user
+              never confuses this animation with a real action. */}
+          <FadeUp delay={440}>
+            <Text style={[styles.previewNote, { color: colors.muted }]}>
+              {unlocked
+                ? 'Preview only - your real unlock waits on Home.'
+                : 'Preview - this won’t unlock anything yet.'}
+            </Text>
           </FadeUp>
         </View>
 
@@ -225,6 +238,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FontFamily.medium,
     letterSpacing: -0.1,
+  },
+  previewNote: {
+    marginTop: 14,
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    letterSpacing: 0.1,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   bottomContainer: {
     paddingHorizontal: Spacing.xl,

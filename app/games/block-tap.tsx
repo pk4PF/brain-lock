@@ -9,6 +9,9 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { BlockTappingIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { BLOCKTAP_MS } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['block-tap'].hue;
 const GRID = 4;            // 4x4 = 16 cells
@@ -31,6 +34,7 @@ function creditsForAvg(avgMs: number): number {
  */
 export default function BlockTapScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -38,6 +42,7 @@ export default function BlockTapScreen() {
   const [tapsDone, setTapsDone] = useState(0);
   const [times, setTimes] = useState<number[]>([]);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const targetShownAt = useRef(0);
   const startTime = useRef(0);
@@ -79,14 +84,15 @@ export default function BlockTapScreen() {
     const totalElapsed = (Date.now() - startTime.current) / 1000;
     const avg = Math.round(allTimes.reduce((a, b) => a + b, 0) / allTimes.length);
     const credits = creditsForAvg(avg);
-    const won = avg < 1000;
-    recordGame('block-tap', won, totalElapsed);
-    completeDailyGame(credits);
+    const passed = avg <= BLOCKTAP_MS[difficulty];
+    recordGame('block-tap', passed, totalElapsed);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     // Speed map: <500ms = 100, 1500ms = 0.
     const speedScore = Math.max(0, Math.min(100, 100 - (avg - 500) * (100 / 1000)));
     recordCognitiveScore('speed', speedScore);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'block-tap', avg_ms: avg, credits });
+    track(Events.GameCompleted, { game: 'block-tap', avg_ms: avg, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -104,7 +110,7 @@ export default function BlockTapScreen() {
           Illustration={<BlockTappingIll size={88} />}
           title="Quick Tap"
           blurb={`Tap the highlighted square. Next one appears the moment you do. ${TOTAL_TARGETS} targets total.`}
-          rules={['Visual scanning', `${TOTAL_TARGETS} targets`, 'Speed']}
+          rules={['👀 Visual scanning', `🎯 ${TOTAL_TARGETS} targets`, '⚡ Speed']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -114,21 +120,25 @@ export default function BlockTapScreen() {
 
   // ── RESULT ──
   if (phase === 'result') {
+    const passed = avgMs <= BLOCKTAP_MS[difficulty];
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Quick Tap" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Lightning size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={avgMs < 600 ? 'Lightning hands' : avgMs < 800 ? 'Sharp speed' : avgMs < 1100 ? 'Solid' : 'Keep training'}
+          badgeIcon={<Lightning size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={avgMs}
           bigStatSuffix="ms"
           subtitle="Average per tap"
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );

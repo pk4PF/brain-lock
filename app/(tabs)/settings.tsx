@@ -58,7 +58,7 @@ export default function ProfileScreen() {
           <SectionHeading size="lg">Settings.</SectionHeading>
           <View style={{ height: 8 }} />
           <MutedText size="md">
-            Tweak how Brain Lock looks, sounds, and feels.
+            Tweak how Brainlock looks, sounds, and feels.
           </MutedText>
         </FadeInView>
 
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 )}
                 <Text style={[styles.identityMeta, { color: colors.muted }]}>
-                  {progress.gamesWon} {progress.gamesWon === 1 ? 'game won' : 'games won'}
+                  {progress.gamesWon} {progress.gamesWon === 1 ? 'test passed' : 'tests passed'}
                 </Text>
               </View>
 

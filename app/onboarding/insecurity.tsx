@@ -31,7 +31,6 @@ interface PainCard {
   Icon: any;
   iconColor: string;
   title: string;
-  body: string;
 }
 
 function buildCards(lifetimeYears: number, lifetimeHours: number, accentHue: string): PainCard[] {
@@ -51,19 +50,16 @@ function buildCards(lifetimeYears: number, lifetimeHours: number, accentHue: str
       Icon: BookOpen,
       iconColor: '#8B5CF6',
       title: `${books.toLocaleString()} books unread`,
-      body: 'A personal library, in any subject. 10 hours each, all yours.',
     },
     {
       Icon: Trophy,
       iconColor: accentHue,
-      title: `${masteries} skill${masteries === 1 ? '' : 's'} mastered`,
-      body: '10,000 hours each. The mastery rule. Languages, instruments, code, anything.',
+      title: `${masteries} skill${masteries === 1 ? '' : 's'} you could master`,
     },
     {
       Icon: Heart,
       iconColor: '#E53935',
-      title: `${peopleHours.toLocaleString()} hours with people`,
-      body: "The ones you love. Your phone takes them. They notice.",
+      title: `${peopleHours.toLocaleString()} hours with people you love`,
     },
   ];
 }
@@ -102,7 +98,7 @@ export default function InsecurityScreen() {
     : displayYears.toFixed(1);
 
   return (
-    <OnboardingLayout step={4}>
+    <OnboardingLayout step={7} totalSteps={12}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <ScrollView
@@ -125,11 +121,9 @@ export default function InsecurityScreen() {
               </Text>
             </FadeUp>
             <FadeUp delay={260}>
-              <View style={[styles.shareChip, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
-                <Text style={[styles.shareChipText, { color: colors.text }]}>
-                  {lifeShare}% of your remaining life, lost to a screen
-                </Text>
-              </View>
+              <Text style={[styles.heroSub, { color: colors.muted }]}>
+                That's {lifeShare}% of your remaining life.
+              </Text>
             </FadeUp>
           </View>
 
@@ -143,7 +137,6 @@ export default function InsecurityScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: colors.text }]}>{c.title}</Text>
-                    <Text style={[styles.cardBody, { color: colors.muted }]}>{c.body}</Text>
                   </View>
                 </View>
               </FadeUp>
@@ -197,16 +190,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     marginTop: 4,
   },
-  shareChip: {
-    marginTop: 14,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  shareChipText: {
-    fontSize: 13,
-    fontFamily: FontFamily.medium,
+  heroSub: {
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    marginTop: 10,
     letterSpacing: -0.1,
   },
 
@@ -217,7 +204,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 14,
     padding: 16,
     borderRadius: 16,

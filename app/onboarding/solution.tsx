@@ -10,12 +10,12 @@ import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { hapticLight } from '../../src/utils/haptics';
 
 /**
- * Solution screen — immediately answers the pain set up by `problem.tsx`.
+ * Solution screen - immediately answers the pain set up by `problem.tsx`.
  *
  * Same minimal editorial style: one big lowercase line with a single accent
  * word, a quiet "it's simple / every day / you …" rhythm beneath, tap to
  * continue. Within the first three onboarding screens the user now knows
- * exactly what BrainLock does.
+ * exactly what Brainlock does.
  */
 export default function SolutionScreen() {
   useOnboardingStepView('solution');
@@ -24,11 +24,11 @@ export default function SolutionScreen() {
 
   const next = () => {
     hapticLight();
-    router.push('/onboarding/howitworks');
+    router.push('/onboarding/referral');
   };
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout step={2} totalSteps={12}>
       <Pressable
         onPress={next}
         style={[
@@ -39,8 +39,8 @@ export default function SolutionScreen() {
         <View style={styles.top}>
           <FadeUp delay={80}>
             <Text style={[styles.headline, { color: colors.text }]}>
-              BrainLock helps you put your brain{' '}
-              <Text style={{ color: colors.accent }}>back in charge</Text>.
+              Brainlock makes your apps something you{' '}
+              <Text style={{ color: colors.accent }}>earn</Text>.
             </Text>
           </FadeUp>
         </View>

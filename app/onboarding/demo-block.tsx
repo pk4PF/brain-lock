@@ -74,7 +74,7 @@ export default function DemoBlockScreen() {
       } else if (status === 'denied') {
         Alert.alert(
           'Permission needed',
-          'Brain Lock needs Screen Time access to block apps. You can enable it in Settings → Screen Time.',
+          'Brainlock needs Screen Time access to block apps. You can enable it in Settings → Screen Time.',
         );
       }
     } catch (err: any) {
@@ -108,7 +108,7 @@ export default function DemoBlockScreen() {
   const isUnavailable = authStatus === 'unavailable';
 
   return (
-    <OnboardingLayout step={8}>
+    <OnboardingLayout step={10} totalSteps={16}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.top}>
@@ -123,7 +123,7 @@ export default function DemoBlockScreen() {
           <View style={{ height: 10 }} />
           <FadeUp delay={160}>
             <MutedText size="md">
-              Pick the apps you'll have to earn back. You can always edit this later.
+              Pick the apps you'll pass a challenge to open. You can always edit this later.
             </MutedText>
           </FadeUp>
         </View>
@@ -178,7 +178,7 @@ export default function DemoBlockScreen() {
             >
               <ShieldCheck size={16} color={colors.secondary} strokeWidth={1.8} />
               <Text style={[styles.privacyText, { color: colors.secondary }]}>
-                Brain Lock uses Apple Screen Time to set up the shield. We can't see
+                Brainlock uses Apple Screen Time to set up the shield. We can't see
                 which apps you pick, what's inside them, or your usage. That all stays
                 on your device.
               </Text>

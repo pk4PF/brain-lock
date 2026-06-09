@@ -1,49 +1,39 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Pressable, Easing, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Fingerprint } from 'lucide-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
-import { hapticLight, hapticMedium, hapticSuccess } from '../../src/utils/haptics';
+import { hapticLight, hapticSuccess } from '../../src/utils/haptics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import LottieIcon from '../../src/components/LottieIcon';
-import { Eyebrow, SectionHeading, MutedText } from '../../src/components/ui/anvil';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { track, Events } from '../../src/services/analytics';
 
-const FIRST_NAME = (full: string) => full.trim().split(/\s+/)[0] || '';
-
-// How long the user must hold the button to lock in.
 const HOLD_MS = 1400;
 
-/**
- * "Lock it in" commitment screen.
- *
- * The CTA is hold-to-confirm: a progress bar fills inside the button while
- * pressed; releasing early resets it. Holding to completion fires a success
- * haptic and advances. Physical, deliberate, hard to mis-tap. The point is
- * that the user *feels* themselves making the commitment, not just clicking
- * through another screen.
- */
 export default function CommitmentScreen() {
   useOnboardingStepView('commitment');
   const { colors } = useThemeColors();
   const { userName } = useStore();
-  const firstName = FIRST_NAME(userName);
+  const firstName = userName.trim().split(/\s+/)[0] || '';
   const [committed, setCommitted] = useState(false);
 
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const subOpacity = useRef(new Animated.Value(0)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const cardTranslate = useRef(new Animated.Value(20)).current;
+  const btnOpacity = useRef(new Animated.Value(0)).current;
 
-  // Hold progress 0 -> 1
   const holdProgress = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     Animated.sequence([
-      Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(subOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(cardOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(cardTranslate, { toValue: 0, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.timing(btnOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -61,11 +51,7 @@ export default function CommitmentScreen() {
         hapticSuccess();
         setCommitted(true);
         track(Events.CommitmentLocked);
-        // Use router.replace, NOT push: pressing back from the next screen
-        // would otherwise return here with committed=true, leaving the
-        // button disabled and the user stuck. Replace pops this screen off
-        // the stack so back navigation skips past it.
-        setTimeout(() => router.replace('/onboarding/inside'), 900);
+        setTimeout(() => router.replace('/onboarding/paywall'), 900);
       }
     });
   };
@@ -89,7 +75,6 @@ export default function CommitmentScreen() {
     outputRange: ['0%', '100%'],
   });
 
-  // Subtle scale dip when the user is currently holding.
   const [holding, setHolding] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -102,7 +87,7 @@ export default function CommitmentScreen() {
   }, [holding]);
 
   return (
-    <OnboardingLayout step={6}>
+    <OnboardingLayout step={12} totalSteps={12}>
       {committed && (
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <View style={styles.confettiAnchor}>
@@ -111,39 +96,44 @@ export default function CommitmentScreen() {
         </View>
       )}
 
-      {/* ScrollView wrap so the hold-to-lock-in button never gets pushed
-          off-screen under iOS Display Zoom + Dynamic Type. The Pressable
-          inside still captures touches normally. */}
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.center}>
-          <Animated.View style={{ opacity: titleOpacity, alignItems: 'center' }}>
-            <Eyebrow style={styles.eyebrowCenter}>
-              {firstName ? `${firstName}, lock it in` : 'Lock it in'}
-            </Eyebrow>
-          </Animated.View>
+          <Animated.View
+            style={[
+              styles.pactCard,
+              {
+                backgroundColor: colors.cardAlt,
+                borderColor: colors.border,
+                opacity: cardOpacity,
+                transform: [{ translateY: cardTranslate }],
+              },
+            ]}
+          >
+            <View style={[styles.pactIcon, { backgroundColor: `${colors.accent}1A` }]}>
+              <LottieIcon name="lock" size={36} loop={false} />
+            </View>
 
-          <Animated.View style={{ opacity: titleOpacity, alignItems: 'center' }}>
-            <SectionHeading size="lg" align="center">
-              Take back{'\n'}your time.
-            </SectionHeading>
-          </Animated.View>
+            <Text style={[styles.pactTitle, { color: colors.text }]}>
+              Commitment pact
+            </Text>
 
-          <View style={{ height: 14 }} />
-
-          <Animated.View style={{ opacity: subOpacity, alignItems: 'center' }}>
-            <MutedText size="md" align="center" style={styles.sub}>
-              From now on, your phone works for you. Not the other way around.
-            </MutedText>
+            <Text style={[styles.pactBody, { color: colors.secondary }]}>
+              I'm ready to take back my time.
+            </Text>
           </Animated.View>
         </View>
 
-        <View style={styles.bottomContainer}>
+        <Animated.View style={[styles.bottomContainer, { opacity: btnOpacity }]}>
+          <Text style={[styles.tapHint, { color: colors.muted }]}>
+            {committed ? '' : 'Hold to lock it in'}
+          </Text>
+
           <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
             <Pressable
-              onPressIn={() => { setHolding(true);  startHold(); }}
+              onPressIn={() => { setHolding(true); startHold(); }}
               onPressOut={() => { setHolding(false); cancelHold(); }}
               disabled={committed}
               style={[
@@ -162,39 +152,32 @@ export default function CommitmentScreen() {
                   : { elevation: 4 }) : null,
               ]}
             >
-              {/* Filling bar */}
               <Animated.View
                 style={[
                   styles.commitFill,
                   { width: fillWidth, backgroundColor: colors.accent },
                 ]}
               />
-              {/* Text on top */}
               <View style={styles.commitTextWrap}>
+                <Fingerprint
+                  size={22}
+                  color={holding || committed ? '#FFFFFF' : colors.accent}
+                  strokeWidth={2}
+                  style={{ marginBottom: 4 }}
+                />
                 <Text style={[styles.commitBtnText, { color: holding || committed ? '#FFFFFF' : colors.text }]}>
-                  {committed ? "You're in" : holding ? 'Locking in…' : 'Hold to lock in'}
+                  {committed ? "You're committed" : holding ? 'Committing…' : 'Hold to commit'}
                 </Text>
               </View>
             </Pressable>
           </Animated.View>
-
-          <Text style={[styles.hint, { color: colors.muted }]}>
-            {committed ? '' : 'Press and hold the button.'}
-          </Text>
-        </View>
+        </Animated.View>
       </ScrollView>
     </OnboardingLayout>
   );
 }
 
-// Suppress unused-import lints if the LinearGradient/hapticMedium references
-// get pruned in future refactors. They're harmless to keep.
-void LinearGradient;
-void hapticMedium;
-
 const styles = StyleSheet.create({
-  // flexGrow inside ScrollView contentContainerStyle so the layout stays
-  // identical when content fits, but can scroll under accessibility settings.
   content: { flexGrow: 1, justifyContent: 'space-between' },
   center: {
     flex: 1,
@@ -202,20 +185,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
   },
-  eyebrowCenter: {
-    textAlign: 'center',
+
+  pactCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+  },
+  pactIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  pactTitle: {
+    fontSize: 22,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.4,
     marginBottom: 16,
   },
-  sub: {
-    maxWidth: 320,
+  pactBody: {
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    lineHeight: 23,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
+
   bottomContainer: {
     paddingHorizontal: Spacing.xl,
     paddingBottom: 36,
     alignItems: 'stretch',
   },
+  tapHint: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    textAlign: 'center',
+    marginBottom: 14,
+    lineHeight: 18,
+  },
   commitBtn: {
-    height: 60,
+    height: 80,
     borderRadius: 999,
     borderWidth: 1.5,
     overflow: 'hidden',
@@ -235,16 +249,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   commitBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: FontFamily.semibold,
     letterSpacing: -0.1,
-  },
-  hint: {
-    fontSize: 12,
-    fontFamily: FontFamily.regular,
-    textAlign: 'center',
-    marginTop: 12,
-    height: 16,
   },
   confettiAnchor: {
     position: 'absolute',

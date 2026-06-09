@@ -53,7 +53,7 @@ export default function WelcomeScreen() {
           <FadeUp delay={140}>
             <Text style={[styles.headline, { color: colors.text }]}>
               Welcome to{'\n'}
-              <Text style={{ color: colors.accent }}>BrainLock</Text>
+              <Text style={{ color: colors.accent }}>Brainlock!</Text>
             </Text>
           </FadeUp>
         </View>
@@ -113,9 +113,10 @@ const styles = StyleSheet.create({
 
   sub: {
     fontSize: FontSize.lg,
-    fontFamily: FontFamily.regular,
-    lineHeight: 28,
-    letterSpacing: -0.2,
+    fontFamily: FontFamily.medium,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
 
   // Bottom CTA + legal.

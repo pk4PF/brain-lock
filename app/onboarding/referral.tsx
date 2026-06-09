@@ -29,7 +29,7 @@ import {
  * `referral_source` automatically.
  *
  * Order chosen by user: YouTube → Reddit → X → Social → App Store →
- * Friend / family. No "Other" / "Ad in another app" — the buckets
+ * Friend / family. No "Other" / "Ad in another app" - the buckets
  * here are the ones we can actually act on for marketing spend.
  */
 const OPTIONS: Array<{ value: string; label: string }> = [
@@ -64,7 +64,7 @@ export default function ReferralScreen() {
   };
 
   return (
-    <OnboardingLayout step={2}>
+    <OnboardingLayout step={3} totalSteps={12}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <ScrollView
@@ -72,7 +72,7 @@ export default function ReferralScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FadeUp delay={0}>
-            <Eyebrow>Quick favour</Eyebrow>
+            <Eyebrow>One thing</Eyebrow>
           </FadeUp>
           <FadeUp delay={80}>
             <SectionHeading size="lg">

@@ -9,10 +9,13 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult, GameButton } from '../../src/components/games/GameLayout';
 import { WordMemoryIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { passByAccuracy } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['word-recall'].hue;
-const STUDY_SECONDS = 5;
-const WORD_COUNT = 6;
+const STUDY_SECONDS = 4;
+const WORD_COUNT = 8;
 
 const WORD_BANK = [
   'apple', 'bridge', 'candle', 'dream', 'eagle', 'forest',
@@ -47,6 +50,7 @@ type Phase = 'intro' | 'study' | 'recall' | 'result';
 
 export default function WordRecallScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { earnReward, completeDailyGame, canEarnToday, setShowPaywall, recordCognitiveScore, recordGame } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -55,6 +59,7 @@ export default function WordRecallScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [timeLeft, setTimeLeft] = useState(STUDY_SECONDS);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const timerAnim = useRef(new Animated.Value(1)).current;
@@ -108,14 +113,16 @@ export default function WordRecallScreen() {
     hapticMedium();
     const correct = [...selected].filter(w => studyWords.includes(w)).length;
     const credits = creditsForScore(correct, WORD_COUNT);
+    const passed = passByAccuracy(correct, WORD_COUNT, difficulty);
     // completeDailyGame internally calls earnReward - don't double-award.
-    completeDailyGame(credits);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     // Recall is the % of words correctly identified. Pass directly.
     recordCognitiveScore('recall', (correct / WORD_COUNT) * 100);
-    // Lifetime tile-stat counter — drives "X played" on the games tab.
-    recordGame('word-recall', true, correct);
+    // Lifetime tile-stat counter - drives "X played" on the games tab.
+    recordGame('word-recall', passed, correct);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'word_recall', correct, total: WORD_COUNT, credits });
+    track(Events.GameCompleted, { game: 'word_recall', correct, total: WORD_COUNT, passed, credits: passed ? credits : 0 });
     setPhase('result');
   }, [selected, studyWords]);
 
@@ -131,7 +138,7 @@ export default function WordRecallScreen() {
           Illustration={<WordMemoryIll size={88} />}
           title="Word Recall"
           blurb={`Memorise ${WORD_COUNT} words in ${STUDY_SECONDS} seconds, then pick them from a grid.`}
-          rules={['Working memory', `${WORD_COUNT} words`, '<30 seconds']}
+          rules={['🧠 Working memory', `📝 ${WORD_COUNT} words`, '⏱️ <30 seconds']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -233,17 +240,21 @@ export default function WordRecallScreen() {
   }
 
   // ── RESULT ──
+  const passed = correct === WORD_COUNT; // win = a perfect run
+  const resultHue = passed ? HUE : '#EF4444';
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <GameHeader title="Word Recall" hue={HUE} />
       <GameResult
         hue={HUE}
-        badgeIcon={<Trophy size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-        title={correct >= WORD_COUNT ? 'Perfect recall' : correct >= WORD_COUNT * 0.8 ? 'Great job' : 'Nice try'}
+        badgeIcon={<Trophy size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+        title={resultMsg.title}
+        message={resultMsg.line}
+        passed={passed}
         bigStat={`${correct}/${WORD_COUNT}`}
         subtitle="words recalled"
-        credits={earnedCredits}
-        primaryLabel="Play again"
+        unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+        primaryLabel={passed ? 'Play again' : 'Try again'}
         onPrimary={startGame}
         secondaryLabel="Back to home"
         onSecondary={() => router.replace('/(tabs)')}

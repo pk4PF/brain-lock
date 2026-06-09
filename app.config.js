@@ -1,8 +1,8 @@
 module.exports = {
   expo: {
-    name: 'BrainLock',
+    name: 'Brainlock',
     slug: 'brain-lock',
-    version: '1.4.3',
+    version: '1.4.5',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -11,12 +11,12 @@ module.exports = {
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#FBF5EC',
+      backgroundColor: '#F2660E',
     },
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.pk4pf.brain-lock',
-      buildNumber: '202',
+      buildNumber: '203',
       deploymentTarget: '16.0',
       entitlements: {
         'com.apple.developer.family-controls': true,
@@ -39,7 +39,17 @@ module.exports = {
       favicon: './assets/favicon.png',
       bundler: 'metro',
     },
-    plugins: ['expo-router'],
+    plugins: [
+      'expo-router',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#F2660E',
+        },
+      ],
+      './plugins/withScreenTimeExtensions',
+    ],
     extra: {
       router: {},
       eas: {

@@ -9,7 +9,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Brain, Trophy, Coins } from 'lucide-react-native';
+import { Check, Trophy } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
@@ -73,81 +73,42 @@ function BlockingPreviewVisual() {
 // ─────────────────────────────────────────────────────────────
 // Page 2: Brain Profile / cognitive scores - the "you get smarter" reveal.
 // Mirrors the Stats tab visual: 5 horizontal bars, one per cognitive area,
-// each in its own game accent hue. The pcts shown are illustrative — fast
+// each in its own game accent hue. The pcts shown are illustrative - fast
 // enough to read as "this is what your brain looks like trained."
 // ─────────────────────────────────────────────────────────────
-function BrainProfileVisual() {
+function ChallengeVisual() {
   const { colors } = useThemeColors();
-  const attrs = [
-    { label: 'Memory',          pct: 0.78, hue: GameAccents.memory.hue },
-    { label: 'Recall',          pct: 0.62, hue: GameAccents['word-recall'].hue },
-    { label: 'Attention',       pct: 0.71, hue: GameAccents.focus.hue },
-    { label: 'Speed',           pct: 0.84, hue: GameAccents.reaction.hue },
-    { label: 'Problem Solving', pct: 0.55, hue: GameAccents.math.hue },
-  ];
+  const options = ['Tokyo', 'Seoul', 'Beijing', 'Bangkok'];
+  const correct = 0;
   return (
-    <View style={[mockup.frame, { borderColor: colors.border, backgroundColor: colors.card, paddingVertical: 14 }]}>
-      <View style={mockup.profileHeader}>
-        <View style={mockup.profileLeft}>
-          <View style={[mockup.profileIconBadge, { backgroundColor: `${colors.accent}1F`, borderColor: `${colors.accent}40` }]}>
-            <Brain size={14} color={colors.accent} strokeWidth={2.2} />
-          </View>
-          <Text style={[mockup.profileBig, { color: colors.accent }]}>70</Text>
-        </View>
-        <Text style={[mockup.profileLabel, { color: colors.muted }]}>OVERALL</Text>
+    <View style={[mockup.frame, { borderColor: colors.border, backgroundColor: colors.card, paddingVertical: 16 }]}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        <Text style={[mockup.qLabel, { color: colors.muted }]}>QUESTION 1 OF 5</Text>
+        <Text style={[mockup.qText, { color: colors.text }]}>Capital of Japan?</Text>
       </View>
-      <View style={mockup.attrList}>
-        {attrs.map((a, i) => (
-          <View key={i} style={mockup.attrRow}>
-            <Text style={[mockup.attrLabel, { color: colors.text }]}>{a.label}</Text>
-            <View style={[mockup.attrTrack, { backgroundColor: colors.cardAlt }]}>
-              <View style={[mockup.attrFill, { width: `${a.pct * 100}%` as any, backgroundColor: a.hue }]} />
+      <View style={{ paddingHorizontal: 16, gap: 8 }}>
+        {options.map((o, i) => {
+          const sel = i === correct;
+          return (
+            <View
+              key={i}
+              style={[
+                mockup.optRow,
+                {
+                  backgroundColor: sel ? `${colors.accent}14` : colors.cardAlt,
+                  borderColor: sel ? colors.accent : colors.border,
+                },
+              ]}
+            >
+              <Text style={[mockup.optText, { color: sel ? colors.accent : colors.text }]}>{o}</Text>
+              {sel && <Check size={14} color={colors.accent} strokeWidth={3} />}
             </View>
-            <Text style={[mockup.attrScore, { color: a.hue }]}>{Math.round(a.pct * 100)}</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
-      <View style={[mockup.frameStatusBar, { borderTopColor: colors.border, backgroundColor: colors.cardAlt }]}>
+      <View style={[mockup.frameStatusBar, { borderTopColor: colors.border, backgroundColor: colors.cardAlt, marginTop: 12 }]}>
         <View style={[mockup.statusDot, { backgroundColor: colors.accent }]} />
-        <Text style={[mockup.statusText, { color: colors.text }]}>
-          Get sharper every day
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// Page 3: Brain Cells balance - the Home cells card mocked up. Shows the
-// currency the user earns by training. Status bar reinforces the loop.
-// ─────────────────────────────────────────────────────────────
-function EarnCellsVisual() {
-  const { colors } = useThemeColors();
-  const balance = 47;
-  const target = 100;
-  const pct = balance / target;
-  return (
-    <View style={[mockup.frame, { borderColor: colors.border, backgroundColor: colors.card, paddingVertical: 18 }]}>
-      <View style={mockup.cellsHeader}>
-        <View style={[mockup.cellsIconBadge, { backgroundColor: `${colors.accent}1F`, borderColor: `${colors.accent}40` }]}>
-          <Coins size={16} color={colors.accent} strokeWidth={2.2} />
-        </View>
-        <Text style={[mockup.cellsTitle, { color: colors.text }]}>Brain Cells</Text>
-        <Text style={[mockup.cellsCount, { color: colors.muted }]}>
-          {balance} / {target}
-        </Text>
-      </View>
-      <View style={[mockup.cellsTrack, { backgroundColor: colors.border }]}>
-        <View style={[mockup.cellsFill, { width: `${pct * 100}%` as any, backgroundColor: colors.accent }]} />
-      </View>
-      <View style={mockup.cellsCaptionRow}>
-        <Text style={[mockup.cellsCaption, { color: colors.muted }]}>+5 cells per game</Text>
-      </View>
-      <View style={[mockup.frameStatusBar, { borderTopColor: colors.border, backgroundColor: colors.cardAlt, marginTop: 8 }]}>
-        <View style={[mockup.statusDot, { backgroundColor: colors.accent }]} />
-        <Text style={[mockup.statusText, { color: colors.text }]}>
-          1 cell = 1 minute
-        </Text>
+        <Text style={[mockup.statusText, { color: colors.text }]}>Medium · 30 min</Text>
       </View>
     </View>
   );
@@ -155,7 +116,7 @@ function EarnCellsVisual() {
 
 // ─────────────────────────────────────────────────────────────
 // Page 3: same apps as page 1, but unlocked. Reusing the grid is
-// deliberate — the visual hand-off (locked → trained → unlocked) is
+// deliberate - the visual hand-off (locked → trained → unlocked) is
 // stronger when it's the *same surface* changing state, not a new
 // screen.
 // ─────────────────────────────────────────────────────────────
@@ -192,7 +153,7 @@ function UnlockPreviewVisual() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Page 5: outcome card — the destination, not another step. Solid accent
+// Page 5: outcome card - the destination, not another step. Solid accent
 // fill so it reads visually distinct from steps 1-4. Mirrors the outcome
 // card in howitworks.tsx so the two screens close on the same beat.
 // ─────────────────────────────────────────────────────────────
@@ -204,7 +165,7 @@ function OutcomeVisual() {
         <Trophy size={42} color="#FFFFFF" strokeWidth={2} />
       </View>
       <Text style={mockup.outcomeLabel}>YOU GET</Text>
-      <Text style={mockup.outcomeBig}>Your brain,{'\n'}back in charge.</Text>
+      <Text style={mockup.outcomeBig}>Screen time{'\n'}you earned.</Text>
     </View>
   );
 }
@@ -220,7 +181,7 @@ interface Page {
 }
 
 // One headline per step. Step number does the labelling work, the visual
-// does the explaining work — so the body copy is dropped entirely.
+// does the explaining work - so the body copy is dropped entirely.
 const PAGES: Page[] = [
   {
     step: 'Step 1',
@@ -229,22 +190,17 @@ const PAGES: Page[] = [
   },
   {
     step: 'Step 2',
-    headline: 'Train your brain. Get smarter.',
-    Visual: BrainProfileVisual,
+    headline: 'Pass a challenge to get in.',
+    Visual: ChallengeVisual,
   },
   {
     step: 'Step 3',
-    headline: 'Earn brain cells.',
-    Visual: EarnCellsVisual,
-  },
-  {
-    step: 'Step 4',
-    headline: 'Spend braincells to unlock apps.',
+    headline: 'Unlock the time you earned.',
     Visual: UnlockPreviewVisual,
   },
   {
-    step: 'Step 5',
-    headline: 'Your brain, back in charge.',
+    step: 'Step 4',
+    headline: 'Screen time you actually earned.',
     Visual: OutcomeVisual,
   },
 ];
@@ -277,7 +233,7 @@ export default function InsideScreen() {
   const isLast = page === pages.length - 1;
 
   return (
-    <OnboardingLayout step={7}>
+    <OnboardingLayout step={9} totalSteps={16}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <ScrollView
@@ -393,6 +349,33 @@ const mockup = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: {
     fontSize: 11,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.1,
+  },
+
+  // Page 2: challenge mock (question + options)
+  qLabel: {
+    fontSize: 9,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.4,
+    marginBottom: 6,
+  },
+  qText: {
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.3,
+  },
+  optRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  optText: {
+    fontSize: 12,
     fontFamily: FontFamily.medium,
     letterSpacing: -0.1,
   },
@@ -530,7 +513,7 @@ const mockup = StyleSheet.create({
     letterSpacing: 0.1,
   },
 
-  // Page 5: outcome card — solid accent fill, big trophy + headline
+  // Page 5: outcome card - solid accent fill, big trophy + headline
   outcomeIconLarge: {
     width: 64,
     height: 64,

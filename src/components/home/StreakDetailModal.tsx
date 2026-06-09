@@ -35,7 +35,7 @@ const DAY_INDEX_FROM_MONDAY = [1, 2, 3, 4, 5, 6, 0]; // map column → Date.getD
  * Streak detail sheet - shown when the streak chip on Home is tapped.
  *
  * Hybrid celebratory tone: today's circle pops with a spring scale, and
- * the streak number gets a soft accent glow. But copy stays Brain Lock
+ * the streak number gets a soft accent glow. But copy stays Brainlock
  * voice - no "Amazing work! You're on fire!", no flame on every checkmark.
  * The flame icon is used once (next to the number), and the rest is
  * hairline circles with checkmarks.

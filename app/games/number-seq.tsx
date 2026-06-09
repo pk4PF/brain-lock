@@ -9,6 +9,9 @@ import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { NumberSequenceIll } from '../../src/components/games/GameIllustrations';
+import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
+import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { passByAccuracy } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['number-seq'].hue;
 const TOTAL_ROUNDS = 10;
@@ -39,13 +42,13 @@ function generateSequence(): Sequence {
   let answer: number;
 
   if (kind === 0) {
-    // arithmetic — common difference 1-7
+    // arithmetic - common difference 1-7
     const start = Math.floor(Math.random() * 8) + 1;
     const d = Math.floor(Math.random() * 7) + 1;
     visible = [start, start + d, start + 2 * d, start + 3 * d];
     answer = start + 4 * d;
   } else if (kind === 1) {
-    // geometric — ratio 2 or 3
+    // geometric - ratio 2 or 3
     const r = Math.random() < 0.5 ? 2 : 3;
     const start = Math.floor(Math.random() * 4) + 1;
     visible = [start, start * r, start * r * r, start * r * r * r];
@@ -99,6 +102,7 @@ function creditsForScore(pct: number): number {
 
 export default function NumberSeqScreen() {
   const { colors } = useThemeColors();
+  const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
   const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -108,6 +112,7 @@ export default function NumberSeqScreen() {
   const [picked, setPicked] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [earnedCredits, setEarnedCredits] = useState(0);
+  const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
 
   const startTime = useRef(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -152,13 +157,14 @@ export default function NumberSeqScreen() {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const pct = Math.round((finalCorrect / TOTAL_ROUNDS) * 100);
     const credits = creditsForScore(pct);
-    const won = finalCorrect >= TOTAL_ROUNDS * 0.6;
+    const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
 
-    recordGame('number-seq', won, timeTaken);
-    completeDailyGame(credits);
+    recordGame('number-seq', passed, timeTaken);
+    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    setResultMsg(pickResultMessage(passed));
     recordCognitiveScore('problemSolving', pct);
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'number-seq', correct: finalCorrect, total: TOTAL_ROUNDS, credits });
+    track(Events.GameCompleted, { game: 'number-seq', correct: finalCorrect, total: TOTAL_ROUNDS, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -174,7 +180,7 @@ export default function NumberSeqScreen() {
           Illustration={<NumberSequenceIll size={88} />}
           title="Number Sequence"
           blurb="Spot the pattern. Pick the next number."
-          rules={['Pattern recognition', `${TOTAL_ROUNDS} rounds`, 'Multiple choice']}
+          rules={['🔢 Pattern recognition', `🔁 ${TOTAL_ROUNDS} rounds`, '☑️ Multiple choice']}
           startLabel="Start"
           onStart={startGame}
         />
@@ -185,21 +191,25 @@ export default function NumberSeqScreen() {
   // ── RESULT ──
   if (phase === 'result') {
     const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+    const passed = passByAccuracy(correct, TOTAL_ROUNDS, difficulty);
+    const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <GameHeader title="Number Sequence" hue={HUE} />
         <GameResult
           hue={HUE}
-          badgeIcon={<Lightbulb size={36} color={HUE} weight="duotone" duotoneColor={HUE} duotoneOpacity={0.32} />}
-          title={pct >= 90 ? 'Pattern master' : pct >= 70 ? 'Sharp eye' : pct >= 50 ? 'Solid run' : 'Keep training'}
+          badgeIcon={<Lightbulb size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
+          title={resultMsg.title}
+          message={resultMsg.line}
+          passed={passed}
           bigStat={pct}
           bigStatSuffix="%"
           subtitle={`${correct} of ${TOTAL_ROUNDS} correct`}
-          credits={earnedCredits}
-          primaryLabel="Done"
-          onPrimary={goHome}
-          secondaryLabel="Play again"
-          onSecondary={startGame}
+          unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
+          primaryLabel={passed ? 'Play again' : 'Try again'}
+          onPrimary={startGame}
+          secondaryLabel="Back to home"
+          onSecondary={goHome}
         />
       </View>
     );
