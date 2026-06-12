@@ -41,23 +41,23 @@ export default function ProblemScreen() {
         <View style={styles.top}>
           <FadeUp delay={120}>
             <Text style={[styles.symptom, { color: colors.text }]}>
-              Focus is harder than it used to be.
+              Ever feel like anything hard is impossible to start?
             </Text>
           </FadeUp>
           <FadeUp delay={560}>
             <Text style={[styles.symptom, { color: colors.text }]}>
-              Your thumb opens the app before you even notice.
+              Everything that isn't a screen feels boring.
             </Text>
           </FadeUp>
           <FadeUp delay={1000}>
             <Text style={[styles.symptom, { color: colors.text }]}>
-              That fog setting in? That's brain rot.
+              And you can't focus the way you used to.
             </Text>
           </FadeUp>
           <View style={{ height: 28 }} />
           <FadeUp delay={1440}>
             <Text style={[styles.punch, { color: colors.accent }]}>
-              Sound familiar?
+              That's brain rot.
             </Text>
           </FadeUp>
         </View>

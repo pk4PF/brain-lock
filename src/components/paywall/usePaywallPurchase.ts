@@ -96,15 +96,15 @@ export function usePaywallPurchase(opts: {
             (p) => p.packageType === 'WEEKLY' || id(p).includes('week'),
           ) ?? null,
         );
+        const isWinback = (p: PurchasesPackage) =>
+          id(p).includes('winback') || id(p).includes('win-back') || id(p).includes('win_back');
         setAnnual(
           offering.availablePackages.find(
-            (p) => p.packageType === 'ANNUAL' || id(p).includes('annual') || id(p).includes('year'),
+            (p) => !isWinback(p) && (p.packageType === 'ANNUAL' || id(p).includes('annual') || id(p).includes('year')),
           ) ?? null,
         );
         setWinback(
-          offering.availablePackages.find(
-            (p) => id(p).includes('winback') || id(p).includes('win-back') || id(p).includes('win_back'),
-          ) ?? null,
+          offering.availablePackages.find(isWinback) ?? null,
         );
       } catch (err) {
         if (__DEV__) console.warn('[Paywall] Failed to load offerings:', err);

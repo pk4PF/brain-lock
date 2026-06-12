@@ -28,10 +28,10 @@ const BALLSIZE = 32;
 const MAX_CUPS = 5;
 const MAX_ROUNDS = 5; // short + brutal: 5 clean rounds = win (built for quick clips)
 
-// Onboarding demo: gentler + shorter. 3 cups, 2 rounds, then straight to the
+// Onboarding demo: full medium game (5 cups, 5 rounds) so users experience the
 // "here's how unlocking works" screen. Forgiving — a wrong pick still advances.
-const DEMO_CUPS = 3;
-const DEMO_ROUNDS = 2;
+const DEMO_CUPS = 5;
+const DEMO_ROUNDS = 5;
 const DEMO_NEXT_ROUTE = '/onboarding/demo-spend';
 
 type Phase = 'intro' | 'reveal' | 'shuffle' | 'pick' | 'result';
@@ -187,7 +187,19 @@ export default function CupShuffleScreen() {
       soundWrong();
       if (ballCupId !== cupId) await lift(ballCupId, true); // show where it was
       await wait(700);
-      finishGame(cleared);
+      if (isDemo) {
+        // Demo is forgiving — wrong pick still advances to next round.
+        if (!aliveRef.current) return;
+        await lift(cupId, false);
+        if (ballCupId !== cupId) await lift(ballCupId, false);
+        const next = cleared + 1;
+        setCleared(next);
+        if (next >= target) { finishGame(next); return; }
+        soundRound();
+        runRound(next);
+      } else {
+        finishGame(cleared);
+      }
     }
   };
 

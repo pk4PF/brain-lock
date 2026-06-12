@@ -162,9 +162,6 @@ export default function FinalOfferScreen() {
               <Text style={[styles.billedNote, { color: colors.muted }]}>
                 Then {annualPrice}/year. Cancel anytime.
               </Text>
-              <Text style={[styles.swipeHint, { color: colors.muted }]}>
-                Swipe back to skip
-              </Text>
             </>
           )}
         </View>
