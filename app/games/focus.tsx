@@ -7,7 +7,9 @@ import { Target } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundCorrect, soundWrong, soundComplete, soundFail } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
+import { advanceBenchmark } from '../../src/utils/benchmark';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { FocusFlashIll } from '../../src/components/games/GameIllustrations';
@@ -44,11 +46,13 @@ function label(pct: number): string {
 export default function FocusScreen() {
   const { colors } = useThemeColors();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
-  const params = useLocalSearchParams<{ rounds?: string; demo?: string }>();
+  const params = useLocalSearchParams<{ rounds?: string; demo?: string; benchmark?: string; bm?: string }>();
   const isDemo = params.demo === '1';
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
   const ROUNDS = params.rounds ? Number(params.rounds) : (isDemo ? DEMO_ROUNDS : PRODUCTION_ROUNDS);
 
-  const { earnReward, completeDailyGame, recordFocusScore, setDemoGameScore, recordCognitiveScore, recordGame } = useStore();
+  const { earnReward, completeDailyGame, recordFocusScore, setDemoGameScore, recordCognitiveScore, recordGame, setBenchmarkScore } = useStore();
 
   const [gameState, setGameState] = useState<State>('intro');
   const [roundIdx, setRoundIdx] = useState(0);
@@ -99,21 +103,22 @@ export default function FocusScreen() {
   const handleTap = () => {
     if (gameState !== 'playing' || currentDigit === null || tappedThisRoundRef.current) return;
     tappedThisRoundRef.current = true;
-    if (currentDigit === NO_GO_DIGIT) hapticMedium();
-    else hapticLight();
+    if (currentDigit === NO_GO_DIGIT) { hapticMedium(); soundWrong(); }
+    else { hapticLight(); soundCorrect(); }
     finishRound(currentDigit, true);
   };
 
   const finishGame = () => {
-    setGameState('result');
+    if (!isBenchmark) setGameState('result');
     setResults((prev) => {
       const correct = prev.filter((r) => r.correct).length;
       const pct = Math.round((correct / ROUNDS) * 100);
       const credits = isDemo ? 0 : creditsForScore(pct);
       setEarnedCredits(credits);
-      if (isDemo) setDemoGameScore(pct);
+      if (isDemo) { soundComplete(); setDemoGameScore(pct); }
       else {
         const passed = passByAccuracy(correct, ROUNDS, difficulty);
+        if (passed) soundComplete(); else soundFail();
         recordFocusScore(pct);
         // completeDailyGame internally calls earnReward - don't double-award.
         if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
@@ -122,6 +127,8 @@ export default function FocusScreen() {
         recordCognitiveScore('attention', pct);
         // Lifetime tile-stat counter - drives "X played" on the games tab.
         recordGame('focus', passed, pct);
+        // Benchmark step: record raw attention score, advance to the next test.
+        if (isBenchmark) { setBenchmarkScore('attention', pct); advanceBenchmark(bmIndex); return prev; }
         track(Events.GameCompleted, { game: 'focus', score_pct: pct, passed, credits: passed ? credits : 0 });
       }
       return prev;
@@ -173,8 +180,6 @@ export default function FocusScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Target size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={isDemo ? label(pct) : resultMsg.title}
-          message={isDemo ? undefined : resultMsg.line}
           passed={passed}
           bigStat={pct}
           bigStatSuffix="%"

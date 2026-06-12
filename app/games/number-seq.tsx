@@ -5,6 +5,7 @@ import { Lightbulb } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -123,7 +124,6 @@ export default function NumberSeqScreen() {
   }, [round, phase]);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'number-seq' });
     setRound(0);
     setCorrect(0);
@@ -136,10 +136,12 @@ export default function NumberSeqScreen() {
   const handlePick = (n: number) => {
     if (picked !== null) return;
     hapticLight();
+    soundTap();
     setPicked(n);
     const isRight = n === seq.answer;
     setShowFeedback(isRight ? 'correct' : 'wrong');
-    if (isRight) setCorrect((c) => c + 1);
+    if (isRight) { soundCorrect(); setCorrect((c) => c + 1); }
+    else soundWrong();
 
     setTimeout(() => {
       setPicked(null);
@@ -147,6 +149,7 @@ export default function NumberSeqScreen() {
       if (round + 1 >= TOTAL_ROUNDS) {
         finishGame(isRight ? correct + 1 : correct);
       } else {
+        soundRound();
         setRound((r) => r + 1);
         setSeq(generateSequence());
       }
@@ -159,6 +162,7 @@ export default function NumberSeqScreen() {
     const credits = creditsForScore(pct);
     const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
 
+    if (passed) soundComplete(); else soundFail();
     recordGame('number-seq', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
@@ -199,8 +203,6 @@ export default function NumberSeqScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Lightbulb size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={pct}
           bigStatSuffix="%"

@@ -59,7 +59,7 @@ export default function DemoGameScreen() {
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
 
   return (
-    <OnboardingLayout step={11} totalSteps={16}>
+    <OnboardingLayout step={10} totalSteps={15}>
       <OnboardingBackButton />
 
       {/* Skip - mirrors the back button on the right. Plain text link
@@ -92,12 +92,12 @@ export default function DemoGameScreen() {
           </Animated.View>
 
           <FadeUp delay={120}>
-            <Eyebrow style={styles.eyebrowCenter}>Try a challenge</Eyebrow>
+            <Eyebrow style={styles.eyebrowCenter}>This is the Brain Gym</Eyebrow>
           </FadeUp>
 
           <FadeUp delay={200}>
             <SectionHeading size="lg" align="center">
-              Memory Tiles
+              Follow the Ball
             </SectionHeading>
           </FadeUp>
 
@@ -105,17 +105,15 @@ export default function DemoGameScreen() {
 
           <FadeUp delay={280}>
             <MutedText size="md" align="center">
-              Tiles light up. Remember where. Tap them back.
+              Reps like this push your Brainpower Score up. Keep your eye on the ball as they shuffle.
             </MutedText>
           </FadeUp>
 
-          {/* Inline chips. The "+5 cells" chip is highlighted - that's
-              the reward, surfaced upfront so it's the dopamine hook. */}
           <FadeUp delay={400}>
             <View style={styles.chips}>
-              <Chip label="3 rounds" colors={colors} />
-              <Chip label="≈ 45s" colors={colors} />
-              <Chip label="Spatial memory" highlight colors={colors} />
+              <Chip label="A few rounds" colors={colors} />
+              <Chip label="≈ 30s" colors={colors} />
+              <Chip label="Visual tracking" highlight colors={colors} />
             </View>
           </FadeUp>
         </View>
@@ -124,7 +122,7 @@ export default function DemoGameScreen() {
           <View style={styles.bottomContainer}>
             <PillButton
               label="Try it"
-              onPress={() => router.push('/games/tile-recall?demo=1')}
+              onPress={() => router.push('/games/cup-shuffle?demo=1')}
               fullWidth
             />
           </View>

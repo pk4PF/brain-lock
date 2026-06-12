@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, ScrollView, NativeModules, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { BookOpen, Trophy, Heart } from 'lucide-react-native';
+import { TrendingUp, Dumbbell, Brain } from 'lucide-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
@@ -11,55 +11,61 @@ import OnboardingBackButton from '../../src/components/onboarding/OnboardingBack
 import FadeUp from '../../src/components/onboarding/FadeUp';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 
-const LIFE_EXPECTANCY = 80;
-
-/**
- * "If you continue..." pain reveal.
- *
- * Three pain cards tuned for a young ambitious target customer:
- *   1. Books unread        - knowledge they're trading away
- *   2. Skills they could master  - 10,000-hour rule framing
- *   3. Hours with people they love  - relationship theft
- *
- * Marathons (too abstract) and sleep (doesn't move our audience) are
- * cut. Each card has its own accent icon + bold title + one-line body
- * that uses the user's actual numbers so the lifetime figure feels
- * personal, not generic.
- */
-
 interface PainCard {
   Icon: any;
   iconColor: string;
   title: string;
+  basis: string;
 }
 
-function buildCards(lifetimeYears: number, lifetimeHours: number, accentHue: string): PainCard[] {
-  // 10 hours per book (low-end estimate, rounds nicely).
-  const books = Math.round(lifetimeHours / 10 / 100) * 100;
+// Localised minimum wage so the £ figure isn't wrong for non-UK users.
+// Read the device region from RN's built-in locale (no extra native module).
+function deviceRegion(): string {
+  try {
+    const raw =
+      Platform.OS === 'ios'
+        ? NativeModules.SettingsManager?.settings?.AppleLocale ||
+          NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ||
+          ''
+        : NativeModules.I18nManager?.localeIdentifier || '';
+    const m = String(raw).match(/[-_]([A-Za-z]{2})/);
+    return m ? m[1].toUpperCase() : 'GB';
+  } catch {
+    return 'GB';
+  }
+}
 
-  // 10,000-hour mastery rule. Round down to whole skills.
-  const masteries = Math.max(1, Math.floor(lifetimeHours / 10000));
+// { currency symbol, hourly minimum wage in local currency }. Falls back to UK.
+const WAGE_TABLE: Record<string, { symbol: string; wage: number }> = {
+  US: { symbol: '$', wage: 7.25 },    // US federal minimum
+  GB: { symbol: '£', wage: 12.21 },   // UK National Living Wage, Apr 2025
+  CA: { symbol: 'C$', wage: 17.3 },   // CAD federal minimum
+  AU: { symbol: 'A$', wage: 24.1 },   // AUD national minimum
+  IE: { symbol: '€', wage: 13.5 },    // Ireland
+  NZ: { symbol: 'NZ$', wage: 23.15 },
+};
+const REGION = deviceRegion();
+const { symbol: CURRENCY, wage: MIN_WAGE } = WAGE_TABLE[REGION] ?? WAGE_TABLE.GB;
 
-  // Real-life-ratio framing: half the screen-time becomes "with people."
-  // We frame it as hours/day × 365 × yearsRemaining ÷ 2, in hours.
-  // Then convert to a daily rhythm: "2h/day for X years."
-  const peopleHours = Math.round(lifetimeHours / 2);
-
+function buildCards(moneyLost: number, skillsMastered: number, accentHue: string): PainCard[] {
   return [
     {
-      Icon: BookOpen,
-      iconColor: '#8B5CF6',
-      title: `${books.toLocaleString()} books unread`,
-    },
-    {
-      Icon: Trophy,
+      Icon: TrendingUp,
       iconColor: accentHue,
-      title: `${masteries} skill${masteries === 1 ? '' : 's'} you could master`,
+      title: `${CURRENCY}${moneyLost.toLocaleString()}`,
+      basis: 'and that’s only at minimum wage',
     },
     {
-      Icon: Heart,
-      iconColor: '#E53935',
-      title: `${peopleHours.toLocaleString()} hours with people you love`,
+      Icon: Dumbbell,
+      iconColor: '#0EA5A5',
+      title: 'The body you keep putting off',
+      basis: 'every hour was a workout you could’ve done',
+    },
+    {
+      Icon: Brain,
+      iconColor: '#8B5CF6',
+      title: `${skillsMastered} skills mastered`,
+      basis: '10,000 hours of practice makes an expert',
     },
   ];
 }
@@ -70,35 +76,39 @@ export default function InsecurityScreen() {
   const { dailyScreenTimeHours, userAge } = useStore();
 
   const hours = dailyScreenTimeHours > 0 ? dailyScreenTimeHours : 4;
-  const age   = userAge && userAge > 0 ? userAge : 22;
 
-  const yearsRemaining = Math.max(1, LIFE_EXPECTANCY - age);
-  const lifetimeHours = hours * 365 * yearsRemaining;
-  const lifetimeYears = lifetimeHours / 24 / 365;
-  const lifeShare = Math.round((lifetimeYears / yearsRemaining) * 100);
+  // Future-focused loss aversion: project this habit over the user's
+  // remaining years and convert to YEARS OF WAKING LIFE - the deepest pain
+  // lever (a finite life + the people in it), not hours or skipped workouts.
+  // A loss you can still prevent motivates harder than a sunk cost.
+  const age = userAge && userAge > 0 ? userAge : 25;
+  const remainingYears = Math.max(1, 80 - age);          // ~summers left
+  const futureHours = Math.round(hours * 365 * remainingYears);
+  const wakingYears = Math.max(1, Math.round(futureHours / (16 * 365)));
 
-  const cards = buildCards(lifetimeYears, lifetimeHours, colors.accent);
+  const moneyLost = Math.round(futureHours * MIN_WAGE);
+  const skillsMastered = Math.max(1, Math.floor(futureHours / 10000));
 
-  // Counter-animated hero number.
+  const cards = buildCards(moneyLost, skillsMastered, colors.accent);
+
+  // Counter-animated hero number (hours this year).
   const counter = useRef(new Animated.Value(0)).current;
-  const [displayYears, setDisplayYears] = useState(0);
+  const [displayHours, setDisplayHours] = useState(0);
   useEffect(() => {
-    const id = counter.addListener(({ value }) => setDisplayYears(value));
+    const id = counter.addListener(({ value }) => setDisplayHours(value));
     Animated.timing(counter, {
-      toValue: lifetimeYears,
+      toValue: wakingYears,
       duration: 1500,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
     return () => { counter.removeListener(id); };
-  }, [lifetimeYears]);
+  }, [wakingYears]);
 
-  const heroValue = displayYears >= 10
-    ? displayYears.toFixed(0)
-    : displayYears.toFixed(1);
+  const heroValue = Math.round(displayHours).toLocaleString();
 
   return (
-    <OnboardingLayout step={7} totalSteps={12}>
+    <OnboardingLayout step={7} totalSteps={15}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <ScrollView
@@ -109,7 +119,7 @@ export default function InsecurityScreen() {
           <View style={styles.hero}>
             <FadeUp delay={0}>
               <Text style={[styles.heroEyebrow, { color: colors.muted }]}>
-                IF NOTHING CHANGES, YOU WILL SPEND
+                IF YOU LIVE TO 80, YOU&rsquo;LL LOSE
               </Text>
             </FadeUp>
             <FadeUp delay={80} travel={22}>
@@ -117,31 +127,54 @@ export default function InsecurityScreen() {
             </FadeUp>
             <FadeUp delay={180}>
               <Text style={[styles.heroLabel, { color: colors.text }]}>
-                years on a screen
-              </Text>
-            </FadeUp>
-            <FadeUp delay={260}>
-              <Text style={[styles.heroSub, { color: colors.muted }]}>
-                That's {lifeShare}% of your remaining life.
+                years of your life
               </Text>
             </FadeUp>
           </View>
 
+          {/* The math, shown plainly so the number reads as fact, not scare. */}
+          <FadeUp delay={330}>
+            <View style={[styles.mathCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.mathText, { color: colors.muted }]}>
+                {hours}h a day × your next {remainingYears} years
+                {'  =  '}
+                <Text style={{ color: colors.text, fontFamily: FontFamily.semibold }}>
+                  {wakingYears} years of your life
+                </Text>
+              </Text>
+            </View>
+          </FadeUp>
+
+          {/* Lead-in so the cards read as one clear "what that time was worth" beat. */}
+          <FadeUp delay={400}>
+            <Text style={[styles.cardsLabel, { color: colors.muted }]}>
+              THAT TIME COULD HAVE BEEN
+            </Text>
+          </FadeUp>
+
           {/* Pain cards - 3 visceral hits. */}
           <View style={styles.cards}>
             {cards.map((c, i) => (
-              <FadeUp key={i} delay={380 + i * 90}>
+              <FadeUp key={i} delay={440 + i * 90}>
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={[styles.iconBadge, { backgroundColor: `${c.iconColor}1F`, borderColor: `${c.iconColor}40` }]}>
                     <c.Icon size={18} color={c.iconColor} strokeWidth={2.2} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: colors.text }]}>{c.title}</Text>
+                    <Text style={[styles.cardBody, { color: colors.muted }]}>{c.basis}</Text>
                   </View>
                 </View>
               </FadeUp>
             ))}
           </View>
+
+          {/* Hope pivot - turns the doom into agency right before the CTA. */}
+          <FadeUp delay={820}>
+            <Text style={[styles.hopeLine, { color: colors.text }]}>
+              None of this is set. Start now and it never happens.
+            </Text>
+          </FadeUp>
 
         </ScrollView>
 
@@ -178,10 +211,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   heroBig: {
-    fontSize: 112,
+    fontSize: 64,
     fontFamily: FontFamily.medium,
-    letterSpacing: -4.5,
-    lineHeight: 116,
+    letterSpacing: -2.5,
+    lineHeight: 72,
     fontVariant: ['tabular-nums'],
   },
   heroLabel: {
@@ -195,6 +228,41 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     marginTop: 10,
     letterSpacing: -0.1,
+  },
+
+  // Math breakdown
+  mathCard: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: 22,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  mathText: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    letterSpacing: -0.1,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  cardsLabel: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+
+  // Hope pivot
+  hopeLine: {
+    fontSize: 17,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: Spacing.xl,
+    marginTop: 26,
   },
 
   // Pain cards

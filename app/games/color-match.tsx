@@ -5,6 +5,7 @@ import { Palette } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -104,6 +105,7 @@ export default function ColorMatchScreen() {
     if (round + 1 >= TOTAL_ROUNDS) {
       finishGame(wasCorrect ? correct + 1 : correct);
     } else {
+      soundRound();
       setRound((r) => r + 1);
       setCurrent(generateRound());
     }
@@ -117,7 +119,6 @@ export default function ColorMatchScreen() {
   }, [phase, round, advance]);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'color-match' });
     setRound(0);
     setCorrect(0);
@@ -130,8 +131,10 @@ export default function ColorMatchScreen() {
   const handlePick = (name: string) => {
     if (picked !== null) return;
     hapticLight();
+    soundTap();
     setPicked(name);
     const isRight = name === current.ink.name;
+    if (isRight) soundCorrect(); else soundWrong();
     setTimeout(() => advance(isRight), 300);
   };
 
@@ -140,6 +143,7 @@ export default function ColorMatchScreen() {
     const pct = Math.round((finalCorrect / TOTAL_ROUNDS) * 100);
     const credits = creditsForScore(pct);
     const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
+    if (passed) soundComplete(); else soundFail();
     recordGame('color-match', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
@@ -180,8 +184,6 @@ export default function ColorMatchScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Palette size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={pct}
           bigStatSuffix="%"

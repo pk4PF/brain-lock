@@ -89,6 +89,11 @@ export const GameAccents = {
   // Quiz challenges
   'general-knowledge': { hue: '#06B6D4', tintLight: 'rgba(6,182,212,0.08)', tintDark: 'rgba(6,182,212,0.14)' },
   flags:        { hue: '#D946EF', tintLight: 'rgba(217,70,239,0.08)',  tintDark: 'rgba(217,70,239,0.14)' },
+  // Benchmark tests. Signal red for reaction (matches the wait-state),
+  // crimson for digit span, violet for timing.
+  reaction:     { hue: '#E53935', tintLight: 'rgba(229,57,53,0.08)',   tintDark: 'rgba(229,57,53,0.14)' },
+  'digit-span': { hue: '#DC2626', tintLight: 'rgba(220,38,38,0.08)',   tintDark: 'rgba(220,38,38,0.14)' },
+  'time-stop':  { hue: '#9333EA', tintLight: 'rgba(147,51,234,0.08)',  tintDark: 'rgba(147,51,234,0.14)' },
 } as const;
 
 export type GameAccentKey = keyof typeof GameAccents;

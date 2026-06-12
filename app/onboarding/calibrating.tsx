@@ -27,8 +27,8 @@ interface Step {
 
 const STEPS: Step[] = [
   { label: 'Reading your answers',         ms: 700  },
-  { label: 'Calibrating your training',    ms: 1700 },
-  { label: 'Building your blocking plan',  ms: 2700 },
+  { label: 'Personalising your plan',      ms: 1700 },
+  { label: 'Setting up your tests',        ms: 2700 },
 ];
 
 const TOTAL_MS = 3500;
@@ -77,7 +77,7 @@ export default function CalibratingScreen() {
   const rotate = ringRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <OnboardingLayout step={10} totalSteps={12}>
+    <OnboardingLayout step={13} totalSteps={15}>
       <View style={styles.content}>
         <View style={styles.center}>
           {/* Spinning accent ring with a brain in the middle */}

@@ -1,10 +1,7 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  PanResponder,
-  ScrollView,
+  View, Text, StyleSheet, ScrollView, Dimensions,
+  NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useStore } from '../../src/store/useStore';
@@ -22,14 +19,25 @@ import { track, Events } from '../../src/services/analytics';
 const MIN_HOURS = 0;
 const MAX_HOURS = 18;
 const STEP = 0.5;
+const DEFAULT_HOURS = 4;
+const TICK_COUNT = Math.round((MAX_HOURS - MIN_HOURS) / STEP) + 1; // 37 ticks
+const TICK_SPACING = 13;
+const SCREEN_W = Dimensions.get('window').width;
+const SIDE_PAD = SCREEN_W / 2 - TICK_SPACING / 2;
+
+function formatHours(h: number): string {
+  return Number.isInteger(h) ? `${h}` : h.toFixed(1);
+}
 
 export default function ScreentimeScreen() {
   useOnboardingStepView('screentime');
-  const { colors, isDark } = useThemeColors();
+  const { colors } = useThemeColors();
   const { dailyScreenTimeHours, setDailyScreenTimeHours, userName } = useStore();
-  // Default to 4 if no answer yet (or zeroed out by a fresh reset).
-  const [hours, setHours] = useState<number>(dailyScreenTimeHours || 4);
   const firstName = userName.trim().split(/\s+/)[0] || '';
+
+  const initialHours = dailyScreenTimeHours || DEFAULT_HOURS;
+  const [hours, setHours] = useState<number>(initialHours);
+  const lastVal = useRef<number>(initialHours);
 
   const advance = () => {
     setDailyScreenTimeHours(hours);
@@ -37,17 +45,50 @@ export default function ScreentimeScreen() {
     router.push('/onboarding/insecurity');
   };
 
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / TICK_SPACING);
+    const next = Math.max(MIN_HOURS, Math.min(MAX_HOURS, MIN_HOURS + idx * STEP));
+    if (next !== lastVal.current) {
+      lastVal.current = next;
+      hapticLight();
+      setHours(next);
+    }
+  };
+
+  // Ticks built once; only the readout re-renders while scrubbing.
+  // Major tick on each whole hour, numeric label every 2 hours.
+  const ticks = useMemo(() => {
+    const out: React.ReactNode[] = [];
+    for (let i = 0; i < TICK_COUNT; i++) {
+      const v = MIN_HOURS + i * STEP;
+      const major = Number.isInteger(v);
+      const labelled = v % 2 === 0;
+      out.push(
+        <View key={i} style={styles.tickSlot}>
+          <View
+            style={[
+              styles.tick,
+              {
+                height: major ? 26 : 14,
+                backgroundColor: colors.borderStrong,
+                opacity: major ? 0.9 : 0.5,
+              },
+            ]}
+          />
+          {labelled && (
+            <Text style={[styles.tickLabel, { color: colors.muted }]}>{v}</Text>
+          )}
+        </View>,
+      );
+    }
+    return out;
+  }, [colors.borderStrong, colors.muted]);
 
   return (
-    <OnboardingLayout step={6} totalSteps={12}>
+    <OnboardingLayout step={6} totalSteps={15}>
       <OnboardingBackButton />
-      {/* ScrollView wrap for accessibility (zoom + Dynamic Type). Slider
-          PanResponder still captures horizontal drags because it sets
-          onStartShouldSetPanResponderCapture and refuses termination. */}
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.content}>
         <View style={styles.top}>
           <FadeUp delay={0}>
             <Eyebrow>About you</Eyebrow>
@@ -55,15 +96,13 @@ export default function ScreentimeScreen() {
           <FadeUp delay={80}>
             <SectionHeading size="lg">
               {firstName
-                ? `${firstName}, how much do you scroll?`
-                : 'How much do you scroll?'}
+                ? `${firstName}, what's your daily screen time?`
+                : "What's your daily screen time?"}
             </SectionHeading>
           </FadeUp>
           <View style={{ height: 10 }} />
           <FadeUp delay={160}>
-            <MutedText size="md">
-              Just a rough estimate.
-            </MutedText>
+            <MutedText size="md">You probably know your number — roughly is fine.</MutedText>
           </FadeUp>
         </View>
 
@@ -73,185 +112,47 @@ export default function ScreentimeScreen() {
               <Text style={[styles.bigNumber, { color: colors.accent }]}>
                 {formatHours(hours)}
               </Text>
-              <Text style={[styles.bigUnit, { color: colors.muted }]}>
-                HOURS / DAY
-              </Text>
+              <Text style={[styles.bigUnit, { color: colors.muted }]}>HOURS / DAY</Text>
             </View>
           </FadeUp>
 
           <FadeUp delay={360}>
-            <Slider
-              value={hours}
-              onChange={setHours}
-              min={MIN_HOURS}
-              max={MAX_HOURS}
-              step={STEP}
-              colors={colors}
-            />
+            <View style={styles.rulerWrap}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={TICK_SPACING}
+                decelerationRate="fast"
+                scrollEventThrottle={16}
+                onScroll={onScroll}
+                contentOffset={{ x: ((initialHours - MIN_HOURS) / STEP) * TICK_SPACING, y: 0 }}
+                contentContainerStyle={{ paddingHorizontal: SIDE_PAD }}
+              >
+                <View style={styles.ticksRow}>{ticks}</View>
+              </ScrollView>
 
-            <View style={styles.tickRow}>
-              <Text style={[styles.tick, { color: colors.muted }]}>{MIN_HOURS}h</Text>
-              <Text style={[styles.tick, { color: colors.muted }]}>{MAX_HOURS}h</Text>
+              <View pointerEvents="none" style={styles.markerWrap}>
+                <View style={[styles.marker, { backgroundColor: colors.accent }]} />
+              </View>
             </View>
           </FadeUp>
         </View>
 
-        <FadeUp delay={500} travel={20}>
-          <View style={styles.bottomContainer}>
-            <OnboardingButton label="Continue" onPress={advance} />
-          </View>
-        </FadeUp>
-      </ScrollView>
+        <View style={styles.bottomContainer}>
+          <OnboardingButton label="Continue" onPress={advance} />
+        </View>
+      </View>
     </OnboardingLayout>
   );
 }
 
-function formatHours(h: number): string {
-  if (Number.isInteger(h)) return `${h}`;
-  return h.toFixed(1);
-}
-
-interface SliderProps {
-  value: number;
-  onChange: (v: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  colors: any;
-}
-
-/**
- * PanResponder slider, bulletproof version.
- *
- * Strategy: measure the track's screen-X with `measureInWindow` on grant,
- * then use `gestureState.moveX` (the touch's screen-X) directly. This is
- * the most reliable RN gesture pattern - no closure staleness, no race
- * with onLayout, no pageX-locationX math that breaks on nested views.
- *
- * Refs:
- *   wrapRef       - the track view, for measuring
- *   trackPageX    - screen-X of the track's left edge
- *   trackWidth    - width of the track
- *   onChangeRef   - latest onChange callback (props change between renders)
- *   valueRef      - current value (read inside the responder)
- */
-function Slider({ value, onChange, min, max, step, colors }: SliderProps) {
-  const wrapRef = useRef<View>(null);
-  const [width, setWidth] = useState(0);
-
-  const widthRef = useRef(0);
-  widthRef.current = width;
-  const trackPageX = useRef(0);
-  const valueRef = useRef(value);
-  valueRef.current = value;
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const lastHapticVal = useRef<number>(value);
-
-  const apply = (screenX: number) => {
-    const w = widthRef.current;
-    if (w <= 0) return;
-    const localX = screenX - trackPageX.current;
-    const clamped = Math.max(0, Math.min(w, localX));
-    const pct = clamped / w;
-    const raw = min + pct * (max - min);
-    const stepped = Math.round(raw / step) * step;
-    const next = Math.max(min, Math.min(max, stepped));
-    if (next !== lastHapticVal.current) {
-      hapticLight();
-      lastHapticVal.current = next;
-    }
-    if (next !== valueRef.current) onChangeRef.current(next);
-  };
-
-  const applyRef = useRef(apply);
-  applyRef.current = apply;
-
-  // Create the responder ONCE so its handlers are stable across renders.
-  const responder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: (_e, gs) => {
-        // Re-measure on every grant so we always have a fresh screen-X.
-        // measureInWindow gives screen coords reliably across iOS/Android.
-        wrapRef.current?.measureInWindow((x: number) => {
-          trackPageX.current = x;
-          applyRef.current(gs.x0); // x0 = initial touch screen-X
-        });
-      },
-      onPanResponderMove: (_e, gs) => {
-        applyRef.current(gs.moveX); // moveX = current touch screen-X
-      },
-    }),
-  ).current;
-
-  // Use percentage positioning for visuals so the thumb sits in the right
-  // place even before onLayout fires (no "thumb stuck at 0" flash).
-  // Cast to any because RN accepts percentage strings at runtime even
-  // though the type system insists on number | DimensionValue.
-  const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  const pctStr: any = `${pct * 100}%`;
-
-  return (
-    <View
-      ref={wrapRef}
-      onLayout={(e) => {
-        setWidth(e.nativeEvent.layout.width);
-        wrapRef.current?.measureInWindow((x: number) => {
-          trackPageX.current = x;
-        });
-      }}
-      style={styles.sliderTrackHit}
-      {...responder.panHandlers}
-    >
-      <View style={[styles.sliderTrack, { backgroundColor: colors.cardAlt }]} pointerEvents="none">
-        <View
-          style={[
-            styles.sliderFill,
-            { backgroundColor: colors.accent, width: pctStr },
-          ]}
-        />
-        <View
-          style={[
-            styles.sliderThumb,
-            {
-              backgroundColor: colors.accent,
-              borderColor: colors.background,
-              left: pctStr,
-            },
-          ]}
-        />
-      </View>
-    </View>
-  );
-}
-
-const SLIDER_HEIGHT = 6;
-const THUMB_SIZE = 28;
+const MARKER_H = 44;
 
 const styles = StyleSheet.create({
-  // flexGrow inside ScrollView contentContainerStyle so children fill the
-  // viewport when content fits, but can grow taller (and scroll) when zoom
-  // pushes them past the available height.
-  content: { flexGrow: 1, justifyContent: 'space-between' },
-  top: {
-    paddingTop: 72,
-    paddingHorizontal: Spacing.xl,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    paddingHorizontal: Spacing.xl,
-  },
-  bigReadout: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
+  content: { flex: 1, justifyContent: 'space-between' },
+  top: { paddingTop: 72, paddingHorizontal: Spacing.xl },
+  center: { flex: 1, justifyContent: 'center' },
+  bigReadout: { alignItems: 'center', marginBottom: 40 },
   bigNumber: {
     fontSize: 96,
     fontFamily: FontFamily.medium,
@@ -265,53 +166,29 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     marginTop: 4,
   },
-  sliderTrackHit: {
-    width: '100%',
-    paddingVertical: 18,
-    justifyContent: 'center',
+  rulerWrap: { height: 64, justifyContent: 'center' },
+  ticksRow: { flexDirection: 'row', alignItems: 'center', height: 64 },
+  tickSlot: {
+    width: TICK_SPACING,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 6,
   },
-  sliderTrack: {
-    height: SLIDER_HEIGHT,
-    borderRadius: SLIDER_HEIGHT / 2,
-    width: '100%',
-    overflow: 'visible',
-    justifyContent: 'center',
-  },
-  sliderFill: {
-    height: SLIDER_HEIGHT,
-    borderRadius: SLIDER_HEIGHT / 2,
+  tick: { width: 2, borderRadius: 1 },
+  tickLabel: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    top: (SLIDER_HEIGHT - THUMB_SIZE) / 2,
-    marginLeft: -THUMB_SIZE / 2,
-    borderWidth: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  tickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 4,
-    marginTop: 2,
-  },
-  tick: {
-    fontSize: 11,
+    top: 36,
+    fontSize: 12,
     fontFamily: FontFamily.medium,
-    letterSpacing: 1.2,
+    width: 40,
+    textAlign: 'center',
   },
-  bottomContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 40,
+  markerWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 2,
   },
+  marker: { width: 3, height: MARKER_H, borderRadius: 2 },
+  bottomContainer: { paddingHorizontal: Spacing.xl, paddingBottom: 40 },
 });

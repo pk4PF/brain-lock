@@ -36,3 +36,17 @@ export const MEMORY_SECONDS: Record<Difficulty, number> = { easy: 90, medium: 60
 // Countdown (s) for Beat the Grid (Schulte) — lower = harder. 22s for
 // a 5×5 grid is a stretch for most people; that's the point.
 export const SCHULTE_LIMIT: Record<Difficulty, number> = { easy: 60, medium: 45, hard: 22 };
+
+// ── Benchmark tests ─────────────────────────────────────────────
+
+// Reaction Test: best-of-3 reaction time (ms) you must beat. Human average
+// is ~273ms (Human Benchmark median); 240 is genuinely sharp.
+export const REACTION_MS: Record<Difficulty, number> = { easy: 375, medium: 300, hard: 240 };
+
+// Number Memory: digit-span level you must reach. The average person
+// holds ~7 digits; 10 is exceptional.
+export const DIGIT_LEVEL: Record<Difficulty, number> = { easy: 5, medium: 7, hard: 10 };
+
+// Perfect Timing: stop the clock at exactly 5.00s. Best-of-3 absolute
+// error (ms) must be within this tolerance.
+export const TIMESTOP_TOLERANCE_MS: Record<Difficulty, number> = { easy: 150, medium: 80, hard: 35 };

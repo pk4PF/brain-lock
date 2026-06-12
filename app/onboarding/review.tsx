@@ -90,7 +90,7 @@ export default function ReviewScreen() {
   }, []);
 
   return (
-    <OnboardingLayout step={9} totalSteps={12}>
+    <OnboardingLayout step={12} totalSteps={15}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.center}>

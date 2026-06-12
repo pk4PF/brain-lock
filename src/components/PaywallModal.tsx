@@ -33,7 +33,8 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
   const {
     loading,
     purchasing,
-    monthlyPrice,
+    annualPrice,
+    annualPerMonth,
     purchase,
     restore,
   } = usePaywallPurchase({ visible, source: 'modal' });
@@ -87,10 +88,10 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
           ) : (
             <View style={[s.planCard, { borderColor: colors.accent, backgroundColor: `${colors.accent}10` }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[s.planTitle, { color: colors.text }]}>Monthly</Text>
-                <Text style={[s.planCaption, { color: colors.muted }]}>{monthlyPrice} billed monthly</Text>
+                <Text style={[s.planTitle, { color: colors.text }]}>Yearly</Text>
+                <Text style={[s.planCaption, { color: colors.muted }]}>{annualPrice} billed yearly</Text>
               </View>
-              <Text style={[s.planPrice, { color: colors.text }]}>{monthlyPrice}/mo</Text>
+              <Text style={[s.planPrice, { color: colors.text }]}>{annualPerMonth}</Text>
             </View>
           )}
 
@@ -105,7 +106,7 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
               {purchasing ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={s.subscribeBtnText}>Continue for {monthlyPrice}/month</Text>
+                <Text style={s.subscribeBtnText}>Continue for {annualPrice}/year</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

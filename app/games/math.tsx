@@ -11,7 +11,8 @@ import { generateProblem, type Problem } from '../../src/utils/mathProblem';
 import { soundTap, soundCorrect, soundWrong, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { QuickMathIll } from '../../src/components/games/GameIllustrations';
-import { router } from 'expo-router';
+import { advanceBenchmark } from '../../src/utils/benchmark';
+import { router, useLocalSearchParams } from 'expo-router';
 
 const HUE = GameAccents.math.hue;
 const TOTAL_ROUNDS = 12;
@@ -36,8 +37,13 @@ function creditsForMath(correct: number, total: number): number {
 
 export default function MathGame() {
   const { colors } = useThemeColors();
-  const { addPoints, recordGame, recordCognitiveScore } = useStore();
+  const { addPoints, recordGame, recordCognitiveScore, setBenchmarkScore } = useStore();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
+  const params = useLocalSearchParams<{ benchmark?: string; bm?: string }>();
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
+  // Benchmark runs a short 3-round test; normal play is the full set.
+  const ROUNDS = isBenchmark ? 3 : TOTAL_ROUNDS;
 
   const [phase, setPhase] = useState<Phase>('intro');
 
@@ -62,23 +68,25 @@ export default function MathGame() {
   const finishGame = (finalCorrect: number, finalScore: number) => {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     addPoints(finalScore);
-    const credits = creditsForMath(finalCorrect, TOTAL_ROUNDS);
+    const credits = creditsForMath(finalCorrect, ROUNDS);
     // Math is binary: one wrong answer fails the round. This overrides the
     // shared ACCURACY_PASS bands (60/80/100) because the spec is now
     // perfect-or-bust at every difficulty - if you can't do mental
     // arithmetic without errors, you don't get to unlock anything.
-    const passed = finalCorrect === TOTAL_ROUNDS;
+    const passed = finalCorrect === ROUNDS;
     recordGame('math', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
     // Problem solving = math accuracy %.
-    const accuracy = (finalCorrect / TOTAL_ROUNDS) * 100;
+    const accuracy = (finalCorrect / ROUNDS) * 100;
     recordCognitiveScore('problemSolving', accuracy);
+    // Benchmark step (final test): record raw score, advance to the reveal.
+    if (isBenchmark) { setBenchmarkScore(String(bmIndex), accuracy); advanceBenchmark(bmIndex); return; }
     track(Events.GameCompleted, {
       game: 'math',
       score: finalScore,
       correct: finalCorrect,
-      total: TOTAL_ROUNDS,
+      total: ROUNDS,
       passed,
       credits_earned: passed ? credits : 0,
       time_taken_seconds: Math.round(timeTaken),
@@ -103,7 +111,7 @@ export default function MathGame() {
       setCorrect(newCorrect);
     }
     setTimeout(() => {
-      if (round >= TOTAL_ROUNDS) {
+      if (round >= ROUNDS) {
         finishGame(newCorrect, newScore);
       } else {
         soundRound();
@@ -140,7 +148,7 @@ export default function MathGame() {
           Illustration={<QuickMathIll size={88} />}
           title="Quick Math"
           blurb="Ten problems. No clock - take your time. Each round gets a touch harder."
-          rules={['🔢 10 rounds', '🚫 No timer', '📈 Builds gradually']}
+          rules={[`🔢 ${ROUNDS} rounds`, '🚫 No timer', '📈 Builds gradually']}
           startLabel="Start"
           onStart={handleStart}
         />
@@ -150,8 +158,8 @@ export default function MathGame() {
 
   // ── RESULT ──
   if (phase === 'result') {
-    const credits = creditsForMath(correct, TOTAL_ROUNDS);
-    const passed = correct === TOTAL_ROUNDS;
+    const credits = creditsForMath(correct, ROUNDS);
+    const passed = correct === ROUNDS;
     const resultHue = passed ? HUE : '#EF4444';
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -159,10 +167,8 @@ export default function MathGame() {
         <GameResult
           hue={HUE}
           badgeIcon={<Calculator size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
-          bigStat={`${correct}/${TOTAL_ROUNDS}`}
+          bigStat={`${correct}/${ROUNDS}`}
           subtitle={`${score} points`}
           unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
           primaryLabel={passed ? 'Play again' : 'Try again'}
@@ -183,7 +189,7 @@ export default function MathGame() {
         rightSlot={
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={[styles.scoreVal, { color: HUE }]}>{score}</Text>
-            <Text style={[styles.scoreLbl, { color: colors.muted }]}>{round}/{TOTAL_ROUNDS}</Text>
+            <Text style={[styles.scoreLbl, { color: colors.muted }]}>{round}/{ROUNDS}</Text>
           </View>
         }
       />

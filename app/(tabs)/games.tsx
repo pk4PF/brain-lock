@@ -1,21 +1,20 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, Modal } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Modal } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUpRight, Lock, BarChart3 } from 'lucide-react-native';
+import { ArrowUpRight, BarChart3 } from 'lucide-react-native';
 import { hapticLight } from '../../src/utils/haptics';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
-import { useStore, DIFFICULTY_UNLOCK_MINUTES } from '../../src/store/useStore';
+import { useStore } from '../../src/store/useStore';
 import { FontFamily, FontSize, Spacing, GameAccents } from '../../src/constants/theme';
 import { Eyebrow, SectionHeading, MutedText, Pill } from '../../src/components/ui/anvil';
 import {
   ShapeRecallIll, WordMemoryIll, QuickMathIll, FocusFlashIll, NumberSequenceIll,
-  MazePathIll, SpotDifferenceIll, ColorRecallIll, BlockTappingIll, TimeRecallIll,
-  CardMemoryIll, SequenceMemoryIll, RapidNumbersIll, DirectionMatchIll, GridExplorerIll,
-  ChessPuzzlesIll, TowerBuilderIll, LogicCompareIll, ShapeSequenceIll, HiddenObjectIll,
+  ColorRecallIll, BlockTappingIll, SequenceMemoryIll,
   MemoryMatchIll,
   ChimpTestIll, CupShuffleIll, SchulteIll,
   GeneralKnowledgeIll, FlagsIll,
+  ReactionTestIll, RapidNumbersIll, TimeRecallIll,
 } from '../../src/components/games/GameIllustrations';
 import type { GameType, Difficulty } from '../../src/constants/games';
 
@@ -52,7 +51,12 @@ interface Game {
 }
 
 const GAMES: Game[] = [
-  // Hero marketing game. Lives at the top so it's the first tile in the grid.
+  // Benchmark tests - the clip-friendly hero row. Reaction leads: it's the
+  // most viral format and the strongest "test yourself" pull.
+  { key: 'reaction',    title: 'Reaction Test',  blurb: 'Tap when it turns green', hue: GameAccents.reaction.hue,     Ill: ReactionTestIll,   route: '/games/reaction',    statKey: 'reaction' as GameType },
+  { key: 'digit-span',  title: 'Number Memory',  blurb: 'How many digits can you hold?', hue: GameAccents['digit-span'].hue, Ill: RapidNumbersIll, route: '/games/digit-span', statKey: 'digit-span' as GameType },
+  { key: 'time-stop',   title: 'Perfect Timing', blurb: 'Stop at exactly 5.00s',  hue: GameAccents['time-stop'].hue,  Ill: TimeRecallIll,     route: '/games/time-stop',   statKey: 'time-stop' as GameType },
+  // Hero marketing game.
   { key: 'tile-recall', title: 'Memory Tiles',  blurb: 'Remember. Tap. Repeat.', hue: GameAccents['tile-recall'].hue, Ill: ShapeRecallIll,    route: '/games/tile-recall', statKey: 'tile-recall' as GameType },
   // Live games - actually playable. statKey wires the tile to gameStats.
   { key: 'memory',      title: 'Memory Match',  blurb: 'Match the pairs',     hue: GameAccents.memory.hue,        Ill: MemoryMatchIll,    route: '/games/memory',      statKey: 'memory' as GameType },
@@ -72,28 +76,26 @@ const GAMES: Game[] = [
   // Quiz challenges.
   { key: 'general-knowledge', title: 'General Knowledge', blurb: 'Trivia quiz',     hue: GameAccents['general-knowledge'].hue, Ill: GeneralKnowledgeIll, route: '/games/general-knowledge', statKey: 'general-knowledge' as GameType },
   { key: 'flags',       title: 'Flags',           blurb: 'Name the country',        hue: GameAccents.flags.hue,        Ill: FlagsIll,      route: '/games/flags',       statKey: 'flags' as GameType },
-
-  // In development.
-  { key: 'maze',          title: 'Maze Path',        Ill: MazePathIll },
-  { key: 'spot-diff',     title: 'Spot Difference',  Ill: SpotDifferenceIll },
-  { key: 'time-recall',   title: 'Time Recall',      Ill: TimeRecallIll },
-  { key: 'card-memory',   title: 'Card Memory',      Ill: CardMemoryIll },
-  { key: 'rapid-numbers', title: 'Rapid Numbers',    Ill: RapidNumbersIll },
-  { key: 'direction',     title: 'Direction Match',  Ill: DirectionMatchIll },
-  { key: 'grid-explorer', title: 'Grid Explorer',    Ill: GridExplorerIll },
-  { key: 'chess',         title: 'Chess Puzzles',    Ill: ChessPuzzlesIll },
-  { key: 'tower',         title: 'Tower Builder',    Ill: TowerBuilderIll },
-  { key: 'logic',         title: 'Logic Compare',    Ill: LogicCompareIll },
-  { key: 'shape-seq',     title: 'Shape Sequence',   Ill: ShapeSequenceIll },
-  { key: 'hidden',        title: 'Hidden Object',    Ill: HiddenObjectIll },
+  // Calm - the breathing seed of the Gym.
+  { key: 'breathe',     title: 'Box Breathing',   blurb: 'Reset your focus',        Ill: TimeRecallIll, route: '/games/breathe' },
 ];
 
 const liveGames = GAMES.filter((g) => g.route);
-const upcomingGames = GAMES.filter((g) => !g.route);
 
-const UPCOMING_VISIBLE = 4;
-const upcomingVisible = upcomingGames.slice(0, UPCOMING_VISIBLE);
-const upcomingHidden = upcomingGames.slice(UPCOMING_VISIBLE);
+// The Gym is organised into three kinds of "rep", each pulling the brain
+// rot score down a different way. Category is derived so we don't have to
+// tag all 18 games by hand.
+type GymCat = 'test' | 'knowledge' | 'calm';
+function categoryOf(g: Game): GymCat {
+  if (g.key === 'breathe') return 'calm';
+  if (g.key === 'general-knowledge' || g.key === 'flags') return 'knowledge';
+  return 'test';
+}
+const SECTIONS: { cat: GymCat; label: string; blurb: string; pill: string }[] = [
+  { cat: 'test',      label: 'Tests',     blurb: 'Train memory, focus, speed, reasoning.', pill: 'TEST' },
+  { cat: 'knowledge', label: 'Knowledge', blurb: 'Sharpen what you already know.',         pill: 'QUIZ' },
+  { cat: 'calm',      label: 'Calm',      blurb: 'Slow down and reset your attention.',    pill: 'CALM' },
+];
 
 export default function GamesScreen() {
   const insets = useSafeAreaInsets();
@@ -103,8 +105,9 @@ export default function GamesScreen() {
 
   const handlePlay = (game: Game) => {
     hapticLight();
-    if (!game.route) {
-      Alert.alert('Coming soon', `${game.title} is in development.`, [{ text: 'OK' }]);
+    // Calm (breathing) has no difficulty - go straight in.
+    if (categoryOf(game) === 'calm' && game.route) {
+      router.push(game.route as any);
       return;
     }
     // Practice run — pick a difficulty first (consistent with the unlock flow).
@@ -116,8 +119,9 @@ export default function GamesScreen() {
     setPendingGame(null);
     if (!game?.route) return;
     hapticLight();
-    // Passing this challenge unlocks the blocked apps for the difficulty's duration.
-    router.push(`${game.route}?unlock=1&difficulty=${difficulty}` as any);
+    // Gym reps are pure training now - they raise your Brainpower Score, they don't
+    // unlock anything. Unlocking is a separate, direct choice on Home.
+    router.push(`${game.route}?difficulty=${difficulty}` as any);
   };
 
   const renderLiveTile = (game: Game) => {
@@ -132,6 +136,7 @@ export default function GamesScreen() {
     const playedLabel = !stats || stats.played === 0
       ? 'Tap to start'
       : `${stats.played} played`;
+    const pillLabel = SECTIONS.find((s) => s.cat === categoryOf(game))?.pill ?? 'TEST';
     return (
       <TouchableOpacity
         key={game.key}
@@ -147,7 +152,7 @@ export default function GamesScreen() {
         <View style={[styles.illZone, { height: ILL_ZONE_H, backgroundColor: zoneBg }]}>
           <Ill size={ILL_SIZE} />
           <View style={styles.illPill}>
-            <Pill tone="accent">TEST</Pill>
+            <Pill tone="accent">{pillLabel}</Pill>
           </View>
         </View>
 
@@ -173,82 +178,41 @@ export default function GamesScreen() {
     );
   };
 
-  const renderUpcomingTile = (game: Game) => {
-    const Ill = game.Ill;
-    return (
-      <TouchableOpacity
-        key={game.key}
-        activeOpacity={0.78}
-        onPress={() => handlePlay(game)}
-        style={[
-          styles.tile,
-          { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.92 },
-        ]}
-      >
-        <View style={[styles.illZone, { height: ILL_ZONE_H, backgroundColor: colors.cardAlt }]}>
-          <View style={{ opacity: 0.55 }}>
-            <Ill size={ILL_SIZE} />
-          </View>
-          <View style={styles.illPill}>
-            <Pill tone="neutral">SOON</Pill>
-          </View>
-        </View>
-        <View style={styles.tileBody}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.tileTitle, { color: colors.muted }]} numberOfLines={1}>
-              {game.title}
-            </Text>
-            <Lock size={13} color={colors.muted} strokeWidth={2} />
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.xl,
-          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingBottom: insets.bottom + 120,
           paddingHorizontal: SIDE_PAD,
         }}
       >
         {/* Header */}
-        <Eyebrow>Train the brain</Eyebrow>
-        <SectionHeading size="lg">Put your brain back in charge.</SectionHeading>
+        <Eyebrow>The Brain Gym</Eyebrow>
+        <SectionHeading size="lg">Raise your Brainpower Score.</SectionHeading>
         <View style={{ height: 10 }} />
         <MutedText size="md">
-          60 seconds per test. Each one measures a real cognitive skill - memory, focus, speed, reasoning. Pass to earn cells and unlock your apps.
+          Every rep here pushes your score up. Tests, knowledge, and calm — your brain's workout.
         </MutedText>
 
-        {/* Available */}
-        <View style={styles.sectionLabelRow}>
-          <Eyebrow style={{ marginBottom: 0 }}>Available</Eyebrow>
-          <Text style={[styles.sectionCount, { color: colors.muted }]}>
-            {liveGames.length}
-          </Text>
-        </View>
-        <View style={styles.grid}>
-          {liveGames.map(renderLiveTile)}
-        </View>
-
-        {/* Coming soon */}
-        <View style={styles.sectionLabelRow}>
-          <Eyebrow style={{ marginBottom: 0 }}>Coming soon</Eyebrow>
-          <Text style={[styles.sectionCount, { color: colors.muted }]}>
-            {upcomingGames.length}
-          </Text>
-        </View>
-        <View style={styles.grid}>
-          {upcomingVisible.map(renderUpcomingTile)}
-        </View>
-        {upcomingHidden.length > 0 && (
-          <Text style={[styles.upcomingMore, { color: colors.muted }]}>
-            + {upcomingHidden.length} more in development
-          </Text>
-        )}
+        {/* Sections - Tests / Knowledge / Calm */}
+        {SECTIONS.map((sec) => {
+          const items = liveGames.filter((g) => categoryOf(g) === sec.cat);
+          if (items.length === 0) return null;
+          return (
+            <View key={sec.cat}>
+              <View style={styles.sectionLabelRow}>
+                <Eyebrow style={{ marginBottom: 0 }}>{sec.label}</Eyebrow>
+                <Text style={[styles.sectionCount, { color: colors.muted }]}>{items.length}</Text>
+              </View>
+              <Text style={[styles.sectionBlurb, { color: colors.muted }]}>{sec.blurb}</Text>
+              <View style={styles.grid}>
+                {items.map(renderLiveTile)}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
 
       {/* Difficulty chooser - shown before a practice run, mirrors the unlock flow */}
@@ -278,7 +242,7 @@ export default function GamesScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sheetOptionLabel, { color: colors.text }]}>
-                    {d.label} · {DIFFICULTY_UNLOCK_MINUTES[d.id]} min
+                    {d.label}
                   </Text>
                   <Text style={[styles.sheetOptionRank, { color: colors.muted }]}>{d.note}</Text>
                 </View>
@@ -333,6 +297,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FontFamily.medium,
     letterSpacing: 1.6,
+  },
+  sectionBlurb: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    letterSpacing: -0.1,
+    marginBottom: 14,
+    marginTop: -4,
   },
 
   // Grid
@@ -391,12 +362,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FontFamily.medium,
     letterSpacing: 0.2,
-  },
-
-  upcomingMore: {
-    fontSize: 14,
-    fontFamily: FontFamily.regular,
-    marginTop: Spacing.md,
-    paddingHorizontal: 4,
   },
 });

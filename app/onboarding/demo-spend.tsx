@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Easing } from 'react-native';
 import { router } from 'expo-router';
-import { Lock, Unlock, Check, ArrowRight } from 'lucide-react-native';
+import { Lock, Unlock } from 'lucide-react-native';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticMedium } from '../../src/utils/haptics';
 import { FontFamily, Spacing } from '../../src/constants/theme';
+// Unlock durations and what each costs your brain rot - mirrors the live
+// picker on Home.
+const TIERS = [
+  { minutes: 15, rot: 15 },
+  { minutes: 30, rot: 30 },
+  { minutes: 60, rot: 60 },
+];
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
@@ -12,12 +19,10 @@ import { SectionHeading, MutedText } from '../../src/components/ui/anvil';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 
 /**
- * Demo of the spend flow. The user taps the lock to see it animate open -
- * pure visual demo, NO real spend or unlock happens. Copy makes it clear
- * the actual unlock happens once they're in the app proper.
- *
- * Numbers (5 cells -> 5 minutes) are illustrative since this is a preview.
- * Real tiers are 15-30 min on Home.
+ * Demo of the unlock flow. The user taps the lock to see it animate open -
+ * pure visual demo, NO real unlock happens. Teaches the new model: you can
+ * unlock anytime, but the longer you open, the more your Brainpower Score drops
+ * (15m +3 / 30m +5 / 60m +10), mirroring the live picker on Home.
  */
 export default function DemoSpendScreen() {
   useOnboardingStepView('demo_spend');
@@ -62,19 +67,19 @@ export default function DemoSpendScreen() {
   }, [unlocked]);
 
   return (
-    <OnboardingLayout step={12} totalSteps={16}>
+    <OnboardingLayout step={11} totalSteps={15}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.top}>
           <FadeUp delay={0}>
             <SectionHeading size="lg">
-              You earned it.
+              Need your apps?
             </SectionHeading>
           </FadeUp>
           <View style={{ height: 8 }} />
           <FadeUp delay={100}>
             <MutedText size="md">
-              Tap the lock to see how it works. Real unlocks happen in the main app.
+              Unlock anytime — but the longer you scroll, the more your Brainpower Score drops.
             </MutedText>
           </FadeUp>
         </View>
@@ -125,26 +130,22 @@ export default function DemoSpendScreen() {
           </FadeUp>
 
           <FadeUp delay={360}>
-            <View
-              style={[
-                styles.creditsCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: unlocked ? colors.accent : colors.border,
-                  borderWidth: unlocked ? 1.5 : 1,
-                },
-              ]}
-            >
-              <View style={styles.creditsRow}>
-                <Check size={16} color={colors.accent} strokeWidth={3} />
-                <Text style={[styles.creditsLabel, { color: colors.text }]}>
-                  Pass
-                </Text>
-              </View>
-              <ArrowRight size={14} color={colors.muted} strokeWidth={2} />
-              <Text style={[styles.creditsValue, { color: colors.text }]}>
-                15–60 min
-              </Text>
+            <View style={styles.tierRow}>
+              {TIERS.map((t) => (
+                <View
+                  key={t.minutes}
+                  style={[
+                    styles.tierCard,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.tierValue, { color: colors.text }]}>{t.minutes}</Text>
+                  <Text style={[styles.tierUnit, { color: colors.muted }]}>min</Text>
+                  <View style={[styles.tierCostPill, { backgroundColor: `${colors.accent}1A` }]}>
+                    <Text style={[styles.tierCostText, { color: colors.accent }]}>−{t.rot} score</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </FadeUp>
 
@@ -169,8 +170,8 @@ export default function DemoSpendScreen() {
             </TouchableOpacity>
           ) : (
             <View style={styles.unlockedNote}>
-              <Text style={[styles.unlockedText, { color: colors.success }]}>
-                Unlocked. Easy.
+              <Text style={[styles.unlockedText, { color: colors.accent }]}>
+                Open — it costs you.
               </Text>
             </View>
           )}
@@ -213,31 +214,45 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  creditsCard: {
+  tierRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    gap: 10,
     width: '100%',
-    gap: 12,
   },
-  creditsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  tierCard: {
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  creditsLabel: {
-    fontSize: 14,
+  tierLabel: {
+    fontSize: 12,
     fontFamily: FontFamily.medium,
-    letterSpacing: -0.1,
+    letterSpacing: 0.2,
+    marginBottom: 4,
   },
-  creditsValue: {
-    fontSize: 14,
-    fontFamily: FontFamily.medium,
-    letterSpacing: -0.1,
+  tierValue: {
+    fontSize: 26,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
+  tierUnit: {
+    fontSize: 11,
+    fontFamily: FontFamily.regular,
+    marginTop: 1,
+  },
+  tierCostPill: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  tierCostText: {
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 0.2,
   },
   previewNote: {
     marginTop: 14,

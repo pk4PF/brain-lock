@@ -11,17 +11,23 @@ import {
 import { useStore } from '../../store/useStore';
 import { track, Events } from '../../services/analytics';
 
-const MONTHLY_PRICE_FALLBACK = '£12.99';
-const ANNUAL_PRICE_FALLBACK = '£24.99';
-const ANNUAL_BASE_PRICE_FALLBACK = '£49.99';
+// Pricing model: annual-anchored (the dominant, default plan) + weekly as the
+// low-commitment alternative. Winback is a genuinely discounted FIRST-YEAR
+// annual (≈50% off) shown only on the final-offer screen when the user tries
+// to leave the paywall.
+const WEEKLY_PRICE_FALLBACK = '£9.99';
+const ANNUAL_PRICE_FALLBACK = '£49.99';
+const WINBACK_PRICE_FALLBACK = '£24.99';
 
-export type PlanKey = 'monthly' | 'annual';
+export type PlanKey = 'weekly' | 'annual' | 'winback';
 
 export interface PaywallPurchaseState {
-  /** RevenueCat monthly package, or null while loading / unavailable. */
-  monthly: PurchasesPackage | null;
+  /** RevenueCat weekly package, or null while loading / unavailable. */
+  weekly: PurchasesPackage | null;
   /** RevenueCat annual package, or null while loading / unavailable. */
   annual: PurchasesPackage | null;
+  /** RevenueCat winback package (discounted first-year annual), or null. */
+  winback: PurchasesPackage | null;
   /** Currently selected plan. Defaults to 'annual'. */
   selectedPlan: PlanKey;
   setSelectedPlan: (plan: PlanKey) => void;
@@ -29,33 +35,34 @@ export interface PaywallPurchaseState {
   loading: boolean;
   /** True while a purchase or restore is in flight. */
   purchasing: boolean;
-  /** Localised price label for monthly (£12.99). */
-  monthlyPrice: string;
-  /** Localised price label for annual - intro price (£24.99) when offered, else base. */
+  /** Localised price label for weekly (£9.99). */
+  weeklyPrice: string;
+  /** Localised price label for annual (£49.99). */
   annualPrice: string;
-  /** Localised label for annual base price (£49.99) - used as a strikethrough. */
-  annualBasePrice: string;
-  /** True when the user is being shown an introductory offer on the annual plan. */
-  hasAnnualIntro: boolean;
+  /** Localised price label for the winback rate (£24.99 first-year annual). */
+  winbackPrice: string;
   /** Localised price label for whichever plan is currently selected. */
   selectedPrice: string;
-  /** Discount % the annual plan offers vs paying monthly all year. */
+  /** Honest discount % of annual vs paying weekly all year (annual is far cheaper). */
   annualSavingsPct: number;
   /** Effective monthly equivalent of the annual plan (e.g. "£4.17/mo"). */
   annualPerMonth: string;
+  /** Effective weekly equivalent of the annual plan (e.g. "£0.96/wk"). */
+  annualPerWeek: string;
   /** Start the purchase flow on the selected plan. Calls onSuccess if it completes, onCancel if the user dismisses Apple Pay. */
   purchase: (onSuccess: () => void, onCancel?: () => void) => Promise<void>;
   /** Restore previous purchases. Calls onSuccess if found. */
   restore: (onSuccess: () => void) => Promise<void>;
 }
 
+const numeric = (s: string) => Number(s.replace(/[^\d.]/g, '')) || 0;
+
 /**
- * Centralised purchase plumbing for both the onboarding paywall and the in-app
- * PaywallModal. Encapsulates RevenueCat package lookup (monthly + annual),
- * purchase/restore, analytics, dev fallback, and a default-to-annual selection
- * model.
+ * Centralised purchase plumbing for the onboarding paywall, the final-offer
+ * winback, and the in-app PaywallModal. Looks up weekly / annual / winback
+ * packages, handles purchase/restore, analytics, and a dev fallback.
  *
- * Pass a `source` so analytics can distinguish onboarding vs modal triggers.
+ * Pass a `source` so analytics can distinguish triggers.
  */
 export function usePaywallPurchase(opts: {
   visible: boolean;
@@ -64,9 +71,13 @@ export function usePaywallPurchase(opts: {
   const { visible, source } = opts;
   const { setSubscription } = useStore();
 
-  const [monthly, setMonthly] = useState<PurchasesPackage | null>(null);
+  const [weekly, setWeekly] = useState<PurchasesPackage | null>(null);
   const [annual, setAnnual] = useState<PurchasesPackage | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>('annual');
+  const [winback, setWinback] = useState<PurchasesPackage | null>(null);
+  // Winback is the default selection on the final-offer screen; annual elsewhere.
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
+    source === 'final-offer' ? 'winback' : 'annual',
+  );
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
 
@@ -78,25 +89,23 @@ export function usePaywallPurchase(opts: {
     (async () => {
       try {
         const offering = await getOfferings();
-        if (cancelled) return;
-        if (offering) {
-          const m =
-            offering.availablePackages.find(
-              (p) =>
-                p.packageType === 'MONTHLY' ||
-                p.product.identifier.toLowerCase().includes('monthly') ||
-                p.product.identifier.toLowerCase().includes('month'),
-            ) ?? null;
-          const a =
-            offering.availablePackages.find(
-              (p) =>
-                p.packageType === 'ANNUAL' ||
-                p.product.identifier.toLowerCase().includes('annual') ||
-                p.product.identifier.toLowerCase().includes('year'),
-            ) ?? null;
-          setMonthly(m);
-          setAnnual(a);
-        }
+        if (cancelled || !offering) return;
+        const id = (p: PurchasesPackage) => p.product.identifier.toLowerCase();
+        setWeekly(
+          offering.availablePackages.find(
+            (p) => p.packageType === 'WEEKLY' || id(p).includes('week'),
+          ) ?? null,
+        );
+        setAnnual(
+          offering.availablePackages.find(
+            (p) => p.packageType === 'ANNUAL' || id(p).includes('annual') || id(p).includes('year'),
+          ) ?? null,
+        );
+        setWinback(
+          offering.availablePackages.find(
+            (p) => id(p).includes('winback') || id(p).includes('win-back') || id(p).includes('win_back'),
+          ) ?? null,
+        );
       } catch (err) {
         if (__DEV__) console.warn('[Paywall] Failed to load offerings:', err);
       } finally {
@@ -108,53 +117,38 @@ export function usePaywallPurchase(opts: {
     };
   }, [visible, source]);
 
-  const monthlyPrice = monthly?.product.priceString ?? MONTHLY_PRICE_FALLBACK;
+  const weeklyPrice = weekly?.product.priceString ?? WEEKLY_PRICE_FALLBACK;
+  const annualPrice = annual?.product.priceString ?? ANNUAL_PRICE_FALLBACK;
+  const winbackPrice = winback?.product.priceString ?? WINBACK_PRICE_FALLBACK;
+  const selectedPrice =
+    selectedPlan === 'weekly' ? weeklyPrice
+    : selectedPlan === 'winback' ? winbackPrice
+    : annualPrice;
 
-  // For yearly we display the introductory offer price (£24.99) when it
-  // exists on the product, falling back to the base price. Apple's intro
-  // offer is what new users actually pay year 1; year 2 onward renews at
-  // the base price.
-  const annualIntro = (annual?.product as any)?.introPrice;
-  const annualBasePrice = annual?.product.priceString ?? ANNUAL_BASE_PRICE_FALLBACK;
-  const annualPrice = annualIntro?.priceString ?? annual?.product.priceString ?? ANNUAL_PRICE_FALLBACK;
-  const selectedPrice = selectedPlan === 'monthly' ? monthlyPrice : annualPrice;
-
-  // Compute % savings of annual (intro if present) vs paying monthly all year.
-  const monthlyNumeric = monthly?.product.price ?? Number(MONTHLY_PRICE_FALLBACK.replace(/[^\d.]/g, '')) ?? 12.99;
-  const annualNumeric =
-    annualIntro?.price ??
-    annual?.product.price ??
-    Number(ANNUAL_PRICE_FALLBACK.replace(/[^\d.]/g, '')) ??
-    24.99;
-  const yearlyAtMonthly = monthlyNumeric * 12;
+  // Honest savings: annual vs paying the weekly rate for a full year.
+  const weeklyNumeric = weekly?.product.price ?? numeric(WEEKLY_PRICE_FALLBACK);
+  const annualNumeric = annual?.product.price ?? numeric(ANNUAL_PRICE_FALLBACK);
+  const yearlyAtWeekly = weeklyNumeric * 52;
   const annualSavingsPct =
-    yearlyAtMonthly > 0
-      ? Math.max(0, Math.round((1 - annualNumeric / yearlyAtMonthly) * 100))
+    yearlyAtWeekly > 0
+      ? Math.max(0, Math.round((1 - annualNumeric / yearlyAtWeekly) * 100))
       : 0;
 
-  // Derive a "/mo" label for the annual plan, in the same currency symbol as priceString.
-  const currencySymbol = (annual?.product.priceString ?? annualPrice).replace(/[\d.,\s]/g, '') || '£';
+  const currencySymbol = annualPrice.replace(/[\d.,\s]/g, '') || '£';
   const annualPerMonth = `${currencySymbol}${(annualNumeric / 12).toFixed(2)}/mo`;
+  const annualPerWeek = `${currencySymbol}${(annualNumeric / 52).toFixed(2)}/wk`;
 
   const purchase = useCallback(
     async (onSuccess: () => void, onCancel?: () => void) => {
-      const pkg = selectedPlan === 'monthly' ? monthly : annual;
+      const pkg = selectedPlan === 'weekly' ? weekly : selectedPlan === 'winback' ? winback : annual;
       track(Events.PurchaseStarted, { plan: selectedPlan, source });
       if (!pkg) {
         if (__DEV__) {
-          // Dev fallback when RevenueCat isn't configured locally
           setSubscription(selectedPlan);
-          track(Events.PurchaseCompleted, {
-            plan: selectedPlan,
-            dev: true,
-            source,
-          });
+          track(Events.PurchaseCompleted, { plan: selectedPlan, dev: true, source });
           onSuccess();
         } else {
-          Alert.alert(
-            'Unable to load plan',
-            'Please check your connection and try again.',
-          );
+          Alert.alert('Unable to load plan', 'Please check your connection and try again.');
         }
         return;
       }
@@ -175,11 +169,7 @@ export function usePaywallPurchase(opts: {
           onSuccess();
         } else {
           setSubscription(selectedPlan);
-          track(Events.PurchaseCompleted, {
-            plan: selectedPlan,
-            fallback: true,
-            source,
-          });
+          track(Events.PurchaseCompleted, { plan: selectedPlan, fallback: true, source });
           onSuccess();
         }
       } catch (err: any) {
@@ -197,7 +187,7 @@ export function usePaywallPurchase(opts: {
         setPurchasing(false);
       }
     },
-    [monthly, annual, selectedPlan, setSubscription, source],
+    [weekly, annual, winback, selectedPlan, setSubscription, source],
   );
 
   const restore = useCallback(
@@ -226,19 +216,20 @@ export function usePaywallPurchase(opts: {
   );
 
   return {
-    monthly,
+    weekly,
     annual,
+    winback,
     selectedPlan,
     setSelectedPlan,
     loading,
     purchasing,
-    monthlyPrice,
+    weeklyPrice,
     annualPrice,
-    annualBasePrice,
-    hasAnnualIntro: !!annualIntro,
+    winbackPrice,
     selectedPrice,
     annualSavingsPct,
     annualPerMonth,
+    annualPerWeek,
     purchase,
     restore,
   };

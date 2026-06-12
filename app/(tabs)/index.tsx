@@ -1,8 +1,8 @@
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { router } from 'expo-router';
 import {
   CheckCircle2, Circle as CircleIcon, ChevronRight, X, Flame,
-  Smartphone, Lock, LockOpen,
+  Smartphone, Lock, LockOpen, Brain, Check,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,9 @@ import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { track } from '../../src/services/analytics';
 import { FontFamily, FontSize, Spacing } from '../../src/constants/theme';
 import { Eyebrow, AnvilCard } from '../../src/components/ui/anvil';
+import { scoreBand, getRank } from '../../src/utils/brainScore';
+import { startBenchmark } from '../../src/utils/benchmark';
+import { getTodaysWorkout, WORKOUT_REWARD } from '../../src/constants/workout';
 import StreakDetailModal from '../../src/components/home/StreakDetailModal';
 
 // ─────────────────────────────────────────────────────────────
@@ -49,12 +52,18 @@ function UnlockStatusCard({
   unlockTotalMs,
   isBlocking,
   onTimerExpired,
+  onUnlock,
+  onRelock,
+  onBlock,
 }: {
   appsUnlocked: boolean;
   unlockExpiresAt: number | null;
   unlockTotalMs: number | null;
   isBlocking: boolean;
   onTimerExpired: () => void;
+  onUnlock: () => void;
+  onRelock: () => void;
+  onBlock: () => void;
 }) {
   const { colors } = useThemeColors();
   const { formatted, remainingMs } = useUnlockCountdown(unlockExpiresAt, appsUnlocked);
@@ -85,6 +94,14 @@ function UnlockStatusCard({
             ]}
           />
         </View>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onRelock}
+          style={[styles.relockBtn, styles.cardAction, { borderColor: colors.borderStrong, backgroundColor: colors.card }]}
+        >
+          <Lock size={20} color={colors.text} strokeWidth={2.2} />
+          <Text style={[styles.relockBtnText, { color: colors.text }]}>Lock apps now</Text>
+        </TouchableOpacity>
       </AnvilCard>
     );
   }
@@ -92,21 +109,27 @@ function UnlockStatusCard({
   // No apps chosen yet → don't claim anything is "locked".
   if (!isBlocking) {
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => { hapticLight(); router.push('/(tabs)/lock'); }}>
-        <AnvilCard padding="md">
-          <View style={styles.cellsHeader}>
-            <View style={[styles.cellsIcon, { backgroundColor: `${colors.muted}15` }]}>
-              <Lock size={18} color={colors.muted} strokeWidth={2.2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cellsTitle, { color: colors.text }]}>No apps blocked yet</Text>
-              <Text style={[styles.lockedSub, { color: colors.muted }]}>
-                Choose which apps to block
-              </Text>
-            </View>
+      <AnvilCard padding="md">
+        <View style={styles.cellsHeader}>
+          <View style={[styles.cellsIcon, { backgroundColor: `${colors.muted}15` }]}>
+            <Lock size={18} color={colors.muted} strokeWidth={2.2} />
           </View>
-        </AnvilCard>
-      </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cellsTitle, { color: colors.text }]}>No apps blocked yet</Text>
+            <Text style={[styles.lockedSub, { color: colors.muted }]}>
+              Choose which apps to block
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onBlock}
+          style={[styles.unlockBtn, styles.cardAction, { backgroundColor: colors.accent }]}
+        >
+          <Lock size={22} color="#FFFFFF" strokeWidth={2.4} />
+          <Text style={styles.unlockBtnText}>Block apps</Text>
+        </TouchableOpacity>
+      </AnvilCard>
     );
   }
 
@@ -119,10 +142,18 @@ function UnlockStatusCard({
         <View style={{ flex: 1 }}>
           <Text style={[styles.cellsTitle, { color: colors.text }]}>Apps locked</Text>
           <Text style={[styles.lockedSub, { color: colors.muted }]}>
-            Pass a challenge to earn screen time
+            Unlocking them costs you Brainpower
           </Text>
         </View>
       </View>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onUnlock}
+        style={[styles.unlockBtn, styles.cardAction, { backgroundColor: colors.accent }]}
+      >
+        <LockOpen size={22} color="#FFFFFF" strokeWidth={2.4} />
+        <Text style={styles.unlockBtnText}>Unlock apps</Text>
+      </TouchableOpacity>
     </AnvilCard>
   );
 }
@@ -145,8 +176,8 @@ function SetupChecklist() {
       onPress: () => { hapticLight(); router.push('/(tabs)/lock'); },
     },
     {
-      title: 'Pass a challenge to unlock',
-      description: 'Complete a challenge to earn screen time',
+      title: 'Train your brain',
+      description: 'Play your first Brain Gym rep',
       done: progress.gamesPlayed > 0,
       onPress: () => { hapticLight(); router.push('/(tabs)/games'); },
     },
@@ -230,11 +261,13 @@ function SetupChecklist() {
 export default function HomeScreen() {
   const {
     progress, settings, appsUnlocked, unlockExpiresAt, unlockTotalMs, checkUnlockExpiry, relockApps,
+    brainScore, unlockApps, dailyWorkoutDone,
   } = useStore();
   const insets = useSafeAreaInsets();
   const { colors } = useThemeColors();
 
   const [streakOpen, setStreakOpen] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
 
   useEffect(() => {
     const id = setInterval(checkUnlockExpiry, 30000);
@@ -244,7 +277,20 @@ export default function HomeScreen() {
   const handleUnlock = () => {
     hapticLight();
     track('unlock_opened', { source: 'home' });
-    router.push('/(tabs)/games');
+    setUnlockOpen(true);
+  };
+
+  // Pick a duration → unlock straight away. Longer = more brain rot.
+  const UNLOCK_OPTIONS = [
+    { mins: 15, rot: 15 },
+    { mins: 30, rot: 30 },
+    { mins: 60, rot: 60 },
+  ];
+  const confirmUnlock = (mins: number) => {
+    hapticLight();
+    track('unlock_confirmed', { source: 'home', minutes: mins });
+    setUnlockOpen(false);
+    unlockApps(mins);
   };
 
   const handleRelock = () => {
@@ -258,8 +304,6 @@ export default function HomeScreen() {
     router.push('/(tabs)/lock');
   };
 
-  const isBlocking = settings.screenTimeAppCount > 0;
-
   const handleOpenStreak = () => {
     hapticLight();
     setStreakOpen(true);
@@ -272,7 +316,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.xl,
-          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingBottom: insets.bottom + 120,
           paddingHorizontal: Spacing.xl,
         }}
       >
@@ -301,7 +345,117 @@ export default function HomeScreen() {
 
         <View style={{ height: Spacing.xl }} />
 
-        {/* Unlock status (countdown or locked) */}
+        {/* Brainpower Score - the spine of the app. Unmeasured users get the
+            benchmark CTA; measured users see the live number they're managing. */}
+        <FadeInView delay={30}>
+          {brainScore === null ? (
+            <AnvilCard padding="lg">
+              <View style={styles.rotEmptyRow}>
+                <View style={[styles.rotEmptyIcon, { backgroundColor: `${colors.accent}1A`, borderColor: `${colors.accent}40` }]}>
+                  <Brain size={22} color={colors.accent} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rotEmptyTitle, { color: colors.text }]}>
+                    What's your Brainpower Score?
+                  </Text>
+                  <Text style={[styles.rotEmptySub, { color: colors.muted }]}>
+                    60-second benchmark sets your baseline.
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={() => { hapticLight(); track('benchmark_opened', { source: 'home' }); startBenchmark(); }}
+                style={[styles.rotBenchBtn, { backgroundColor: colors.accent }]}
+              >
+                <Text style={styles.rotBenchBtnText}>Take the benchmark</Text>
+              </TouchableOpacity>
+            </AnvilCard>
+          ) : (
+            <AnvilCard padding="lg">
+              <View style={styles.rotRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rotEyebrow, { color: colors.muted }]}>BRAINPOWER SCORE</Text>
+                  <Text style={[styles.rotScore, { color: colors.accent }]}>{Math.round(brainScore)}</Text>
+                </View>
+                <View style={[styles.rotPill, { backgroundColor: `${colors.accent}1A`, borderColor: `${colors.accent}33` }]}>
+                  <Text style={[styles.rotPillText, { color: colors.accent }]}>
+                    {scoreBand(brainScore).emoji} {scoreBand(brainScore).label.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              {(() => {
+                const rank = getRank(Math.round(brainScore));
+                return (
+                  <>
+                    <View style={[styles.rotTrack, { backgroundColor: colors.cardAlt }]}>
+                      <View style={[styles.rotFill, { width: `${Math.max(3, Math.round(rank.progress * 100))}%`, backgroundColor: colors.accent }]} />
+                    </View>
+                    <Text style={[styles.rankToNext, { color: colors.muted }]}>
+                      {rank.isMax ? 'Top rank reached' : `${rank.toNext} pts to ${rank.nextEmoji} ${rank.nextName}`}
+                    </Text>
+                  </>
+                );
+              })()}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => { hapticLight(); router.push('/(tabs)/games'); }}
+                style={styles.rotGymLink}
+              >
+                <Text style={[styles.rotGymText, { color: colors.accent }]}>Raise it in the Brain Gym</Text>
+                <ChevronRight size={16} color={colors.accent} strokeWidth={2.4} />
+              </TouchableOpacity>
+            </AnvilCard>
+          )}
+        </FadeInView>
+
+        {/* Today's Brain Workout - prescribed daily set, +12 on full completion */}
+        <View style={{ height: Spacing.lg }} />
+        <FadeInView delay={45}>
+          {(() => {
+            const workout = getTodaysWorkout(new Date().toISOString().split('T')[0]);
+            const allDone = workout.every((w) => dailyWorkoutDone.includes(w.key));
+            return (
+              <AnvilCard padding="lg">
+                <View style={styles.wkHead}>
+                  <Text style={[styles.wkTitle, { color: colors.muted }]}>TODAY'S BRAIN WORKOUT</Text>
+                  <View style={[styles.wkRewardPill, { backgroundColor: `${colors.accent}1A` }]}>
+                    <Text style={[styles.wkRewardText, { color: colors.accent }]}>
+                      {allDone ? `✓ Claimed +${WORKOUT_REWARD}` : `+${WORKOUT_REWARD} Brainpower`}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ height: 6 }} />
+                {workout.map((w, i) => {
+                  const done = dailyWorkoutDone.includes(w.key);
+                  return (
+                    <TouchableOpacity
+                      key={w.key}
+                      activeOpacity={0.8}
+                      disabled={done}
+                      onPress={() => { hapticLight(); router.push(w.route as any); }}
+                      style={[styles.wkRow, i < workout.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                    >
+                      <View style={[styles.wkCheck, { borderColor: done ? colors.accent : colors.border, backgroundColor: done ? colors.accent : 'transparent' }]}>
+                        {done && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.wkLabel, { color: colors.text, opacity: done ? 0.55 : 1, textDecorationLine: done ? 'line-through' : 'none' }]}>{w.label}</Text>
+                        <Text style={[styles.wkBlurb, { color: colors.muted }]}>{w.blurb}</Text>
+                      </View>
+                      {!done && <ChevronRight size={18} color={colors.muted} strokeWidth={2.2} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </AnvilCard>
+            );
+          })()}
+        </FadeInView>
+
+        <View style={{ height: Spacing.lg }} />
+
+        {/* Unlock status + primary action, together in one card. The action
+            (unlock / lock-now / block) is paired with the status it reacts to. */}
         <FadeInView delay={60}>
           <UnlockStatusCard
             appsUnlocked={appsUnlocked}
@@ -309,41 +463,10 @@ export default function HomeScreen() {
             unlockTotalMs={unlockTotalMs}
             isBlocking={settings.screenTimeAppCount > 0}
             onTimerExpired={checkUnlockExpiry}
+            onUnlock={handleUnlock}
+            onRelock={handleRelock}
+            onBlock={handleBlock}
           />
-        </FadeInView>
-
-        <View style={{ height: Spacing.lg }} />
-
-        {/* Primary action depends on state: block apps → unlock → lock early */}
-        <FadeInView delay={120}>
-          {appsUnlocked ? (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleRelock}
-              style={[styles.relockBtn, { borderColor: colors.borderStrong, backgroundColor: colors.card }]}
-            >
-              <Lock size={20} color={colors.text} strokeWidth={2.2} />
-              <Text style={[styles.relockBtnText, { color: colors.text }]}>Lock apps now</Text>
-            </TouchableOpacity>
-          ) : isBlocking ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={handleUnlock}
-              style={[styles.unlockBtn, { backgroundColor: colors.accent }]}
-            >
-              <LockOpen size={22} color="#FFFFFF" strokeWidth={2.4} />
-              <Text style={styles.unlockBtnText}>Unlock apps</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={handleBlock}
-              style={[styles.unlockBtn, { backgroundColor: colors.accent }]}
-            >
-              <Lock size={22} color="#FFFFFF" strokeWidth={2.4} />
-              <Text style={styles.unlockBtnText}>Block apps</Text>
-            </TouchableOpacity>
-          )}
         </FadeInView>
 
         {/* Setup checklist - only while incomplete */}
@@ -359,11 +482,92 @@ export default function HomeScreen() {
         longestStreak={progress.longestStreak}
         weeklyPoints={progress.weeklyPoints}
       />
+
+      {/* Unlock duration picker - tap to scroll, at the cost of your rot score */}
+      <Modal
+        visible={unlockOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUnlockOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setUnlockOpen(false)}
+          style={styles.unlockBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} style={[styles.unlockSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.unlockSheetTitle, { color: colors.text }]}>Unlock your apps</Text>
+            <Text style={[styles.unlockSheetSub, { color: colors.muted }]}>
+              Scrolling lowers your Brainpower Score. The longer you open, the more it costs.
+            </Text>
+            <View style={{ height: 16 }} />
+            {UNLOCK_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.mins}
+                activeOpacity={0.85}
+                onPress={() => confirmUnlock(opt.mins)}
+                style={[styles.unlockOption, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.unlockOptionMins, { color: colors.text }]}>{opt.mins} minutes</Text>
+                </View>
+                <View style={[styles.unlockCostPill, { backgroundColor: `${colors.accent}1A` }]}>
+                  <Text style={[styles.unlockCostText, { color: colors.accent }]}>−{opt.rot} score</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Unlock duration picker
+  unlockBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  unlockSheet: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1,
+    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40,
+  },
+  unlockSheetTitle: { fontSize: 22, fontFamily: FontFamily.semibold, letterSpacing: -0.4 },
+  unlockSheetSub: { fontSize: 14, fontFamily: FontFamily.regular, lineHeight: 20, marginTop: 6 },
+  unlockOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 18, marginBottom: 10,
+  },
+  unlockOptionMins: { fontSize: 17, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+  unlockCostPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  unlockCostText: { fontSize: 13, fontFamily: FontFamily.semibold, letterSpacing: 0.2 },
+
+  // Brain Rot hero
+  rotRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  rotEyebrow: { fontSize: 11, fontFamily: FontFamily.medium, letterSpacing: 1.6, marginBottom: 2 },
+  rotScore: { fontSize: 56, fontFamily: FontFamily.medium, letterSpacing: -2, lineHeight: 60, fontVariant: ['tabular-nums'] },
+  rotPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, marginTop: 4 },
+  rotPillText: { fontSize: 11, fontFamily: FontFamily.semibold, letterSpacing: 0.8 },
+  rotTrack: { height: 8, borderRadius: 4, overflow: 'hidden', marginTop: 12 },
+  rotFill: { height: '100%', borderRadius: 4 },
+  rotGymLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 14 },
+  rankToNext: { fontSize: 12, fontFamily: FontFamily.medium, letterSpacing: 0.1, marginTop: 7 },
+  // Today's Brain Workout
+  wkHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wkTitle: { fontSize: 12, fontFamily: FontFamily.medium, letterSpacing: 1.6 },
+  wkRewardPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  wkRewardText: { fontSize: 12, fontFamily: FontFamily.semibold, letterSpacing: 0.2 },
+  wkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
+  wkCheck: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  wkLabel: { fontSize: 16, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+  wkBlurb: { fontSize: 12, fontFamily: FontFamily.regular, marginTop: 1 },
+  rotGymText: { fontSize: 14, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+  // Unmeasured state
+  rotEmptyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  rotEmptyIcon: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  rotEmptyTitle: { fontSize: 16, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+  rotEmptySub: { fontSize: 13, fontFamily: FontFamily.regular, marginTop: 2 },
+  rotBenchBtn: { height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  rotBenchBtnText: { color: '#FFFFFF', fontSize: 15, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+
   root: { flex: 1 },
 
   // Brand row
@@ -389,6 +593,9 @@ const styles = StyleSheet.create({
   },
   progressTrack: { height: 10, borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
+
+  // Action button sitting inside the unlock-status card, below its content.
+  cardAction: { marginTop: 14 },
 
   // Primary unlock button
   unlockBtn: {

@@ -10,11 +10,14 @@ interface OnboardingLayoutProps {
     children: ReactNode;
     /** Current step index (1-based) for the top progress bar. Omit to hide bar. */
     step?: number;
-    /** Total step count for the progress bar. Defaults to 18 (matches the full flow). */
+    /** Total step count for the progress bar. Defaults to 16 (matches the full flow). */
     totalSteps?: number;
+    /** Hide the warm ambient orbs. Use on dense screens (e.g. paywall) where
+     *  the background blobs add visual noise behind the content. */
+    hideOrbs?: boolean;
 }
 
-export default function OnboardingLayout({ children, step, totalSteps = 18 }: OnboardingLayoutProps) {
+export default function OnboardingLayout({ children, step, totalSteps = 16, hideOrbs = false }: OnboardingLayoutProps) {
     const { colors } = useThemeColors();
     const insets = useSafeAreaInsets();
     const showProgress = typeof step === 'number';
@@ -22,10 +25,15 @@ export default function OnboardingLayout({ children, step, totalSteps = 18 }: On
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Warm ambient orbs - pulled from theme accent so they track
-                the rest of the app, not a stale brand red. */}
-            <View pointerEvents="none" style={[styles.glowOrb1, { backgroundColor: colors.accentLight }]} />
-            <View pointerEvents="none" style={[styles.glowOrb2, { backgroundColor: colors.accentGlow }]} />
-            <View pointerEvents="none" style={[styles.glowOrb3, { backgroundColor: colors.accentLight }]} />
+                the rest of the app, not a stale brand red. Hidden on dense
+                screens (paywall) where they add background noise. */}
+            {!hideOrbs && (
+                <>
+                    <View pointerEvents="none" style={[styles.glowOrb1, { backgroundColor: colors.accentLight }]} />
+                    <View pointerEvents="none" style={[styles.glowOrb2, { backgroundColor: colors.accentGlow }]} />
+                    <View pointerEvents="none" style={[styles.glowOrb3, { backgroundColor: colors.accentLight }]} />
+                </>
+            )}
 
             {showProgress && (
                 <View style={[styles.progressWrap, { paddingTop: insets.top + 6 }]}>

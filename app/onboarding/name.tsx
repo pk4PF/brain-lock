@@ -6,6 +6,7 @@ import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
 import OnboardingButton from '../../src/components/onboarding/OnboardingButton';
+import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
 import { Eyebrow, SectionHeading, MutedText } from '../../src/components/ui/anvil';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
@@ -26,8 +27,8 @@ export default function NameScreen() {
   };
 
   return (
-    <OnboardingLayout step={4} totalSteps={12}>
-      {/* No back button - this is the entry screen of the onboarding. */}
+    <OnboardingLayout step={4} totalSteps={15}>
+      <OnboardingBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -52,7 +53,7 @@ export default function NameScreen() {
             <View style={{ height: 10 }} />
             <FadeUp delay={160}>
               <MutedText size="md">
-                First name is fine.
+                You can change this anytime in your profile.
               </MutedText>
             </FadeUp>
           </View>

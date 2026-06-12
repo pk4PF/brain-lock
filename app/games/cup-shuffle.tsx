@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SoccerBall } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { CupShuffleIll } from '../../src/components/games/GameIllustrations';
 import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
 import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { advanceBenchmark } from '../../src/utils/benchmark';
 import { CUP_TARGET } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['cup-shuffle'].hue;
@@ -25,6 +27,12 @@ const LIFT = 56;
 const BALLSIZE = 32;
 const MAX_CUPS = 5;
 const MAX_ROUNDS = 5; // short + brutal: 5 clean rounds = win (built for quick clips)
+
+// Onboarding demo: gentler + shorter. 3 cups, 2 rounds, then straight to the
+// "here's how unlocking works" screen. Forgiving — a wrong pick still advances.
+const DEMO_CUPS = 3;
+const DEMO_ROUNDS = 2;
+const DEMO_NEXT_ROUTE = '/onboarding/demo-spend';
 
 type Phase = 'intro' | 'reveal' | 'shuffle' | 'pick' | 'result';
 
@@ -53,8 +61,14 @@ function creditsForCups(cleared: number): number {
 export default function CupShuffleScreen() {
   const { colors } = useThemeColors();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
-  const target = CUP_TARGET[difficulty]; // rounds to survive = win
-  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
+  const params = useLocalSearchParams<{ demo?: string; benchmark?: string; bm?: string }>();
+  const isDemo = params.demo === '1';
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
+  // Demo wins after DEMO_ROUNDS; real game uses the difficulty target.
+  const target = isDemo ? DEMO_ROUNDS : CUP_TARGET[difficulty];
+  const cupsFor = (cleared: number) => (isDemo ? DEMO_CUPS : cupCountFor(cleared));
+  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall, setBenchmarkScore } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [cupCount, setCupCount] = useState(3);
@@ -103,7 +117,7 @@ export default function CupShuffleScreen() {
   });
 
   const runRound = async (clearedSoFar: number) => {
-    const n = cupCountFor(clearedSoFar);
+    const n = cupsFor(clearedSoFar);
 
     // First round only: lay the cups out and reveal the ball ONCE. Every
     // round after that just keeps shuffling the same ball from wherever the
@@ -144,10 +158,9 @@ export default function CupShuffleScreen() {
   };
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
-    track(Events.GameStarted, { game: 'cup-shuffle' });
+    track(Events.GameStarted, { game: 'cup-shuffle', demo: isDemo });
     setCleared(0);
-    ballRef.current = Math.floor(Math.random() * cupCountFor(0)); // pick the ball once
+    ballRef.current = Math.floor(Math.random() * cupsFor(0)); // pick the ball once
     startTime.current = Date.now();
     runRound(0);
   };
@@ -156,18 +169,22 @@ export default function CupShuffleScreen() {
     if (phase !== 'pick') return;
     setPhase('reveal'); // lock input
     hapticLight();
+    soundTap();
     await lift(cupId, true);
     const correct = cupId === ballCupId;
     if (correct) {
+      soundCorrect();
       const next = cleared + 1;
       setCleared(next);
       await wait(550);
       if (!aliveRef.current) return;
       await lift(cupId, false);
       if (next >= target) { finishGame(next); return; } // hit the difficulty target = win
+      soundRound();
       runRound(next);
     } else {
       hapticMedium();
+      soundWrong();
       if (ballCupId !== cupId) await lift(ballCupId, true); // show where it was
       await wait(700);
       finishGame(cleared);
@@ -175,13 +192,24 @@ export default function CupShuffleScreen() {
   };
 
   const finishGame = (finalCleared: number) => {
+    // Demo: no scoring/unlock, just move on to the "how unlocking works" beat.
+    // replace (not push) so back from demo-spend returns to the demo intro,
+    // not into the game.
+    if (isDemo) {
+      soundComplete();
+      router.replace(DEMO_NEXT_ROUTE);
+      return;
+    }
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForCups(finalCleared);
     const passed = finalCleared >= target;
+    if (passed) soundComplete(); else soundFail();
     recordGame('cup-shuffle', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
-    recordCognitiveScore('attention', Math.min(100, finalCleared * 12));
+    const attnScore = Math.min(100, finalCleared * 12);
+    recordCognitiveScore('attention', attnScore);
+    if (isBenchmark) { setBenchmarkScore(String(bmIndex), attnScore); advanceBenchmark(bmIndex); return; }
     setEarnedCredits(credits);
     track(Events.GameCompleted, { game: 'cup-shuffle', rounds: finalCleared, passed, credits: passed ? credits : 0 });
     setPhase('result');
@@ -217,8 +245,6 @@ export default function CupShuffleScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<SoccerBall size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={cleared}
           subtitle="Rounds tracked"

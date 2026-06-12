@@ -5,6 +5,7 @@ import { Sparkle } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundComplete, soundFail } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -133,6 +134,7 @@ export default function MemoryScreen() {
     if (!card || card.flipped || card.matched) return;
     if (flippedIdsRef.current.includes(id)) return;
     hapticLight();
+    soundTap();
     const newDeck = deck.map((c) => (c.id === id ? { ...c, flipped: true } : c));
     const newFlipped = [...flippedIdsRef.current, id];
     flippedIdsRef.current = newFlipped;
@@ -150,6 +152,7 @@ export default function MemoryScreen() {
           flippedIdsRef.current = [];
           lockRef.current = false;
           hapticMedium();
+          soundCorrect();
           const remaining = newDeck.filter((c) => !c.matched && c.id !== a.id && c.id !== b.id);
           if (remaining.length === 0) finishGame(Date.now() - startedAt);
         }, 350);
@@ -170,9 +173,10 @@ export default function MemoryScreen() {
     setEarnedCredits(credits);
     setElapsedMs(durationMs);
     setGameState('result');
-    if (isDemo) setDemoGameScore(seconds);
+    if (isDemo) { soundComplete(); setDemoGameScore(seconds); }
     else {
       const passed = seconds <= MEMORY_SECONDS[difficulty];
+      if (passed) soundComplete(); else soundFail();
       // completeDailyGame internally calls earnReward - don't double-award.
       if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
       setResultMsg(pickResultMessage(passed));
@@ -220,8 +224,6 @@ export default function MemoryScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Sparkle size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={isDemo ? label(finishedSeconds) : resultMsg.title}
-          message={isDemo ? undefined : resultMsg.line}
           passed={passed}
           bigStat={finishedSeconds}
           bigStatSuffix="s"

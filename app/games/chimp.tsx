@@ -5,6 +5,7 @@ import { SortAscending } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -82,7 +83,6 @@ export default function ChimpScreen() {
   };
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'chimp' });
     setMaxCleared(0);
     setCount(START_COUNT);
@@ -98,11 +98,13 @@ export default function ChimpScreen() {
     if (num !== nextExpected) {
       // Wrong order → sudden death.
       hapticMedium();
+      soundWrong();
       finishGame(maxCleared);
       return;
     }
 
     hapticLight();
+    soundTap();
     // First correct tap hides every remaining number.
     if (nextExpected === 1) setNumbersHidden(true);
     const newCleared = new Set(cleared);
@@ -111,11 +113,13 @@ export default function ChimpScreen() {
 
     if (nextExpected >= count) {
       // Round complete.
+      soundCorrect();
       const newMax = Math.max(maxCleared, count);
       setMaxCleared(newMax);
       if (count >= MAX_COUNT) {
         finishGame(newMax);
       } else {
+        soundRound();
         timerRef.current = setTimeout(() => {
           const next = count + 1;
           setCount(next);
@@ -132,6 +136,7 @@ export default function ChimpScreen() {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForChimp(finalMax);
     const passed = finalMax >= CHIMP_LEVEL[difficulty];
+    if (passed) soundComplete(); else soundFail();
     recordGame('chimp', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
@@ -171,8 +176,6 @@ export default function ChimpScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<SortAscending size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={maxCleared}
           subtitle="Numbers held in memory"

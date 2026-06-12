@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { ScrollView, Switch, TouchableOpacity, TextInput, Linking, View, Text, StyleSheet } from 'react-native';
 import {
-  Zap, Volume2, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield, ChevronRight, User,
+  Zap, Volume2, Sun, Moon, Smartphone, Check, Pencil, FileText, Shield, ChevronRight, User, Mail,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../src/store/useStore';
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.xl,
-          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingBottom: insets.bottom + 120,
           paddingHorizontal: Spacing.xl,
         }}
       >
@@ -205,6 +205,24 @@ export default function ProfileScreen() {
             >
               <Shield size={18} color={colors.muted} strokeWidth={1.8} />
               <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Privacy policy</Text>
+              <ChevronRight size={16} color={colors.muted} strokeWidth={2} />
+            </TouchableOpacity>
+          </AnvilCard>
+        </FadeInView>
+
+        {/* Contact */}
+        <FadeInView delay={360}>
+          <View style={styles.sectionLabelRow}>
+            <Eyebrow style={{ marginBottom: 0 }}>Support</Eyebrow>
+          </View>
+          <AnvilCard padding="md">
+            <TouchableOpacity
+              activeOpacity={0.6}
+              onPress={() => Linking.openURL('mailto:contact@pltbk.com')}
+              style={[styles.row, { paddingVertical: 12 }]}
+            >
+              <Mail size={18} color={colors.muted} strokeWidth={1.8} />
+              <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]}>Contact us</Text>
               <ChevronRight size={16} color={colors.muted} strokeWidth={2} />
             </TouchableOpacity>
           </AnvilCard>

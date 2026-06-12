@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Lightning } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundComplete, soundFail } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { BlockTappingIll } from '../../src/components/games/GameIllustrations';
 import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
 import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { advanceBenchmark } from '../../src/utils/benchmark';
 import { BLOCKTAP_MS } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents['block-tap'].hue;
@@ -35,7 +37,10 @@ function creditsForAvg(avgMs: number): number {
 export default function BlockTapScreen() {
   const { colors } = useThemeColors();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
-  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
+  const params = useLocalSearchParams<{ benchmark?: string; bm?: string }>();
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
+  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall, setBenchmarkScore } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [targetIdx, setTargetIdx] = useState<number | null>(null);
@@ -55,7 +60,6 @@ export default function BlockTapScreen() {
   }, []);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'block-tap' });
     setTapsDone(0);
     setTimes([]);
@@ -68,6 +72,7 @@ export default function BlockTapScreen() {
   const handleCellPress = (idx: number) => {
     if (idx !== targetIdx || targetIdx === null) return;
     hapticLight();
+    soundTap();
     const elapsed = Date.now() - targetShownAt.current;
     const newTimes = [...times, elapsed];
     setTimes(newTimes);
@@ -85,12 +90,14 @@ export default function BlockTapScreen() {
     const avg = Math.round(allTimes.reduce((a, b) => a + b, 0) / allTimes.length);
     const credits = creditsForAvg(avg);
     const passed = avg <= BLOCKTAP_MS[difficulty];
+    if (passed) soundComplete(); else soundFail();
     recordGame('block-tap', passed, totalElapsed);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
     // Speed map: <500ms = 100, 1500ms = 0.
     const speedScore = Math.max(0, Math.min(100, 100 - (avg - 500) * (100 / 1000)));
     recordCognitiveScore('speed', speedScore);
+    if (isBenchmark) { setBenchmarkScore(String(bmIndex), speedScore); advanceBenchmark(bmIndex); return; }
     setEarnedCredits(credits);
     track(Events.GameCompleted, { game: 'block-tap', avg_ms: avg, passed, credits: passed ? credits : 0 });
     setPhase('result');
@@ -128,8 +135,6 @@ export default function BlockTapScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Lightning size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={avgMs}
           bigStatSuffix="ms"

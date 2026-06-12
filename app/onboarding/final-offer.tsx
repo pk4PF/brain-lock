@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   BackHandler,
   Animated,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, X as XIcon } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
@@ -21,42 +21,53 @@ import { usePaywallPurchase } from '../../src/components/paywall/usePaywallPurch
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 
 const POST_PURCHASE_ROUTE = '/(tabs)' as const;
+const numeric = (s: string) => Number(s.replace(/[^\d.]/g, '')) || 0;
 
-// Discount config. Source-of-truth display values; the actual purchase still
-// runs against the regular annual RevenueCat product. To make the £24.99
-// price real you must configure an introductory offer on the annual product
-// in App Store Connect. The display copy here is purely marketing.
-const DISCOUNTED_YEARLY = 24.99;
-const DISCOUNTED_PER_MONTH = DISCOUNTED_YEARLY / 12;
-const FULL_MONTHLY = 12.99;
-const DISCOUNT_PCT = Math.round((1 - DISCOUNTED_YEARLY / (FULL_MONTHLY * 12)) * 100);
-
+// Mirrors the paywall value strip so the winback shows the full offer.
 const BULLETS: string[] = [
-  'Lowest price ever. Limited offer.',
-  'Put your brain back in charge.',
-  'Train memory, attention, speed, recall.',
-  'Earn your screen time. For real this time.',
+  'Your Brainpower Score, measured daily',
+  "Today's Brain Workout, fresh every day",
+  '15+ brain games, unlimited plays',
+  'Block the apps that rot your brain',
+  'Track every cognitive area as you train',
+  'Climb the ranks, all the way to Elite',
 ];
 
 export default function FinalOfferScreen() {
   useOnboardingStepView('final_offer');
   const insets = useSafeAreaInsets();
   const { colors } = useThemeColors();
-  const { isPremium, completeOnboarding } = useStore();
+  const { isPremium, completeOnboarding, markWinbackSeen } = useStore();
+
+  // One-time offer: the moment it's on screen, burn it. Even if they swipe
+  // away without buying, the paywall won't route here a second time.
+  useEffect(() => {
+    markWinbackSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     loading,
     purchasing,
-    setSelectedPlan,
+    annualPrice,
+    winbackPrice,
     purchase,
   } = usePaywallPurchase({ visible: true, source: 'final-offer' });
 
-  // Force-select annual on this screen - the offer is annual-only.
-  useEffect(() => {
-    setSelectedPlan('annual');
-  }, []);
+  const off = (() => {
+    const a = numeric(annualPrice);
+    const wb = numeric(winbackPrice);
+    return a > 0 ? Math.max(0, Math.round((1 - wb / a) * 100)) : 0;
+  })();
 
-  // Hard-gate Android back so users can't escape without a decision.
+  // Per-week equivalent of the winback annual price, so the yearly figure
+  // reads as tiny (e.g. £24.99/yr ≈ £0.48 a week).
+  const winbackPerWeek = (() => {
+    const wb = numeric(winbackPrice);
+    const sym = winbackPrice.replace(/[\d.,\s]/g, '') || '£';
+    return wb > 0 ? `${sym}${(wb / 52).toFixed(2)}` : '';
+  })();
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => sub.remove();
@@ -72,7 +83,6 @@ export default function FinalOfferScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPremium]);
 
-  // Subtle entrance animation
   const headlineAnim = useRef(new Animated.Value(0)).current;
   const bulletsAnim = useRef(new Animated.Value(0)).current;
   const priceAnim = useRef(new Animated.Value(0)).current;
@@ -90,16 +100,6 @@ export default function FinalOfferScreen() {
   });
 
   const handleClaim = () => purchase(finishOnboarding);
-  // Closing the offer must NOT mark the user as onboarded - that gives free
-  // access to the app. Send them back to the paywall instead so the only
-  // way out is paying or restoring.
-  const handleClose = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/onboarding/paywall');
-    }
-  };
 
   return (
     <OnboardingLayout>
@@ -109,28 +109,25 @@ export default function FinalOfferScreen() {
           { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 },
         ]}
       >
-        {/* Close (X) button to exit the offer */}
-        <TouchableOpacity
-          style={[styles.closeBtn, { top: insets.top + 12 }]}
-          onPress={handleClose}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <XIcon size={20} color={colors.muted} />
-        </TouchableOpacity>
-
         <ScrollView
           contentContainerStyle={styles.body}
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={[styles.headlineWrap, slideUp(headlineAnim)]}>
-            <Text style={[styles.eyebrow, { color: colors.muted }]}>
-              LIMITED TIME OFFER
-            </Text>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.eyebrow, { color: colors.accent }]}>ONE-TIME OFFER</Text>
             <Text style={[styles.bigOff, { color: colors.text }]}>
-              {DISCOUNT_PCT}% OFF
+              {off > 0 ? `${off}% off` : 'Half price'}
             </Text>
             <Text style={[styles.subline, { color: colors.secondary }]}>
-              Put your brain back in charge. You'll never see this price again.
+              A full year for {winbackPrice}. That&rsquo;s just {winbackPerWeek} a week.
+            </Text>
+            <Text style={[styles.urgency, { color: colors.accent }]}>
+              You&rsquo;ll only see this once.
             </Text>
           </Animated.View>
 
@@ -146,12 +143,8 @@ export default function FinalOfferScreen() {
           </Animated.View>
 
           <Animated.View style={[styles.priceRow, slideUp(priceAnim)]}>
-            <Text style={[styles.priceWas, { color: colors.muted }]}>
-              £{FULL_MONTHLY.toFixed(2)}/mo
-            </Text>
-            <Text style={[styles.priceNow, { color: colors.text }]}>
-              £{DISCOUNTED_PER_MONTH.toFixed(2)} / month
-            </Text>
+            <Text style={[styles.priceWas, { color: colors.muted }]}>{annualPrice}/yr</Text>
+            <Text style={[styles.priceNow, { color: colors.text }]}>{winbackPrice}/yr</Text>
           </Animated.View>
         </ScrollView>
 
@@ -163,11 +156,14 @@ export default function FinalOfferScreen() {
           ) : (
             <>
               <OnboardingButton
-                label={purchasing ? 'Processing…' : 'Claim my limited time offer'}
+                label={purchasing ? 'Processing…' : `Get it for ${winbackPrice}/year`}
                 onPress={purchasing ? () => {} : handleClaim}
               />
               <Text style={[styles.billedNote, { color: colors.muted }]}>
-                Billed yearly at £{DISCOUNTED_YEARLY.toFixed(2)} per year
+                Then {annualPrice}/year. Cancel anytime.
+              </Text>
+              <Text style={[styles.swipeHint, { color: colors.muted }]}>
+                Swipe back to skip
               </Text>
             </>
           )}
@@ -184,20 +180,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 40,
   },
-  closeBtn: {
-    position: 'absolute',
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    zIndex: 10,
-  },
   headlineWrap: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    marginBottom: 18,
   },
   eyebrow: {
     fontSize: 11,
@@ -217,6 +208,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: FontFamily.regular,
     textAlign: 'center',
+  },
+  urgency: {
+    fontSize: 13,
+    fontFamily: FontFamily.semibold,
+    textAlign: 'center',
+    letterSpacing: -0.1,
+    marginTop: 10,
   },
   bullets: {
     gap: 14,
@@ -274,5 +272,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     marginTop: 4,
     textAlign: 'center',
+  },
+  swipeHint: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
+    textAlign: 'center',
+    opacity: 0.75,
   },
 });

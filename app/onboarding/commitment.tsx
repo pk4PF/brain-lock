@@ -7,6 +7,7 @@ import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import { hapticLight, hapticSuccess } from '../../src/utils/haptics';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
+import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import LottieIcon from '../../src/components/LottieIcon';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { track, Events } from '../../src/services/analytics';
@@ -51,7 +52,7 @@ export default function CommitmentScreen() {
         hapticSuccess();
         setCommitted(true);
         track(Events.CommitmentLocked);
-        setTimeout(() => router.replace('/onboarding/paywall'), 900);
+        setTimeout(() => router.push('/onboarding/proof'), 900);
       }
     });
   };
@@ -87,7 +88,8 @@ export default function CommitmentScreen() {
   }, [holding]);
 
   return (
-    <OnboardingLayout step={12} totalSteps={12}>
+    <OnboardingLayout step={15} totalSteps={15}>
+      <OnboardingBackButton />
       {committed && (
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <View style={styles.confettiAnchor}>
@@ -121,7 +123,7 @@ export default function CommitmentScreen() {
             </Text>
 
             <Text style={[styles.pactBody, { color: colors.secondary }]}>
-              I'm ready to take back my time.
+              I'm locking in. Less brain rot, more brainpower.
             </Text>
           </Animated.View>
         </View>

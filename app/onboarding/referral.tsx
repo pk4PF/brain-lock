@@ -64,7 +64,7 @@ export default function ReferralScreen() {
   };
 
   return (
-    <OnboardingLayout step={3} totalSteps={12}>
+    <OnboardingLayout step={3} totalSteps={15}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <ScrollView

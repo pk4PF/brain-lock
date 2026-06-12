@@ -88,8 +88,7 @@ public class ScreenTimeModule: Module {
         AsyncFunction("blockApps") { [weak self] () -> Void in
             guard #available(iOS 16.0, *) else { return }
             self?.applyShieldsFromStore()
-            // If a stale unlock-window is still active, cancel it so the
-            // user's manual block takes precedence.
+            self?.startAlwaysBlockSchedule()
             DeviceActivityCenter().stopMonitoring([.unlockWindow])
             SharedDataStore.shared.appsUnlocked = false
         }
@@ -97,7 +96,7 @@ public class ScreenTimeModule: Module {
         AsyncFunction("unblockAll") { [weak self] () -> Void in
             guard #available(iOS 16.0, *) else { return }
             self?.removeAllShields()
-            DeviceActivityCenter().stopMonitoring([.unlockWindow])
+            DeviceActivityCenter().stopMonitoring()
             SharedDataStore.shared.appsUnlocked = false
         }
 
@@ -204,6 +203,7 @@ public class ScreenTimeModule: Module {
 
             print("[ScreenTimeModule] ensureBlocking: re-applying shields")
             self.applyShieldsFromStore()
+            self.startAlwaysBlockSchedule()
         }
     }
 
@@ -217,6 +217,28 @@ public class ScreenTimeModule: Module {
         managedStore.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
         managedStore.shield.webDomains = sel.webDomainTokens.isEmpty ? nil : sel.webDomainTokens
         print("[ScreenTimeModule] Shields applied: \(sel.applicationTokens.count) apps, \(sel.categoryTokens.count) categories")
+    }
+
+    @available(iOS 16.0, *)
+    private func startAlwaysBlockSchedule() {
+        let center = DeviceActivityCenter()
+        // A repeating midnight-to-midnight schedule. The system fires
+        // intervalDidStart on the monitor extension every day at 00:00,
+        // including after device reboots, so shields get re-applied
+        // without the user opening the app.
+        let schedule = DeviceActivitySchedule(
+            intervalStart: DateComponents(hour: 0, minute: 0),
+            intervalEnd: DateComponents(hour: 23, minute: 59),
+            repeats: true
+        )
+        // Don't stop-then-start — just start. If already monitoring this
+        // activity, startMonitoring replaces the existing schedule.
+        do {
+            try center.startMonitoring(.alwaysBlock, during: schedule)
+            print("[ScreenTimeModule] alwaysBlock schedule registered")
+        } catch {
+            print("[ScreenTimeModule] alwaysBlock schedule failed: \(error)")
+        }
     }
 
     @available(iOS 16.0, *)
@@ -234,4 +256,5 @@ public class ScreenTimeModule: Module {
 @available(iOS 16.0, *)
 extension DeviceActivityName {
     static let unlockWindow = Self("unlockWindow")
+    static let alwaysBlock = Self("alwaysBlock")
 }

@@ -7,6 +7,7 @@ import { Check, X as XIcon } from 'lucide-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium, hapticSuccess } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -14,6 +15,7 @@ import { ShapeRecallIll } from '../../src/components/games/GameIllustrations';
 import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
 import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
 import { TILE_LEVEL } from '../../src/constants/gameDifficulty';
+import { advanceBenchmark } from '../../src/utils/benchmark';
 
 const HUE = GameAccents['tile-recall'].hue;
 // Lighter gradient stop for the lit-tile fill. Same hue, brighter - gives
@@ -25,11 +27,11 @@ const SHOW_MS_DEMO = 2200;       // longer for first-timers
 const START_LEVEL = 3;           // tiles in round 1
 const MAX_LEVEL = 12;            // up to 12 tiles - elite working-memory territory
 const DEMO_LEVELS = [3, 4, 5];   // onboarding demo: three short rounds
+const BENCHMARK_LEVELS = [4, 5, 6]; // benchmark: 3 forgiving rounds, scored on accuracy
 
-// Demo route after the demo run. Lands on demo-earn first (celebration
-// "+5 cells" beat with confetti) before demo-spend so the user sees the
-// reward moment they just earned before being asked to spend it.
-const DEMO_NEXT_ROUTE = '/onboarding/demo-earn';
+// Demo route after the demo run. Straight to demo-spend (the unlock
+// moment) — the separate "you earned it" celebration screen was cut.
+const DEMO_NEXT_ROUTE = '/onboarding/demo-spend';
 
 type Phase = 'intro' | 'show' | 'recall' | 'result';
 
@@ -58,12 +60,21 @@ function creditsForLevel(maxLevel: number): number {
 export default function TileRecallScreen() {
   const { colors } = useThemeColors();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
-  const params = useLocalSearchParams<{ demo?: string }>();
+  const params = useLocalSearchParams<{ demo?: string; benchmark?: string; bm?: string }>();
   const isDemo = params.demo === '1';
+  // Benchmark run: this play is one step of the multi-test benchmark. It
+  // records its raw memory score, then advances to the next test.
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
+  // Demo + benchmark both run a fixed, forgiving set of rounds (no sudden
+  // death) — that's how the benchmark stays a fair 3-round measurement and
+  // never bails to the next test on a single mis-tap.
+  const isScripted = isDemo || isBenchmark;
+  const scriptedLevels = isDemo ? DEMO_LEVELS : BENCHMARK_LEVELS;
 
   const {
     completeDailyGame, recordGame, recordCognitiveScore, earnReward,
-    canEarnToday, setShowPaywall,
+    canEarnToday, setShowPaywall, setBenchmarkScore,
   } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -77,6 +88,9 @@ export default function TileRecallScreen() {
   const [maxLevel, setMaxLevel] = useState(0);
   const [earnedCredits, setEarnedCredits] = useState(0);
   const [resultMsg, setResultMsg] = useState<ResultMessage>(() => pickResultMessage(true));
+  const [totalCorrect, setTotalCorrect] = useState(0);
+  const [totalTaps, setTotalTaps] = useState(0);
+  const [brainpowerScore, setBrainpowerScore] = useState(0);
 
   const startTime = useRef(0);
   const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,7 +152,7 @@ export default function TileRecallScreen() {
     });
 
     // Hand off to recall phase after the show window.
-    const showMs = isDemo ? SHOW_MS_DEMO : SHOW_MS;
+    const showMs = isScripted ? SHOW_MS_DEMO : SHOW_MS;
     phaseTimerRef.current = setTimeout(() => {
       // Fade lit cells back down.
       Array.from(next).forEach((idx) => {
@@ -155,20 +169,24 @@ export default function TileRecallScreen() {
 
   const startGame = () => {
     // Demo mode never paywalls and doesn't burn the daily counter.
-    if (!isDemo && !canEarnToday()) { setShowPaywall(true); return; }
+    // Benchmark runs are always free - measuring your rot is never paywalled.
     track(Events.GameStarted, { game: 'tile-recall', demo: isDemo });
     setMaxLevel(0);
     setDemoStep(0);
     setDemoCorrectTotal(0);
     setDemoTilesTotal(0);
+    setTotalCorrect(0);
+    setTotalTaps(0);
+    setBrainpowerScore(0);
     startTime.current = Date.now();
-    beginRound(isDemo ? DEMO_LEVELS[0] : START_LEVEL);
+    beginRound(isScripted ? scriptedLevels[0] : START_LEVEL);
   };
 
   const handleCellTap = (idx: number) => {
     if (phase !== 'recall') return;
     if (tapped.has(idx)) return;
     hapticLight();
+    soundTap();
 
     const isRight = pattern.has(idx);
     const newTapped = new Set(tapped);
@@ -191,67 +209,83 @@ export default function TileRecallScreen() {
     setTimeout(() => setFeedback(null), 260);
 
     if (!isRight) {
-      // Production: end on first wrong tap.
-      if (!isDemo) {
-        hapticMedium();
-        finishGame(maxLevel);
-        return;
-      }
-      // Demo: count it as a miss but keep playing the round so the user
-      // actually finishes the demo flow (no "you failed" moment in onboarding).
+      hapticMedium();
+      soundWrong();
     }
 
     // Round complete when user has tapped `level` cells (right or wrong).
     if (newTapped.size >= level) {
-      const allRight = Array.from(pattern).every((i) => newTapped.has(i));
+      const correctThisRound = Array.from(newTapped).filter((i) => pattern.has(i)).length;
+      const allRight = correctThisRound === level;
 
-      if (isDemo) {
-        // Tally for the cognitive baseline score across both demo rounds.
-        const correctThisRound = Array.from(newTapped).filter((i) => pattern.has(i)).length;
+      if (isScripted) {
         const newCorrect = demoCorrectTotal + correctThisRound;
         const newTiles = demoTilesTotal + level;
         setDemoCorrectTotal(newCorrect);
         setDemoTilesTotal(newTiles);
 
         const nextStep = demoStep + 1;
-        if (nextStep >= DEMO_LEVELS.length) {
-          finishDemo(newCorrect, newTiles);
+        if (nextStep >= scriptedLevels.length) {
+          if (isDemo) finishDemo(newCorrect, newTiles);
+          else finishBenchmark(newCorrect, newTiles);
         } else {
           setDemoStep(nextStep);
-          // Brief pause so the user sees their feedback before next round.
-          phaseTimerRef.current = setTimeout(() => beginRound(DEMO_LEVELS[nextStep]), 900);
+          phaseTimerRef.current = setTimeout(() => beginRound(scriptedLevels[nextStep]), 900);
         }
         return;
       }
 
-      // Production: round complete. If perfect → next level. If any miss → end.
-      if (!allRight) {
-        finishGame(maxLevel);
-        return;
+      // Production: track accuracy, always advance to next level.
+      const newCorrect = totalCorrect + correctThisRound;
+      const newTaps = totalTaps + level;
+      setTotalCorrect(newCorrect);
+      setTotalTaps(newTaps);
+
+      let finalMax = maxLevel;
+      if (allRight) {
+        hapticSuccess();
+        soundCorrect();
+        finalMax = Math.max(maxLevel, level);
+        setMaxLevel(finalMax);
       }
-      hapticSuccess();
-      const newMax = Math.max(maxLevel, level);
-      setMaxLevel(newMax);
+
       if (level >= MAX_LEVEL) {
-        finishGame(newMax);
+        finishGame(finalMax, newCorrect, newTaps);
       } else {
+        soundRound();
         phaseTimerRef.current = setTimeout(() => beginRound(level + 1), 850);
       }
     }
   };
 
-  const finishGame = (finalMax: number) => {
+  const finishGame = (finalMax: number, finalCorrect: number, finalTaps: number) => {
     if (phaseTimerRef.current) { clearTimeout(phaseTimerRef.current); phaseTimerRef.current = null; }
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForLevel(finalMax);
     const passed = finalMax >= TILE_LEVEL[difficulty];
+    if (passed) soundComplete(); else soundFail();
     recordGame('tile-recall', passed, timeTaken);
-    if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
+    if (passed) doUnlock();
+
+    // Brainpower: accuracy^1.3 * 85 + speed bonus (max 15).
+    // 100 requires near-perfect accuracy across all 10 rounds AND fast recall.
+    const accuracy = finalTaps > 0 ? finalCorrect / finalTaps : 0;
+    const accuracyScore = Math.pow(accuracy, 1.3) * 85;
+    const totalRounds = MAX_LEVEL - START_LEVEL + 1;
+    const avgTimePerRound = timeTaken / totalRounds;
+    const speedBonus = Math.max(0, Math.min(15, 15 * (1 - (avgTimePerRound - 2) / 10)));
+    const bp = Math.min(100, Math.round(accuracyScore + speedBonus));
+    setBrainpowerScore(bp);
+
+    recordCognitiveScore('memory', bp);
+    if (isBenchmark) {
+      setBenchmarkScore(String(bmIndex), bp);
+      advanceBenchmark(bmIndex);
+      return;
+    }
     setResultMsg(pickResultMessage(passed));
-    // Memory map: each level cleared = ~12 points. Level 8 = 96.
-    recordCognitiveScore('memory', Math.min(100, finalMax * 12));
     setEarnedCredits(credits);
-    track(Events.GameCompleted, { game: 'tile-recall', max_level: finalMax, passed, credits: passed ? credits : 0 });
+    track(Events.GameCompleted, { game: 'tile-recall', max_level: finalMax, brainpower: bp, passed, credits: passed ? credits : 0 });
     setPhase('result');
   };
 
@@ -262,12 +296,21 @@ export default function TileRecallScreen() {
     // this around 8-15 in the bar (Warming up tier) - intentional open loop.
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
     recordCognitiveScore('memory', pct);
-    // Real reward so the demo-earn screen's "+5 cells" claim is truthful.
+    // Real reward so the demo's "+5 cells" framing stays truthful.
     // Bypasses completeDailyGame deliberately - we don't want the demo play
     // to burn the daily counter or to gate further free plays.
     earnReward(5);
     track(Events.GameCompleted, { game: 'tile-recall', demo: true, correct, total });
     router.push(DEMO_NEXT_ROUTE);
+  };
+
+  // Benchmark: score the 3 forgiving rounds on accuracy, then advance the
+  // benchmark sequence. No sudden death, so a single miss never bails early.
+  const finishBenchmark = (correct: number, total: number) => {
+    if (phaseTimerRef.current) { clearTimeout(phaseTimerRef.current); phaseTimerRef.current = null; }
+    const memScore = total > 0 ? Math.round((correct / total) * 100) : 0;
+    setBenchmarkScore(String(bmIndex), memScore);
+    advanceBenchmark(bmIndex);
   };
 
   const goHome = () => router.replace('/(tabs)');
@@ -282,14 +325,14 @@ export default function TileRecallScreen() {
           Illustration={<ShapeRecallIll size={88} />}
           title="Memory Tiles"
           blurb={
-            isDemo
+            isScripted
               ? "Tiles will light up. Remember where, then tap those spots."
-              : "Tiles flash. Remember where. Tap them back. Each level adds one."
+              : "Tiles flash. Remember where. Tap them back. 10 rounds, each harder than the last."
           }
           rules={
-            isDemo
-              ? ['🧠 Spatial memory', `⚡ ${DEMO_LEVELS.length} quick rounds`, '✅ No wrong answers']
-              : ['🧠 Spatial memory', `▶️ Starts at ${START_LEVEL} tiles`, '❌ One miss ends it']
+            isScripted
+              ? ['🧠 Spatial memory', `⚡ ${scriptedLevels.length} quick rounds`, '✅ No wrong answers']
+              : ['🧠 Spatial memory', `▶️ ${START_LEVEL} → ${MAX_LEVEL} tiles`, '⚡ Accuracy + speed = score']
           }
           startLabel={isDemo ? 'Try it' : 'Start'}
           onStart={startGame}
@@ -309,12 +352,10 @@ export default function TileRecallScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Brain size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
-          bigStat={maxLevel}
-          bigStatSuffix={maxLevel === 1 ? ' tile' : ' tiles'}
-          subtitle="Furthest level cleared"
+          bigStat={brainpowerScore}
+          bigStatSuffix="/100"
+          subtitle={`Brainpower · ${maxLevel} of ${MAX_LEVEL} levels perfect`}
           unlockMinutes={isUnlock && passed ? unlockMinutes : undefined}
           primaryLabel={passed ? 'Play again' : 'Try again'}
           onPrimary={startGame}
@@ -327,8 +368,8 @@ export default function TileRecallScreen() {
 
   // ── SHOW / RECALL ──
   const headerLabel = phase === 'show' ? 'Watch' : 'Recall';
-  const progressLabel = isDemo
-    ? `Round ${demoStep + 1} / ${DEMO_LEVELS.length}`
+  const progressLabel = isScripted
+    ? `Round ${demoStep + 1} / ${scriptedLevels.length}`
     : `Level ${level - START_LEVEL + 1} - ${level} tiles`;
 
   return (

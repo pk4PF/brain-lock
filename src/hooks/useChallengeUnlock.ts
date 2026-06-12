@@ -23,7 +23,7 @@ export function useChallengeUnlock() {
 
   /** Unlock the blocked apps for this difficulty's duration. No-op in practice. */
   const doUnlock = () => {
-    if (isUnlock) unlockApps(difficulty);
+    if (isUnlock) unlockApps(unlockMinutes);
   };
 
   return { isUnlock, difficulty, unlockMinutes, doUnlock };

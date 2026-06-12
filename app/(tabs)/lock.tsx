@@ -240,7 +240,7 @@ export default function LockScreen() {
   if (!isAuthorized) {
     heroDescription = 'Enable Screen Time to block distracting apps.';
   } else if (!hasApps) {
-    heroDescription = 'Pick apps to block. The only way back in is to play games to earn unlock minutes.';
+    heroDescription = 'Pick apps to block. You can unlock anytime from Home — but every unlock lowers your Brainpower Score.';
   } else if (appsUnlocked) {
     heroStat = String(remainingUnlockMins);
     heroLabel = remainingUnlockMins === 1 ? 'MINUTE LEFT' : 'MINUTES LEFT';
@@ -248,7 +248,7 @@ export default function LockScreen() {
   } else {
     heroStat = String(appCount);
     heroLabel = appCount === 1 ? 'APP BLOCKED' : 'APPS BLOCKED';
-    heroDescription = 'Locked. Play a brain game to earn unlock minutes.';
+    heroDescription = 'Blocked. Unlock from Home when you need them — it costs your Brainpower Score.';
   }
 
   return (
@@ -258,7 +258,7 @@ export default function LockScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.xl,
-          paddingBottom: insets.bottom + Spacing.xxxl,
+          paddingBottom: insets.bottom + 120,
           paddingHorizontal: Spacing.xl,
         }}
       >

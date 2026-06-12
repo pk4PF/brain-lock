@@ -5,6 +5,7 @@ import { TextAa } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -95,7 +96,6 @@ export default function AnagramScreen() {
   }, [round, phase]);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'anagram' });
     setRounds(pickRounds());
     setRound(0);
@@ -111,9 +111,11 @@ export default function AnagramScreen() {
     const guess = input.trim().toLowerCase();
     if (guess.length === 0) return;
     hapticMedium();
+    soundTap();
     const isRight = guess === rounds[round].word;
     setFeedback(isRight ? 'correct' : 'wrong');
-    if (isRight) setCorrect((c) => c + 1);
+    if (isRight) { soundCorrect(); setCorrect((c) => c + 1); }
+    else soundWrong();
 
     setTimeout(() => {
       setFeedback(null);
@@ -121,6 +123,7 @@ export default function AnagramScreen() {
       if (round + 1 >= TOTAL_ROUNDS) {
         finishGame(isRight ? correct + 1 : correct);
       } else {
+        soundRound();
         setRound((r) => r + 1);
       }
     }, 900);
@@ -129,12 +132,13 @@ export default function AnagramScreen() {
   const skip = () => {
     if (feedback !== null) return;
     hapticLight();
+    soundWrong();
     setFeedback('wrong');
     setTimeout(() => {
       setFeedback(null);
       setInput('');
       if (round + 1 >= TOTAL_ROUNDS) finishGame(correct);
-      else setRound((r) => r + 1);
+      else { soundRound(); setRound((r) => r + 1); }
     }, 900);
   };
 
@@ -142,6 +146,7 @@ export default function AnagramScreen() {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForScore(finalCorrect, TOTAL_ROUNDS);
     const passed = passByAccuracy(finalCorrect, TOTAL_ROUNDS, difficulty);
+    if (passed) soundComplete(); else soundFail();
     recordGame('anagram', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
@@ -181,8 +186,6 @@ export default function AnagramScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<TextAa size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={`${correct}/${TOTAL_ROUNDS}`}
           subtitle="Words solved"

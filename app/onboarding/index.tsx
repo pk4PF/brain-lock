@@ -102,6 +102,12 @@ const styles = StyleSheet.create({
     letterSpacing: -2.0,
     lineHeight: 60,
   },
+  tagline: {
+    fontSize: 17,
+    fontFamily: FontFamily.regular,
+    lineHeight: 25,
+    letterSpacing: -0.2,
+  },
 
   // A single accent line - the only "decoration" we use.
   // Replaces icons / mascots / illustrations.

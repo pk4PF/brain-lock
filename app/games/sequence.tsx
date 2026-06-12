@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Brain } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
 import { SequenceMemoryIll } from '../../src/components/games/GameIllustrations';
 import { pickResultMessage, type ResultMessage } from '../../src/constants/testMessages';
 import { useChallengeUnlock } from '../../src/hooks/useChallengeUnlock';
+import { advanceBenchmark } from '../../src/utils/benchmark';
 import { SEQUENCE_LEVEL } from '../../src/constants/gameDifficulty';
 
 const HUE = GameAccents.sequence.hue;
@@ -48,7 +50,10 @@ function creditsForLength(maxLen: number): number {
 export default function SequenceScreen() {
   const { colors } = useThemeColors();
   const { isUnlock, difficulty, unlockMinutes, doUnlock } = useChallengeUnlock();
-  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall } = useStore();
+  const params = useLocalSearchParams<{ benchmark?: string; bm?: string }>();
+  const isBenchmark = params.benchmark === '1';
+  const bmIndex = Number(params.bm ?? 0);
+  const { completeDailyGame, recordGame, recordCognitiveScore, canEarnToday, setShowPaywall, setBenchmarkScore } = useStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [sequence, setSequence] = useState<number[]>([]);
@@ -62,7 +67,6 @@ export default function SequenceScreen() {
   const playbackRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'sequence' });
     setMaxLength(0);
     startTime.current = Date.now();
@@ -87,7 +91,7 @@ export default function SequenceScreen() {
     seq.forEach((pad, i) => {
       const onAt = startDelay + i * (FLASH_MS + GAP_MS);
       const offAt = onAt + FLASH_MS;
-      playbackRef.current.push(setTimeout(() => setFlashing(pad), onAt));
+      playbackRef.current.push(setTimeout(() => { setFlashing(pad); soundTap(); }, onAt));
       playbackRef.current.push(setTimeout(() => setFlashing(null), offAt));
     });
 
@@ -103,6 +107,7 @@ export default function SequenceScreen() {
   const handlePadPress = (pad: number) => {
     if (phase !== 'input') return;
     hapticLight();
+    soundTap();
     setFlashing(pad);
     setTimeout(() => setFlashing(null), 180);
 
@@ -110,6 +115,7 @@ export default function SequenceScreen() {
     if (pad !== expected) {
       // Wrong - end the game with current maxLength.
       hapticMedium();
+      soundWrong();
       finishGame(maxLength);
       return;
     }
@@ -117,12 +123,14 @@ export default function SequenceScreen() {
     const next = userIdx + 1;
     if (next >= sequence.length) {
       // Round complete.
+      soundCorrect();
       const newMax = Math.max(maxLength, sequence.length);
       setMaxLength(newMax);
       if (sequence.length >= MAX_LENGTH) {
         finishGame(newMax);
       } else {
         // Brief pause before next round to acknowledge success.
+        soundRound();
         setTimeout(() => beginRound(sequence.length + 1), 600);
       }
     } else {
@@ -135,12 +143,14 @@ export default function SequenceScreen() {
     const timeTaken = (Date.now() - startTime.current) / 1000;
     const credits = creditsForLength(finalMax);
     const passed = finalMax >= SEQUENCE_LEVEL[difficulty];
+    if (passed) soundComplete(); else soundFail();
     recordGame('sequence', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
     // Memory map: each pad in the longest sequence = ~10 points. 10 pads = 100.
     const memoryScore = Math.min(100, finalMax * 10);
     recordCognitiveScore('memory', memoryScore);
+    if (isBenchmark) { setBenchmarkScore(String(bmIndex), memoryScore); advanceBenchmark(bmIndex); return; }
     setEarnedCredits(credits);
     track(Events.GameCompleted, { game: 'sequence', max_length: finalMax, passed, credits: passed ? credits : 0 });
     setPhase('result');
@@ -176,8 +186,6 @@ export default function SequenceScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Brain size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={maxLength}
           bigStatSuffix=" pads"

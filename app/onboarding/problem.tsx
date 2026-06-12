@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
+import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { hapticLight } from '../../src/utils/haptics';
@@ -28,24 +29,40 @@ export default function ProblemScreen() {
   };
 
   return (
-    <OnboardingLayout step={1} totalSteps={12}>
+    <OnboardingLayout step={1} totalSteps={15}>
+      <OnboardingBackButton />
       <Pressable
         onPress={next}
         style={[
           styles.container,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
+          { paddingTop: insets.top + 92, paddingBottom: insets.bottom + 24 },
         ]}
       >
         <View style={styles.top}>
-          <FadeUp delay={80}>
-            <Text style={[styles.headline, { color: colors.text }]}>
-              Ever feel like your apps are in{' '}
-              <Text style={{ color: colors.accent }}>control</Text> of your brain?
+          <FadeUp delay={120}>
+            <Text style={[styles.symptom, { color: colors.text }]}>
+              Focus is harder than it used to be.
+            </Text>
+          </FadeUp>
+          <FadeUp delay={560}>
+            <Text style={[styles.symptom, { color: colors.text }]}>
+              Your thumb opens the app before you even notice.
+            </Text>
+          </FadeUp>
+          <FadeUp delay={1000}>
+            <Text style={[styles.symptom, { color: colors.text }]}>
+              That fog setting in? That's brain rot.
+            </Text>
+          </FadeUp>
+          <View style={{ height: 28 }} />
+          <FadeUp delay={1440}>
+            <Text style={[styles.punch, { color: colors.accent }]}>
+              Sound familiar?
             </Text>
           </FadeUp>
         </View>
 
-        <FadeUp delay={520}>
+        <FadeUp delay={2100}>
           <View style={styles.tapRow}>
             <Text style={[styles.tapText, { color: colors.muted }]}>tap to continue</Text>
             <ArrowRight size={16} color={colors.accent} strokeWidth={2.2} />
@@ -70,6 +87,19 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     letterSpacing: -1.6,
     lineHeight: 54,
+  },
+  symptom: {
+    fontSize: 28,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.8,
+    lineHeight: 36,
+    marginBottom: 16,
+  },
+  punch: {
+    fontSize: 38,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -1.2,
+    lineHeight: 44,
   },
   body: {
     fontSize: 17,

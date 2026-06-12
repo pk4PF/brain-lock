@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -15,8 +16,9 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, ShieldCheck, Star, ChevronDown } from 'lucide-react-native';
+import { Check, ShieldCheck, Star, ChevronDown, Lock, Zap } from 'lucide-react-native';
 import { FontFamily, Spacing } from '../../src/constants/theme';
+import { goalPhrases } from '../../src/constants/goals';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
@@ -27,39 +29,19 @@ import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 const POST_PURCHASE_ROUTE = '/(tabs)' as const;
 const FIRST_NAME = (full: string) => full.trim().split(/\s+/)[0] || '';
 
-/**
- * High-conversion paywall.
- *
- * Patterns drawn from Noom, Cal AI, Headspace, and Calm:
- *   1. Personal hero promise (uses the user's name + screen-time answer)
- *   2. Visual product preview (small floating product cards, not just text)
- *   3. Two pricing tiers, yearly highlighted with a SAVE % badge
- *   4. "What's included" checklist - concrete unlocks
- *   5. Trust strip (cancel anytime, locked with App Store)
- *   6. FAQ section addressing the top 3 objections
- *   7. Restore + Terms + Privacy footer
- *
- * What we deliberately *don't* do (against App Store policy / brand):
- *   - No fake user counts, no fake testimonials with stock photos.
- *   - No pre-selected auto-renew tricks - both plans are visible & equal.
- *   - No mascot.
- */
-
 export default function OnboardingPaywallScreen() {
   useOnboardingStepView('paywall');
   const insets = useSafeAreaInsets();
   const { colors } = useThemeColors();
-  const { isPremium, completeOnboarding, setSubscription, userName, dailyScreenTimeHours } = useStore();
+  const { isPremium, completeOnboarding, setSubscription, userName, userGoals, winbackSeen } = useStore();
   const firstName = FIRST_NAME(userName);
 
   const {
     loading,
     purchasing,
-    monthlyPrice,
+    weeklyPrice,
     annualPrice,
-    annualBasePrice,
-    hasAnnualIntro,
-    annualPerMonth,
+    annualPerWeek,
     annualSavingsPct,
     selectedPlan,
     setSelectedPlan,
@@ -72,11 +54,13 @@ export default function OnboardingPaywallScreen() {
     router.replace(POST_PURCHASE_ROUTE);
   };
 
-  // Apple Pay cancel - no rescue screen. User stays on the paywall and can
-  // try again or close the app. Removing the win-back path simplifies the
-  // funnel; we'll re-introduce it later if real funnel data shows a
-  // meaningful cancel-then-buy-cheaper opportunity.
-  const handleCancel = () => { /* no-op */ };
+  const handleCancel = () => {
+    // The winback is a one-shot: only surface it if it's never been seen.
+    // After that, cancelling just leaves them on the paywall (the hard gate).
+    if (!winbackSeen) {
+      router.push('/onboarding/final-offer');
+    }
+  };
 
   useEffect(() => {
     if (isPremium) finishOnboarding();
@@ -95,132 +79,165 @@ export default function OnboardingPaywallScreen() {
     finishOnboarding();
   };
 
-  // Hours-saved math for the personal hero number. Mirrors the plan screen's
-  // "cut in half" promise: 50% of daily screen time × 7 days. The Math.max
-  // floor keeps the number meaningful for users who reported very low daily
-  // hours during onboarding.
-  const hoursSavedPerWeek = Math.max(2, Math.round((dailyScreenTimeHours || 4) * 0.5 * 7));
+  const phrases = goalPhrases(userGoals);
+  const heroSub =
+    phrases.length === 2
+      ? `So you can ${phrases[0]} and ${phrases[1]}, instead of scrolling.`
+      : phrases.length === 1
+        ? `So you can ${phrases[0]}, instead of scrolling.`
+        : 'Build your Brainpower Score. Block what keeps draining it.';
 
-  // Per-month label for the "below the price" caption on yearly.
-  const annualMonthlyLabel = annualPerMonth || '~£4.17/mo';
-
-  // ── Idle pulse on the primary CTA so it pulls the eye ──
+  // Static CTA. The idle pulse was removed - constant motion read as
+  // overstimulating on an already-busy paywall.
   const ctaPulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (loading || purchasing) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(ctaPulse, { toValue: 1.018, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(ctaPulse, { toValue: 1.0,    duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    );
-    const t = setTimeout(() => loop.start(), 700);
-    return () => { clearTimeout(t); loop.stop(); };
-  }, [loading, purchasing]);
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout hideOrbs>
       <View style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollBody,
             {
-              paddingTop: insets.top + Spacing.lg,
-              paddingBottom: insets.bottom + 200, // leave room for sticky CTA
+              paddingTop: insets.top + 6,
+              paddingBottom: insets.bottom + 170,
             },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* ───────────────────────── Hero ───────────────────────── */}
-          <Text style={[styles.eyebrow, { color: colors.muted }]}>YOUR PLAN IS READY</Text>
-          <Text style={[styles.headline, { color: colors.text }]}>
-            {firstName ? `${firstName}, get ` : 'Get '}
-            <Text style={{ color: colors.accent }}>
-              {hoursSavedPerWeek}+ hours
+          {/* ───────────── Social proof badge ───────────── */}
+          <View style={styles.socialProof}>
+            <View style={[styles.ratingBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} size={13} color="#FACC15" fill="#FACC15" strokeWidth={0} />
+                ))}
+              </View>
+              <Text style={[styles.ratingText, { color: colors.text }]}>5.0</Text>
+              <View style={[styles.ratingDivider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.ratingLabel, { color: colors.muted }]}>App Store</Text>
+            </View>
+          </View>
+
+          {/* ──────────────── Hero ──────────────── */}
+          <View style={styles.heroWrap}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.headline, { color: colors.text }]}>
+              Less brain rot.{'\n'}
+              <Text style={{ color: colors.accent }}>More brainpower.</Text>
             </Text>
-            {'\n'}back a week.
-          </Text>
-          <Text style={[styles.sub, { color: colors.secondary }]}>
-            Put your brain back in charge.
-          </Text>
-
-          {/* ───────────────────── Pricing ──────────────────────── */}
-          <View style={styles.pricingHeader}>
-            <Text style={[styles.eyebrowSmall, { color: colors.muted }]}>CHOOSE YOUR PLAN</Text>
-            {annualSavingsPct > 0 && (
-              <View style={[styles.saveBadge, { backgroundColor: colors.accent }]}>
-                <Text style={styles.saveBadgeText}>SAVE {annualSavingsPct}%</Text>
-              </View>
-            )}
+            <Text style={[styles.sub, { color: colors.secondary }]}>
+              {heroSub}
+            </Text>
           </View>
 
-          <View style={{ gap: 10, marginBottom: 18 }}>
-            <PlanCard
-              selected={selectedPlan === 'annual'}
+          {/* Compact value strip - what you're paying for, without a wall of text. */}
+          <View style={styles.perks}>
+            {[
+              'Your Brainpower Score, measured daily',
+              "Today's Brain Workout, fresh every day",
+              '15+ brain games, unlimited plays',
+              'Block the apps that rot your brain',
+              'Track every cognitive area as you train',
+              'Climb the ranks, all the way to Elite',
+            ].map((p) => (
+              <View key={p} style={styles.perkRow}>
+                <Check size={15} color={colors.accent} strokeWidth={3} />
+                <Text style={[styles.perkText, { color: colors.text }]}>{p}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ────────────── Plan cards ──────────────── */}
+          <View style={styles.planSection}>
+            <Text style={[styles.sectionEyebrow, { color: colors.muted }]}>CHOOSE YOUR PLAN</Text>
+
+            {/* Yearly (dominant) */}
+            <TouchableOpacity
+              activeOpacity={0.85}
               onPress={() => { hapticLight(); setSelectedPlan('annual'); }}
-              title="Yearly"
-              caption={
-                hasAnnualIntro
-                  ? `${annualPrice} for your first year`
-                  : `${annualPrice} billed yearly`
-              }
-              priceLabel={annualMonthlyLabel}
-              ribbonText={annualSavingsPct > 0 ? 'BEST VALUE' : 'POPULAR'}
-              colors={colors}
-            />
-            <PlanCard
-              selected={selectedPlan === 'monthly'}
-              onPress={() => { hapticLight(); setSelectedPlan('monthly'); }}
-              title="Monthly"
-              caption={`${monthlyPrice} billed monthly`}
-              priceLabel={`${monthlyPrice}/mo`}
-              colors={colors}
-            />
-            {hasAnnualIntro && selectedPlan === 'annual' && (
-              <Text style={[styles.renewalNote, { color: colors.muted }]}>
-                Renews at {annualBasePrice}/year after first year.
-              </Text>
-            )}
-          </View>
-
-          {/* ─────────────── Trust + cancel-anytime ──────────────── */}
-          <View style={styles.trustRow}>
-            <View style={styles.trustItem}>
-              <ShieldCheck size={16} color={colors.success} strokeWidth={2.2} />
-              <Text style={[styles.trustText, { color: colors.text }]}>Cancel anytime</Text>
-            </View>
-            <View style={[styles.trustDot, { backgroundColor: colors.border }]} />
-            <View style={styles.trustItem}>
-              <Check size={16} color={colors.success} strokeWidth={2.4} />
-              <Text style={[styles.trustText, { color: colors.text }]}>No hidden fees</Text>
-            </View>
-            <View style={[styles.trustDot, { backgroundColor: colors.border }]} />
-            <View style={styles.trustItem}>
-              <Star size={16} color={colors.success} strokeWidth={2.2} />
-              <Text style={[styles.trustText, { color: colors.text }]}>Secured by Apple</Text>
-            </View>
-          </View>
-
-          {/* ─────────────────── Inclusions list ─────────────────── */}
-          <View style={[styles.includesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.includesTitle, { color: colors.text }]}>Everything you get</Text>
-            {INCLUSIONS.map((line, i) => (
-              <View key={i} style={[styles.includeRow, i === INCLUSIONS.length - 1 && { marginBottom: 0 }]}>
-                <View style={[styles.includeTick, { backgroundColor: `${colors.accent}1F`, borderColor: `${colors.accent}40` }]}>
-                  <Check size={12} color={colors.accent} strokeWidth={3} />
+            >
+              <View
+                style={[
+                  styles.yearlyCard,
+                  {
+                    backgroundColor: selectedPlan === 'annual' ? `${colors.accent}0D` : colors.card,
+                    borderColor: selectedPlan === 'annual' ? colors.accent : colors.border,
+                    borderWidth: selectedPlan === 'annual' ? 2 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.saveBadge, { backgroundColor: colors.accent }]}>
+                  <Text style={styles.saveBadgeText}>
+                    {annualSavingsPct > 0 ? `SAVE ${annualSavingsPct}%` : 'BEST VALUE'}
+                  </Text>
                 </View>
-                <Text style={[styles.includeText, { color: colors.text }]}>{line}</Text>
+
+                <View style={styles.yearlyBody}>
+                  <View style={styles.yearlyLeft}>
+                    <View style={[styles.radio, { borderColor: selectedPlan === 'annual' ? colors.accent : colors.borderStrong }]}>
+                      {selectedPlan === 'annual' && <View style={[styles.radioDot, { backgroundColor: colors.accent }]} />}
+                    </View>
+                    <View>
+                      <Text style={[styles.yearlyTitle, { color: colors.text }]}>Yearly</Text>
+                      <Text style={[styles.yearlyCaption, { color: colors.muted }]}>
+                        {annualPrice} billed once a year
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.yearlyRight}>
+                    <Text style={[styles.yearlyWeekPrice, { color: colors.text }]}>
+                      {annualPerWeek.replace('/wk', '')}
+                    </Text>
+                    <Text style={[styles.yearlyWeekLabel, { color: colors.muted }]}>/week</Text>
+                  </View>
+                </View>
               </View>
-            ))}
+            </TouchableOpacity>
+
+            {/* Weekly (secondary) */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => { hapticLight(); setSelectedPlan('weekly'); }}
+            >
+              <View
+                style={[
+                  styles.weeklyCard,
+                  {
+                    backgroundColor: selectedPlan === 'weekly' ? `${colors.accent}0D` : colors.card,
+                    borderColor: selectedPlan === 'weekly' ? colors.accent : colors.border,
+                    borderWidth: selectedPlan === 'weekly' ? 2 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.weeklyBody}>
+                  <View style={styles.weeklyLeft}>
+                    <View style={[styles.radio, { borderColor: selectedPlan === 'weekly' ? colors.accent : colors.borderStrong }]}>
+                      {selectedPlan === 'weekly' && <View style={[styles.radioDot, { backgroundColor: colors.accent }]} />}
+                    </View>
+                    <View>
+                      <Text style={[styles.weeklyTitle, { color: colors.text }]}>Weekly</Text>
+                      <Text style={[styles.weeklyCaption, { color: colors.muted }]}>{weeklyPrice} billed weekly</Text>
+                    </View>
+                  </View>
+                  <View style={styles.weeklyRight}>
+                    <Text style={[styles.weeklyPrice, { color: colors.text }]}>{weeklyPrice}</Text>
+                    <Text style={[styles.weeklyPriceLabel, { color: colors.muted }]}>/week</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
           </View>
 
-          {/* ─────────────────────── FAQ ─────────────────────────── */}
-          <Text style={[styles.eyebrowSmall, { color: colors.muted, marginTop: 28 }]}>YOU MIGHT ASK</Text>
-          <View style={{ gap: 8 }}>
-            {FAQS.map((q, i) => (
-              <FaqItem key={i} q={q.q} a={q.a} colors={colors} initiallyOpen={i === 0} />
-            ))}
-          </View>
+          {/* One quiet trust line - everything else is cut for calm. */}
+          <Text style={[styles.trustLine, { color: colors.muted }]}>
+            Cancel anytime · Secured by Apple
+          </Text>
 
           {/* Footer links */}
           <View style={styles.subRow}>
@@ -248,7 +265,7 @@ export default function OnboardingPaywallScreen() {
           )}
         </ScrollView>
 
-        {/* ──────────────── Sticky CTA over a soft fade ──────────────── */}
+        {/* ──────────── Sticky CTA ──────────── */}
         <View pointerEvents="box-none" style={styles.stickyWrap}>
           <LinearGradient
             colors={[`${colors.background}00`, colors.background]}
@@ -287,8 +304,8 @@ export default function OnboardingPaywallScreen() {
                       {purchasing
                         ? 'Processing…'
                         : selectedPlan === 'annual'
-                          ? `Start - ${annualMonthlyLabel}`
-                          : `Start - ${monthlyPrice}/mo`}
+                          ? `Start — ${annualPerWeek}`
+                          : `Start — ${weeklyPrice}/wk`}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -305,80 +322,39 @@ export default function OnboardingPaywallScreen() {
 }
 
 // ───────────────────────────────────────────────────────────────
-// Subcomponents
+// Data
 // ───────────────────────────────────────────────────────────────
 
 const INCLUSIONS = [
-  'Block any app, your schedule',
-  '10+ cognitive games',
-  'Brain Profile tracking',
-  'Unlimited unlocks',
-  'New games every month',
+  'Lock the apps that rot your brain',
+  'Your Brainpower Score, measured and tracked',
+  '15+ games in the Brain Gym to drive it down',
+  'Box breathing and calm reps',
+  'Unlimited unlocks, new reps every month',
 ];
 
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'Will this work for me?',
-    a: "If you commit, yes. Most people feel the shift inside two weeks.",
+    a: 'If you commit, yes. The lock does the willpower for you.',
   },
   {
     q: 'Is it worth it?',
-    a: 'Less than a coffee a month. 180+ hours of your life back per year.',
+    a: 'Less than a coffee a month for your attention back.',
   },
   {
-    q: "How is this different from other apps?",
-    a: "Other apps just track your screen time. We make you earn it with brain games — so you build focus, not guilt.",
+    q: 'How is this different from other apps?',
+    a: 'Other apps just track your screen time. We give you a Brainpower Score, block what rots it, and give you a Brain Gym to build it up.',
   },
   {
-    q: "Does it actually reduce screen time?",
-    a: "Users cut their phone use by a minimum of 50%. The friction of playing a game before opening an app rewires the habit loop.",
+    q: 'Does it actually reduce screen time?',
+    a: 'That’s the whole design. Every unlock lowers your Brainpower Score, so scrolling has a visible cost — and that cost is what breaks the reflex.',
   },
 ];
 
-function PlanCard({
-  selected, onPress, title, caption, priceLabel, ribbonText, colors,
-}: {
-  selected: boolean;
-  onPress: () => void;
-  title: string;
-  caption: string;
-  priceLabel: string;
-  ribbonText?: string;
-  colors: any;
-}) {
-  return (
-    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
-      <View
-        style={[
-          styles.planCard,
-          {
-            backgroundColor: selected ? `${colors.accent}10` : colors.card,
-            borderColor: selected ? colors.accent : colors.border,
-            borderWidth: selected ? 2 : 1,
-          },
-        ]}
-      >
-        <View style={[styles.radio, { borderColor: selected ? colors.accent : colors.borderStrong }]}>
-          {selected && <View style={[styles.radioDot, { backgroundColor: colors.accent }]} />}
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <View style={styles.planTitleRow}>
-            <Text style={[styles.planTitle, { color: colors.text }]}>{title}</Text>
-            {ribbonText && selected && (
-              <View style={[styles.ribbon, { backgroundColor: colors.accent }]}>
-                <Text style={styles.ribbonText}>{ribbonText}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[styles.planCaption, { color: colors.muted }]}>{caption}</Text>
-        </View>
-
-        <Text style={[styles.planPrice, { color: colors.text }]}>{priceLabel}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
+// ───────────────────────────────────────────────────────────────
+// FAQ subcomponent
+// ───────────────────────────────────────────────────────────────
 
 function FaqItem({
   q, a, colors, initiallyOpen,
@@ -415,66 +391,211 @@ function FaqItem({
 }
 
 // ───────────────────────────────────────────────────────────────
+// Styles
+// ───────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   scrollBody: {
     paddingHorizontal: 22,
   },
 
-  // Hero
-  eyebrow: {
-    fontSize: 12,
-    fontFamily: FontFamily.medium,
-    letterSpacing: 1.8,
-    marginBottom: 10,
-    marginTop: 8,
+  // Social proof
+  socialProof: {
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 2,
   },
-  eyebrowSmall: {
-    fontSize: 11,
-    fontFamily: FontFamily.medium,
-    letterSpacing: 1.6,
-    marginBottom: 8,
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    gap: 6,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.2,
+  },
+  ratingDivider: {
+    width: 1,
+    height: 14,
+  },
+  ratingLabel: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+  },
+
+  // Hero
+  heroWrap: {
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  trustLine: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.1,
+  },
+  heroLogo: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   headline: {
-    fontSize: 34,
+    fontSize: 30,
     fontFamily: FontFamily.medium,
-    letterSpacing: -1.0,
-    lineHeight: 38,
-    marginBottom: 12,
+    letterSpacing: -0.8,
+    lineHeight: 34,
+    textAlign: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 4,
   },
   sub: {
     fontSize: 15,
     fontFamily: FontFamily.regular,
     lineHeight: 22,
-    marginBottom: 22,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
 
-  // Pricing
-  pricingHeader: {
+  // Value strip
+  perks: {
+    gap: 9,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  perkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  perkText: {
+    fontSize: 14.5,
+    fontFamily: FontFamily.regular,
+    letterSpacing: -0.2,
+  },
+
+  // Plans
+  planSection: {
+    marginBottom: 14,
+    gap: 10,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontFamily: FontFamily.medium,
+    letterSpacing: 1.6,
+    marginBottom: 10,
+  },
+
+  // Yearly card (dominant)
+  yearlyCard: {
+    borderRadius: 16,
+  },
+  saveBadge: {
+    position: 'absolute',
+    top: -10,
+    right: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    zIndex: 2,
+  },
+  saveBadgeText: {
+    fontSize: 10,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 0.7,
+    color: '#FFFFFF',
+  },
+  yearlyBody: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
   },
-  saveBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  saveBadgeText: {
-    fontSize: 11,
-    fontFamily: FontFamily.semibold,
-    letterSpacing: 0.8,
-    color: '#FFFFFF',
-  },
-  planCard: {
+  yearlyLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 16,
     gap: 12,
   },
+  yearlyTitle: {
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  yearlyCaption: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+  },
+  yearlyRight: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  yearlyWeekPrice: {
+    fontSize: 20,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
+  },
+  yearlyWeekLabel: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginLeft: 1,
+  },
+
+  // Weekly card (secondary)
+  weeklyCard: {
+    borderRadius: 16,
+  },
+  weeklyBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+  },
+  weeklyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  weeklyTitle: {
+    fontSize: 17,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  weeklyCaption: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+  },
+  weeklyRight: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  weeklyPrice: {
+    fontSize: 20,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
+  },
+  weeklyPriceLabel: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    marginLeft: 1,
+  },
+
+  // Radio
   radio: {
     width: 22,
     height: 22,
@@ -488,37 +609,22 @@ const styles = StyleSheet.create({
     height: 11,
     borderRadius: 6,
   },
-  planTitleRow: {
+
+  // Comparison callout
+  comparisonCallout: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 3,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  planTitle: {
-    fontSize: 17,
-    fontFamily: FontFamily.semibold,
-    letterSpacing: -0.3,
-  },
-  ribbon: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  ribbonText: {
-    fontSize: 10,
-    fontFamily: FontFamily.semibold,
-    letterSpacing: 0.6,
-    color: '#FFFFFF',
-  },
-  planCaption: {
+  comparisonText: {
     fontSize: 13,
-    fontFamily: FontFamily.regular,
-  },
-  planPrice: {
-    fontSize: 17,
-    fontFamily: FontFamily.semibold,
-    letterSpacing: -0.3,
-    fontVariant: ['tabular-nums'],
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.1,
   },
 
   // Trust row
@@ -608,7 +714,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  // Footer + dev skip
+  // Footer
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -680,13 +786,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     textAlign: 'center',
     marginTop: 8,
-    letterSpacing: 0.1,
-  },
-  renewalNote: {
-    fontSize: 11,
-    fontFamily: FontFamily.regular,
-    textAlign: 'center',
-    marginTop: 4,
     letterSpacing: 0.1,
   },
 });

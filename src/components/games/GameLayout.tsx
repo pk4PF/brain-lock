@@ -306,7 +306,7 @@ export function GameResult({
 }: {
   hue: string;
   badgeIcon?: ReactNode;
-  title: string;
+  title?: string;
   bigStat: string | number;
   bigStatSuffix?: string;
   subtitle?: string;
@@ -365,48 +365,43 @@ export function GameResult({
           </View>
         )}
 
-        {/* A clean win = a real (non-demo) pass. We strip the verdict title and
-            the performance stat so the anti-doomscroll line is the whole point
-            of the screen. Fails (the video hook) and demo runs keep the stat. */}
-        {(() => {
-          const cleanWin = passed && !isDemo;
-          return (
-            <>
-              {!cleanWin && (
-                <Text style={[styles.resultEyebrow, { color: !isDemo && !passed ? FAIL_HUE : colors.muted }]}>
-                  {isDemo ? 'RESULT' : 'FAILED'}
-                </Text>
-              )}
-              <Text style={[styles.resultTitle, { color: colors.text }]}>
-                {cleanWin ? 'Passed' : title}
-              </Text>
+        {/* Bold PASS / FAILED stamp - the clip-worthy verdict that slams in.
+            The score is ALWAYS shown (even on a win) so every recorded clip
+            ends on a single big number, the shareable money frame. */}
+        <Animated.View
+          style={[
+            styles.stamp,
+            { borderColor: accent, transform: [{ scale: numScale }, { rotate: '-3deg' }] },
+          ]}
+        >
+          <Text style={[styles.stampText, { color: accent }]}>
+            {isDemo ? 'NICE' : passed ? 'PASSED' : 'FAILED'}
+          </Text>
+        </Animated.View>
 
-              {!cleanWin && (
-                <View style={{ alignItems: 'center', marginTop: 18 }}>
-                  <Animated.View style={{ transform: [{ scale: numScale }], flexDirection: 'row', alignItems: 'baseline' }}>
-                    <Text style={[styles.resultBig, { color: accent }]}>{bigStat}</Text>
-                    {bigStatSuffix && (
-                      <Text style={[styles.resultBigSuffix, { color: accent }]}>{bigStatSuffix}</Text>
-                    )}
-                  </Animated.View>
-                  {subtitle && (
-                    <Text style={[styles.resultSubtitle, { color: colors.secondary }]}>{subtitle}</Text>
-                  )}
-                </View>
-              )}
+        {title ? <Text style={[styles.resultTitle, { color: colors.text }]}>{title}</Text> : null}
 
-              {!isDemo && unlockMinutes !== undefined && (
-                <View style={{ marginTop: 22 }}>
-                  <UnlockPill minutes={unlockMinutes} hue={hue} />
-                </View>
-              )}
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <Animated.View style={{ transform: [{ scale: numScale }], flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={[styles.resultBig, { color: accent }]}>{bigStat}</Text>
+            {bigStatSuffix && (
+              <Text style={[styles.resultBigSuffix, { color: accent }]}>{bigStatSuffix}</Text>
+            )}
+          </Animated.View>
+          {subtitle && (
+            <Text style={[styles.resultSubtitle, { color: colors.secondary }]}>{subtitle}</Text>
+          )}
+        </View>
 
-              {message && !cleanWin && (
-                <Text style={[styles.resultMessage, { color: colors.muted }]}>{message}</Text>
-              )}
-            </>
-          );
-        })()}
+        {!isDemo && passed && unlockMinutes !== undefined && (
+          <View style={{ marginTop: 22 }}>
+            <UnlockPill minutes={unlockMinutes} hue={hue} />
+          </View>
+        )}
+
+        {message && (
+          <Text style={[styles.resultMessage, { color: colors.muted }]}>{message}</Text>
+        )}
       </View>
 
       <View style={{ flex: 1 }} />
@@ -569,8 +564,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     marginBottom: 6,
   },
+  stamp: {
+    alignSelf: 'center',
+    borderWidth: 3,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    marginBottom: 18,
+  },
+  stampText: {
+    fontSize: 30,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: 2,
+  },
   resultTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontFamily: FontFamily.medium,
     letterSpacing: -0.7,
     textAlign: 'center',

@@ -27,9 +27,9 @@ export const PASS_MESSAGES: ResultMessage[] = [
 ];
 
 export const FAIL_MESSAGES: ResultMessage[] = [
-  { title: 'Skill issue', line: 'No cells, no unlock. Your apps stay locked — run it back.' },
-  { title: 'Your attention span survives another day', line: 'You didn’t pass, so your apps stay locked. Try again.' },
-  { title: 'Access denied', line: 'Not sharp enough. Your apps stay locked until you pass.' },
+  { title: ‘Skill issue’, line: ‘Not sharp enough. Run it back.’ },
+  { title: ‘Not quite’, line: ‘Close, but your brain needs more reps.’ },
+  { title: ‘Access denied’, line: ‘Your brain gave up before you did.’ },
 ];
 
 /** Random verdict message from the appropriate bank. */

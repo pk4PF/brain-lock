@@ -20,7 +20,12 @@ export type GameType =
   | 'schulte'       // attention - tap 1→25 on a scrambled grid before the clock
   // Quiz challenges (Brainlock 2.0)
   | 'general-knowledge' // trivia - multiple-choice general knowledge
-  | 'flags';            // identify the country from its flag
+  | 'flags'             // identify the country from its flag
+  // Benchmark tests: honest Human-Benchmark-style tests, each with one
+  // sharable number. Built to be clipped for short-form.
+  | 'reaction'          // speed - tap the instant the screen turns green
+  | 'digit-span'        // memory - how many digits can you hold?
+  | 'time-stop';        // focus - stop the clock at exactly 5.00s
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameCategory = 'speed' | 'memory' | 'focus' | 'problem_solving';
 

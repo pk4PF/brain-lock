@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { GameType, Difficulty } from '../constants/games';
 import { ThemeMode } from '../constants/theme';
+import { getTodaysWorkoutKeys, WORKOUT_REWARD } from '../constants/workout';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -88,6 +89,7 @@ export interface CognitiveScores {
   attention: number;
   speed: number;
   problemSolving: number;
+  mindfulness: number;
 }
 
 export type CognitiveArea = keyof CognitiveScores;
@@ -135,6 +137,13 @@ interface AppState {
   dailyGamesCompleted: number;
   dailyEarnTasksCompleted: number;
   dailyDate: string;
+  /** Per-cognitive-area reps done today (resets at midnight). Drives the
+   *  daily Brainpower dashboard. */
+  dailyReps: Record<string, number>;
+  /** App unlocks today (resets at midnight). Each one drains today's score. */
+  dailyUnlocks: number;
+  /** Workout game keys completed today (resets at midnight). */
+  dailyWorkoutDone: string[];
   appsUnlocked: boolean;
   setupGuideComplete: boolean;
   credits: number;
@@ -147,10 +156,21 @@ interface AppState {
   reviewPromptShownAt: number | null;
   /** True once we've asked for a review at the first successful unlock. */
   firstUnlockReviewed: boolean;
+  /** True once the winback (final-offer) screen has been shown. The offer is
+   *  a one-time "you'll never see this again" play, so we never surface it a
+   *  second time once the user has laid eyes on it. */
+  winbackSeen: boolean;
   /** Whether the post-onboarding welcome bonus (30 brain cells) has been
    *  shown and claimed. False until the user taps "Claim" on the modal. */
   welcomeBonusClaimed: boolean;
   bestFocusScore: number;
+  /** Brainpower Score, 0-100, higher = sharper (0 = fully brain rotted). The app's
+   *  spine metric. Null until the user takes the in-app benchmark. Training
+   *  raises it; unlocking apps to scroll lowers it. */
+  brainScore: number | null;
+  /** Transient raw per-aspect scores (0-100) collected during a benchmark run.
+   *  The reveal composites these into the Brainpower Score, then clears them. */
+  benchmarkScores: Record<string, number>;
   cognitiveScores: CognitiveScores;
 
   completeOnboarding: () => void;
@@ -175,6 +195,10 @@ interface AppState {
   recordCognitiveScore: (area: CognitiveArea, score: number) => void;
   completeDailyGame: (creditsEarned?: number) => void;
   checkDailyReset: () => void;
+  /** Reset all per-day counters if the calendar day has rolled over. */
+  rollDailyIfNeeded: () => void;
+  /** Today's Brainpower: training fills it (per-area reps), unlocks drain it. */
+  getDailyBrainpower: () => { score: number; areaPct: Record<string, number>; unlocks: number; training: number; penalty: number };
   canEarnToday: () => boolean;
   canPlayGame: () => boolean;
   earnsRemainingToday: () => number;
@@ -183,10 +207,18 @@ interface AppState {
   spendCredits: (amount?: number) => boolean;
   /** Brainlock 2.0: pass a challenge → unlock blocked apps for the duration
    *  mapped from the chosen difficulty (Easy 15 / Med 30 / Hard 60 min). */
-  unlockApps: (difficulty: Difficulty) => void;
+  unlockApps: (minutes: number) => void;
   /** Re-block immediately, ending the current unlock early (user is done
    *  scrolling and wants the timer to stop). */
   relockApps: () => void;
+  /** Set the Brainpower Score outright (benchmark result). */
+  setBrainScore: (score: number) => void;
+  /** Nudge the score up/down (training +, scrolling -). No-op until the
+   *  benchmark has been taken. Clamped 0-100. */
+  adjustBrainScore: (delta: number) => void;
+  /** Record one benchmark test's raw aspect score during a benchmark run. */
+  setBenchmarkScore: (aspect: string, score: number) => void;
+  clearBenchmarkScores: () => void;
   // Aliases kept for older callers
   earnXP: (amount: number) => void;
   spendXP: (amount?: number) => boolean;
@@ -198,6 +230,8 @@ interface AppState {
   getGameStat: (game: GameType) => GameStats;
   checkUnlockExpiry: () => void;
   markReviewPromptShown: () => void;
+  /** Marks the winback (final-offer) screen as seen so it's never shown again. */
+  markWinbackSeen: () => void;
   /** Grants the post-onboarding 30-cell welcome bonus exactly once.
    *  Returns true if the bonus was granted, false if already claimed. */
   claimWelcomeBonus: () => boolean;
@@ -228,6 +262,9 @@ const defaultGameStats: Record<GameType, GameStats> = {
   schulte:       { played: 0, won: 0, bestTime: 999 },
   'general-knowledge': { played: 0, won: 0, bestTime: 999 },
   flags:         { played: 0, won: 0, bestTime: 999 },
+  reaction:      { played: 0, won: 0, bestTime: 999 },
+  'digit-span':  { played: 0, won: 0, bestTime: 999 },
+  'time-stop':   { played: 0, won: 0, bestTime: 999 },
 };
 
 /**
@@ -275,17 +312,23 @@ export const useStore = create<AppState>()(
         weeklyPoints: [0, 0, 0, 0, 0, 0, 0],
       },
       bestFocusScore: 0,
+      brainScore: null,
+      benchmarkScores: {},
       cognitiveScores: {
         memory: 0,
         recall: 0,
         attention: 0,
         speed: 0,
         problemSolving: 0,
+        mindfulness: 0,
       },
       lockedApps: [],
       dailyGamesCompleted: 0,
       dailyEarnTasksCompleted: 0,
       dailyDate: '',
+      dailyReps: {},
+      dailyUnlocks: 0,
+      dailyWorkoutDone: [],
       appsUnlocked: false,
       setupGuideComplete: false,
       credits: 0,
@@ -294,6 +337,7 @@ export const useStore = create<AppState>()(
       unlockTotalMs: null,
       reviewPromptShownAt: null,
       firstUnlockReviewed: false,
+      winbackSeen: false,
       welcomeBonusClaimed: false,
       expoPushToken: null,
       showPaywall: false,
@@ -381,6 +425,29 @@ export const useStore = create<AppState>()(
         newProgress.gamesPlayed += 1;
         if (won) newProgress.gamesWon += 1;
         set({ progress: newProgress });
+
+        // Every gym rep pushes the Brainpower Score up - wins harder than losses.
+        get().adjustBrainScore(won ? +2 : +1);
+
+        // Today's Brain Workout: mark this game done if it's in today's set;
+        // completing the full set awards the workout bonus (once).
+        get().rollDailyIfNeeded();
+        const wToday = new Date().toISOString().split('T')[0];
+        const workoutKeys = getTodaysWorkoutKeys(wToday);
+        if (workoutKeys.includes(game) && !get().dailyWorkoutDone.includes(game)) {
+          const done = [...get().dailyWorkoutDone, game];
+          set({ dailyWorkoutDone: done });
+          if (done.length === workoutKeys.length) get().adjustBrainScore(WORKOUT_REWARD);
+        }
+
+        // Review prompts at high-intent milestones. Apple rate-limits to
+        // 3/year so calling at multiple points is safe — only one will show.
+        if (won && newProgress.gamesWon === 10) {
+          require('../services/review').requestReviewNow?.('10th_win');
+        }
+        if (newProgress.currentStreak === 7) {
+          require('../services/review').requestReviewNow?.('7_day_streak');
+        }
       },
 
       recordFocusScore: (accuracyPct) => {
@@ -407,6 +474,11 @@ export const useStore = create<AppState>()(
         //  - Subsequent games: ratchet 25% of the way toward target. ~5 great
         //    runs to climb from 75 → 90+, ~10 to approach the ceiling. Feels
         //    like real progression, not a grind.
+        // Daily Brainpower: count one rep in this area today (always, even on
+        // a "bad day" where the lifetime score doesn't move).
+        get().rollDailyIfNeeded();
+        set({ dailyReps: { ...get().dailyReps, [area]: (get().dailyReps[area] ?? 0) + 1 } });
+
         const target = Math.max(0, Math.min(100, gameScore));
         const { cognitiveScores } = get();
         const current = cognitiveScores[area] ?? 0;
@@ -425,30 +497,52 @@ export const useStore = create<AppState>()(
       },
 
       completeDailyGame: (creditsEarned = GAME_REWARD) => {
-        const today = new Date().toISOString().split('T')[0];
-        const { dailyDate, dailyGamesCompleted, dailyEarnTasksCompleted } = get();
-        const gameCount = dailyDate === today ? dailyGamesCompleted + 1 : 1;
-        const earnCount = dailyDate === today ? dailyEarnTasksCompleted + 1 : 1;
+        get().rollDailyIfNeeded();
         set({
-          dailyGamesCompleted: gameCount,
-          dailyEarnTasksCompleted: earnCount,
-          dailyDate: today,
+          dailyGamesCompleted: get().dailyGamesCompleted + 1,
+          dailyEarnTasksCompleted: get().dailyEarnTasksCompleted + 1,
         });
         get().earnReward(creditsEarned);
 
         triggerReviewAfterWin();
       },
 
-      checkDailyReset: () => {
+      rollDailyIfNeeded: () => {
         const today = new Date().toISOString().split('T')[0];
-        const { dailyDate } = get();
-        if (dailyDate !== today) {
+        if (get().dailyDate !== today) {
           set({
+            dailyDate: today,
             dailyGamesCompleted: 0,
             dailyEarnTasksCompleted: 0,
-            dailyDate: today,
+            dailyReps: {},
+            dailyUnlocks: 0,
+            dailyWorkoutDone: [],
           });
         }
+      },
+
+      getDailyBrainpower: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const isToday = get().dailyDate === today;
+        const reps = isToday ? get().dailyReps : {};
+        const unlocks = isToday ? get().dailyUnlocks : 0;
+        const TARGET = 2; // reps per area for a full bar
+        const AREAS = ['memory', 'attention', 'problemSolving', 'recall', 'speed', 'mindfulness'];
+        const areaPct: Record<string, number> = {};
+        let sum = 0;
+        for (const a of AREAS) {
+          const pct = Math.min(100, Math.round(((reps[a] ?? 0) / TARGET) * 100));
+          areaPct[a] = pct;
+          sum += pct;
+        }
+        const training = Math.round(sum / AREAS.length);
+        const penalty = Math.min(60, unlocks * 12); // each unlock -12, capped
+        const score = Math.max(0, Math.min(100, training - penalty));
+        return { score, areaPct, unlocks, training, penalty };
+      },
+
+      checkDailyReset: () => {
+        get().rollDailyIfNeeded();
         get().checkUnlockExpiry();
       },
 
@@ -516,21 +610,27 @@ export const useStore = create<AppState>()(
 
       spendXP: (amount = UNLOCK_CREDIT_COST) => get().spendCredits(amount),
 
-      unlockApps: (difficulty) => {
-        const minutes = DIFFICULTY_UNLOCK_MINUTES[difficulty] ?? 15;
-        const totalMs = minutes * 60 * 1000;
+      unlockApps: (minutes) => {
+        const mins = minutes > 0 ? minutes : 15;
+        const totalMs = mins * 60 * 1000;
         const expiresAt = Date.now() + totalMs;
         set({
           appsUnlocked: true,
           unlockExpiresAt: expiresAt,
           unlockTotalMs: totalMs,
         });
+        // Scrolling has a visible cost: 1 Brainpower per minute unlocked.
+        // 15m → -15, 30m → -30, 60m → -60. Training is the only way back up.
+        get().adjustBrainScore(-mins);
+        // Daily Brainpower: log this unlock so today's dashboard reflects it.
+        get().rollDailyIfNeeded();
+        set({ dailyUnlocks: get().dailyUnlocks + 1 });
         try {
           const { ScreenTime } = require('screen-time-module');
           ScreenTime.removeShieldNow().catch(() => { });
           // Native re-block via the DeviceActivityMonitor extension - survives
           // the app being backgrounded or killed.
-          ScreenTime.scheduleUnlockExpiry(minutes).catch(() => { });
+          ScreenTime.scheduleUnlockExpiry(mins).catch(() => { });
         } catch { }
 
         // First successful unlock = the payoff moment → ask for a review (once).
@@ -554,6 +654,30 @@ export const useStore = create<AppState>()(
         } catch { }
       },
 
+      setBrainScore: (score) => {
+        set({ brainScore: Math.max(0, Math.min(100, Math.round(score))) });
+      },
+
+      adjustBrainScore: (delta) => {
+        const { brainScore } = get();
+        if (brainScore === null) return; // not measured yet - nothing to nudge
+        let d = delta;
+        // Diminishing returns: training gains taper as you near 100, so the
+        // last stretch to Elite is hard. Penalties (scrolling) are NOT tapered.
+        // Full gains below 60; above that, scaled by remaining headroom / 40.
+        if (d > 0 && brainScore >= 60) {
+          d = d * Math.max(0, (100 - brainScore) / 40);
+        }
+        // Stored as a float so sub-1 gains still accumulate near the top;
+        // displays round it. Clamped 0-100.
+        set({ brainScore: Math.max(0, Math.min(100, brainScore + d)) });
+      },
+
+      setBenchmarkScore: (aspect, score) => {
+        set({ benchmarkScores: { ...get().benchmarkScores, [aspect]: Math.max(0, Math.min(100, Math.round(score))) } });
+      },
+      clearBenchmarkScores: () => set({ benchmarkScores: {} }),
+
       getLevel: () => {
         const { totalXpEarned } = get();
         return Math.floor(totalXpEarned / XP_PER_LEVEL) + 1;
@@ -571,10 +695,6 @@ export const useStore = create<AppState>()(
       },
 
       checkUnlockExpiry: () => {
-        // Foreground belt-and-braces. The DeviceActivityMonitor extension
-        // is the primary mechanism for re-blocking after the unlock window
-        // expires; this just ensures the JS state stays consistent if the
-        // extension fired while the app was killed.
         const { unlockExpiresAt, appsUnlocked } = get();
         if (appsUnlocked && unlockExpiresAt && Date.now() > unlockExpiresAt) {
           set({ appsUnlocked: false, unlockExpiresAt: null, unlockTotalMs: null });
@@ -583,10 +703,20 @@ export const useStore = create<AppState>()(
             ScreenTime.applyShieldNow().catch(() => { });
             ScreenTime.cancelUnlockExpiry().catch(() => { });
           } catch { }
+        } else if (appsUnlocked && unlockExpiresAt) {
+          // Unlock still active — re-remove shields in case a stale native
+          // callback re-applied them (e.g. delayed intervalDidEnd from a
+          // previous unlock window). Self-heals within one polling cycle.
+          try {
+            const { ScreenTime } = require('screen-time-module');
+            ScreenTime.removeShieldNow().catch(() => { });
+          } catch { }
         }
       },
 
       markReviewPromptShown: () => set({ reviewPromptShownAt: Date.now() }),
+
+      markWinbackSeen: () => set({ winbackSeen: true }),
 
       claimWelcomeBonus: () => {
         const { welcomeBonusClaimed, credits, totalXpEarned } = get();

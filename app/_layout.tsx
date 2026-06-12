@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { AppState, Text, TextInput } from 'react-native';
+import { FontFamily } from '../src/constants/theme';
 
 // Cap iOS Dynamic Type / accessibility text scaling at 1.5× project-wide.
 // Without this, users on maximum accessibility settings get 3× scaling, which
@@ -13,6 +14,11 @@ import { AppState, Text, TextInput } from 'react-native';
 Text.defaultProps = Text.defaultProps || {};
 // @ts-expect-error: as above
 Text.defaultProps.maxFontSizeMultiplier = 1.5;
+// Make Geist the app-wide default font, so any Text that doesn't set its own
+// fontFamily uses the brand typeface instead of the system font. Text that
+// already specifies a fontFamily (the design system) is unaffected.
+// @ts-expect-error: as above
+Text.defaultProps.style = { fontFamily: FontFamily.regular };
 // @ts-expect-error: as above
 TextInput.defaultProps = TextInput.defaultProps || {};
 // @ts-expect-error: as above

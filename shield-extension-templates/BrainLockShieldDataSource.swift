@@ -2,8 +2,8 @@ import ManagedSettings
 import ManagedSettingsUI
 import UIKit
 
-// Brand colour: #E53935 (DESIGN.md `accent`).
-private let accentRed = UIColor(red: 0.898, green: 0.224, blue: 0.208, alpha: 1.0)
+// Brand orange — warm, high-energy, matches the app accent.
+private let brandOrange = UIColor(red: 0.949, green: 0.400, blue: 0.055, alpha: 1.0) // #F2660E
 
 class BrainLockShieldDataSource: ShieldConfigurationDataSource {
 
@@ -27,24 +27,24 @@ class BrainLockShieldDataSource: ShieldConfigurationDataSource {
 
     private func brainLockShield() -> ShieldConfiguration {
         ShieldConfiguration(
-            backgroundBlurStyle: .systemMaterial,
-            backgroundColor: accentRed,
+            backgroundBlurStyle: .systemThickMaterial,
+            backgroundColor: brandOrange,
             icon: UIImage(named: "ShieldIcon"),
             title: ShieldConfiguration.Label(
-                text: "Locked by Brainlock",
+                text: "This app is locked.",
                 color: .white
             ),
             subtitle: ShieldConfiguration.Label(
-                text: "Earn brain cells in Brainlock to unlock.",
+                text: "Pass a test in Brainlock to unlock it.",
                 color: UIColor.white.withAlphaComponent(0.85)
             ),
             primaryButtonLabel: ShieldConfiguration.Label(
                 text: "Open Brainlock",
-                color: accentRed
+                color: brandOrange
             ),
             primaryButtonBackgroundColor: .white,
             secondaryButtonLabel: ShieldConfiguration.Label(
-                text: "Close",
+                text: "Go back",
                 color: UIColor.white.withAlphaComponent(0.9)
             )
         )

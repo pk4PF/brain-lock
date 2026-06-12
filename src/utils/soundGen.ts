@@ -74,31 +74,36 @@ function mix(a: number[], b: number[], bOffset = 0): number[] {
 
 // ── Sound generators ──────────────────────────────────────────
 
-/** Soft wooden tap - filtered low-freq noise with a tonal body */
+/** Snappy bubble-pop tap - punchy click with a bright tonal body */
 function genTap(): number[] {
-  const len = Math.floor(SAMPLE_RATE * 0.035);
+  const len = Math.floor(SAMPLE_RATE * 0.05);
   const samples: number[] = [];
   for (let i = 0; i < len; i++) {
     const t = i / SAMPLE_RATE;
-    const env = Math.exp(-t * 120); // fast exponential decay
-    // Low-passed noise (simple averaging) + subtle tonal body
-    const noise = (Math.random() * 2 - 1) * 0.15;
-    const tone = Math.sin(2 * Math.PI * 600 * t) * 0.12;
-    samples.push((noise + tone) * env);
+    const env = Math.exp(-t * 90); // punchy decay with a touch more body
+    // Brighter pop: pitch drops quickly for a satisfying "bloop"
+    const freq = 900 - 400 * Math.min(1, t / 0.03);
+    const noise = (Math.random() * 2 - 1) * 0.25;
+    const tone = Math.sin(2 * Math.PI * freq * t) * 0.5;
+    samples.push((noise + tone) * env * 0.9);
   }
-  // Simple low-pass: average adjacent samples
+  // Light low-pass to round off the harshness
   for (let i = 1; i < samples.length; i++) {
-    samples[i] = samples[i] * 0.4 + samples[i - 1] * 0.6;
+    samples[i] = samples[i] * 0.55 + samples[i - 1] * 0.45;
   }
   return samples;
 }
 
-/** Gentle ascending chime - warm, not piercing */
+/** Bright, rewarding ascending chime - punchy and satisfying */
 function genCorrect(): number[] {
-  const tone1 = warmTone(523, 0.12, 0.22); // C5
-  const tone2 = warmTone(784, 0.16, 0.18); // G5
-  // Overlap the second tone slightly for smoothness
-  return mix(tone1, tone2, Math.floor(SAMPLE_RATE * 0.07));
+  const tone1 = warmTone(659, 0.11, 0.5);  // E5
+  const tone2 = warmTone(988, 0.18, 0.45); // B5 — bright, poppy interval
+  // Overlap for a quick, snappy two-note "ding-ding"
+  let out = mix(tone1, tone2, Math.floor(SAMPLE_RATE * 0.06));
+  // Tiny high sparkle on the tail for that satisfying mobile-game shimmer
+  const sparkle = warmTone(1319, 0.1, 0.2); // E6
+  out = mix(out, sparkle, Math.floor(SAMPLE_RATE * 0.13));
+  return out;
 }
 
 /** Soft muffled low tone - communicates "nope" without jarring */
@@ -107,13 +112,13 @@ function genWrong(): number[] {
   const samples: number[] = [];
   for (let i = 0; i < len; i++) {
     const t = i / SAMPLE_RATE;
-    const env = Math.exp(-t * 12);
-    // Low fundamental with slight detuning for a muted buzz
+    const env = Math.exp(-t * 13);
+    // Low fundamental with slight detuning for a defined "wrong" buzz
     const wave =
       Math.sin(2 * Math.PI * 220 * t) * 0.5 +
       Math.sin(2 * Math.PI * 226 * t) * 0.3 +
       Math.sin(2 * Math.PI * 165 * t) * 0.2;
-    samples.push(wave * 0.18 * env);
+    samples.push(wave * 0.42 * env);
   }
   return samples;
 }
@@ -128,11 +133,11 @@ function genComplete(): number[] {
   ];
   let result: number[] = [];
   for (const note of notes) {
-    const tone = warmTone(note.freq, 0.22, 0.16);
+    const tone = warmTone(note.freq, 0.22, 0.34);
     result = mix(result, tone, Math.floor(SAMPLE_RATE * note.delay));
   }
-  // Add a sustained final note
-  const sustain = warmTone(1047, 0.3, 0.1);
+  // Add a sustained, bright final note for a triumphant finish
+  const sustain = warmTone(1047, 0.34, 0.22);
   result = mix(result, sustain, Math.floor(SAMPLE_RATE * 0.36));
   return result;
 }
@@ -146,7 +151,7 @@ function genFail(): number[] {
   ];
   let result: number[] = [];
   for (const note of notes) {
-    const tone = warmTone(note.freq, 0.18, 0.13);
+    const tone = warmTone(note.freq, 0.18, 0.3);
     result = mix(result, tone, Math.floor(SAMPLE_RATE * note.delay));
   }
   return result;
@@ -164,7 +169,7 @@ function genCountdown(): number[] {
       Math.sin(2 * Math.PI * 800 * t) * 0.5 +
       Math.sin(2 * Math.PI * 400 * t) * 0.3 +
       (Math.random() * 2 - 1) * 0.2;
-    samples.push(wave * 0.12 * env);
+    samples.push(wave * 0.28 * env);
   }
   // Gentle low-pass
   for (let i = 1; i < samples.length; i++) {
@@ -187,7 +192,7 @@ function genRound(): number[] {
       Math.sin(2 * Math.PI * freq * t) * 0.6 +
       Math.sin(2 * Math.PI * freq * 1.5 * t) * 0.25 +
       (Math.random() * 2 - 1) * 0.15; // tiny noise for texture
-    samples.push(wave * 0.12 * env);
+    samples.push(wave * 0.3 * env);
   }
   return samples;
 }
@@ -213,19 +218,18 @@ export function generateSoundFiles(): Record<string, string> {
     soundsDir.create({ intermediates: true });
   }
 
-  // Version marker - bump this to force regeneration after changes
-  const VERSION = '2';
-  const versionFile = new File(soundsDir, '.version');
-  const currentVersion = versionFile.exists ? versionFile.text() : '';
+  // Version marker — bump VERSION to force regeneration after changes.
+  // Existence-based (sync) because File.text() is async and this fn is sync.
+  const VERSION = '3';
+  const versionFile = new File(soundsDir, `.sound-v${VERSION}`);
 
-  if (currentVersion !== VERSION) {
-    // Clear old sounds
+  if (!versionFile.exists) {
+    // New version — clear stale wav files, then regenerate below.
     for (const [name] of Object.entries(GENERATORS)) {
       const old = new File(soundsDir, `${name}.wav`);
       if (old.exists) old.delete();
     }
     versionFile.create();
-    versionFile.write(VERSION);
   }
 
   const uris: Record<string, string> = {};

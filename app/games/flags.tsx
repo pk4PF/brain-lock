@@ -5,6 +5,7 @@ import { Flag } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundCorrect, soundWrong, soundComplete, soundFail, soundRound } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult } from '../../src/components/games/GameLayout';
@@ -73,6 +74,7 @@ export default function FlagsScreen() {
   const finishGame = (finalCorrect: number) => {
     const timeTaken = (Date.now() - startedAt) / 1000;
     const passed = finalCorrect === count; // quizzes = all-or-nothing
+    if (passed) soundComplete(); else soundFail();
     recordGame('flags', passed, timeTaken);
     if (passed) doUnlock();
     setResultMsg(pickResultMessage(passed));
@@ -86,7 +88,8 @@ export default function FlagsScreen() {
   const handleAnswer = (i: number) => {
     if (selected !== null) return;
     const isRight = i === rounds[idx].answer;
-    if (isRight) hapticLight(); else hapticMedium();
+    soundTap();
+    if (isRight) { hapticLight(); soundCorrect(); } else { hapticMedium(); soundWrong(); }
     setSelected(i);
     const newCorrect = isRight ? correct + 1 : correct;
     if (isRight) setCorrect(newCorrect);
@@ -94,6 +97,7 @@ export default function FlagsScreen() {
       if (idx + 1 >= count) {
         finishGame(newCorrect);
       } else {
+        soundRound();
         setIdx(idx + 1);
         setSelected(null);
       }
@@ -128,8 +132,6 @@ export default function FlagsScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Flag size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={`${correct}/${count}`}
           subtitle="correct"

@@ -64,13 +64,13 @@ export default function GoalScreen() {
       has_custom: trimmed.length > 0,
       total_count: final.length,
     });
-    router.push('/onboarding/review');
+    router.push('/onboarding/demo-block');
   };
 
   const totalCount = selected.length + (customText.trim().length > 0 ? 1 : 0);
 
   return (
-    <OnboardingLayout step={8} totalSteps={12}>
+    <OnboardingLayout step={8} totalSteps={15}>
       <OnboardingBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -87,7 +87,7 @@ export default function GoalScreen() {
             </FadeUp>
             <FadeUp delay={80}>
               <SectionHeading size="lg">
-                What would you do with your time back?
+                What will you do with your time back?
               </SectionHeading>
             </FadeUp>
             <View style={{ height: 10 }} />
@@ -145,7 +145,7 @@ export default function GoalScreen() {
 
           <View style={styles.bottomContainer}>
             <OnboardingButton
-              label={totalCount > 0 ? `Continue (${totalCount})` : 'Skip'}
+              label={totalCount > 0 ? `Continue (${totalCount})` : 'Continue'}
               onPress={advance}
             />
           </View>

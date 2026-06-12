@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { Lock, Check, ShieldCheck } from 'lucide-react-native';
+import { Lock, Check, ShieldCheck, TrendingUp, Unlock } from 'lucide-react-native';
 import { ScreenTime } from 'screen-time-module';
+
+// The loop, taught before we ask for permission so "enable" feels earned.
+const HOW_STEPS: { Icon: any; text: string }[] = [
+  { Icon: Lock, text: 'Lock the apps that rot your brain.' },
+  { Icon: TrendingUp, text: 'Train in the Brain Gym to drive your Brainpower Score up.' },
+  { Icon: Unlock, text: 'Unlock anytime — but scrolling drags it back down.' },
+];
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
@@ -108,67 +115,50 @@ export default function DemoBlockScreen() {
   const isUnavailable = authStatus === 'unavailable';
 
   return (
-    <OnboardingLayout step={10} totalSteps={16}>
+    <OnboardingLayout step={9} totalSteps={15}>
       <OnboardingBackButton />
       <View style={styles.content}>
         <View style={styles.top}>
           <FadeUp delay={0}>
-            <Eyebrow>Step 1 - block</Eyebrow>
+            <Eyebrow>How it works</Eyebrow>
           </FadeUp>
           <FadeUp delay={80}>
             <SectionHeading size="lg">
-              Block your distractions.
+              Lock in. Here's how it works.
             </SectionHeading>
-          </FadeUp>
-          <View style={{ height: 10 }} />
-          <FadeUp delay={160}>
-            <MutedText size="md">
-              Pick the apps you'll pass a challenge to open. You can always edit this later.
-            </MutedText>
           </FadeUp>
         </View>
 
         <View style={styles.center}>
-          {/* Status card - single hero indicator. Highlighted border when
-              the user has selected apps; hairline otherwise. */}
+          {/* The loop, step by step - the whole point of this screen. */}
           <FadeUp delay={260}>
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: hasApps ? colors.accent : colors.border,
-                  borderWidth: hasApps ? 1.5 : 1,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.cardIcon,
-                  { backgroundColor: hasApps ? colors.accentLight : colors.cardAlt },
-                ]}
-              >
-                {hasApps ? (
-                  <Check size={20} color={colors.accent} strokeWidth={2.5} />
-                ) : (
-                  <Lock size={20} color={colors.muted} strokeWidth={1.8} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>
-                  {hasApps ? `${appCount} app${appCount !== 1 ? 's' : ''} selected` : 'No apps selected yet'}
-                </Text>
-                <Text style={[styles.cardSub, { color: colors.muted }]}>
-                  {hasApps ? 'Tap below to change your selection.' : 'You can always edit this later.'}
-                </Text>
-              </View>
+            <View style={{ gap: 16 }}>
+              {HOW_STEPS.map((s, i) => (
+                <View key={i} style={styles.step}>
+                  <View style={[styles.stepIcon, { backgroundColor: colors.accentLight }]}>
+                    <s.Icon size={18} color={colors.accent} strokeWidth={2.2} />
+                  </View>
+                  <Text style={[styles.stepText, { color: colors.text }]}>{s.text}</Text>
+                </View>
+              ))}
             </View>
           </FadeUp>
 
+          {/* Positive confirmation once apps are picked (no empty "none yet"). */}
+          {hasApps && (
+            <FadeUp delay={120}>
+              <View style={[styles.selectedPill, { backgroundColor: colors.accentLight, borderColor: colors.accent }]}>
+                <Check size={16} color={colors.accent} strokeWidth={2.6} />
+                <Text style={[styles.selectedText, { color: colors.accent }]}>
+                  {appCount} app{appCount !== 1 ? 's' : ''} locked
+                </Text>
+              </View>
+            </FadeUp>
+          )}
+
           {/* Privacy disclosure. Apple's Family Controls hands the app
               opaque tokens, not bundle IDs, so we genuinely cannot see
-              which apps were picked or what's done in them. Saying so
-              up-front is the standard pattern (Opal, Jomo, ScreenZen). */}
+              which apps were picked or what's done in them. */}
           <FadeUp delay={340}>
             <View
               style={[
@@ -265,6 +255,41 @@ const styles = StyleSheet.create({
   cardSub: {
     fontSize: 13,
     fontFamily: FontFamily.regular,
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  stepIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: FontFamily.medium,
+    letterSpacing: -0.2,
+    lineHeight: 22,
+  },
+  selectedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 22,
+  },
+  selectedText: {
+    fontSize: 14,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.1,
   },
   bottomContainer: {
     paddingHorizontal: Spacing.xl,

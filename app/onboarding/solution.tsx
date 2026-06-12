@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { FontFamily, Spacing } from '../../src/constants/theme';
 import OnboardingLayout from '../../src/components/onboarding/OnboardingLayout';
+import OnboardingBackButton from '../../src/components/onboarding/OnboardingBackButton';
 import FadeUp from '../../src/components/onboarding/FadeUp';
 import { useOnboardingStepView } from '../../src/hooks/useOnboardingStepView';
 import { hapticLight } from '../../src/utils/haptics';
@@ -28,21 +29,29 @@ export default function SolutionScreen() {
   };
 
   return (
-    <OnboardingLayout step={2} totalSteps={12}>
+    <OnboardingLayout step={2} totalSteps={15}>
+      <OnboardingBackButton />
       <Pressable
         onPress={next}
         style={[
           styles.container,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
+          { paddingTop: insets.top + 92, paddingBottom: insets.bottom + 24 },
         ]}
       >
         <View style={styles.top}>
           <FadeUp delay={80}>
             <Text style={[styles.headline, { color: colors.text }]}>
-              Brainlock makes your apps something you{' '}
-              <Text style={{ color: colors.accent }}>earn</Text>.
+              Less brain rot.{'\n'}
+              <Text style={{ color: colors.accent }}>More brainpower.</Text>
             </Text>
           </FadeUp>
+          <View style={{ height: 20 }} />
+          <FadeUp delay={260}>
+            <Text style={[styles.body, { color: colors.secondary }]}>
+              Brainlock scores your brain and locks the apps that rot it.
+            </Text>
+          </FadeUp>
+
         </View>
 
         <FadeUp delay={520}>
@@ -76,6 +85,29 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     lineHeight: 26,
     letterSpacing: -0.1,
+  },
+  promisesHeading: {
+    fontSize: 18,
+    fontFamily: FontFamily.semibold,
+    letterSpacing: -0.3,
+    marginBottom: 16,
+  },
+  promiseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  promiseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  promiseText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: FontFamily.regular,
+    letterSpacing: -0.2,
   },
   stepRow: {
     flexDirection: 'row',

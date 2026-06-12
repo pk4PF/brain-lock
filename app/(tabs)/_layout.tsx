@@ -86,7 +86,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="games"
         options={{
-          title: 'Tests',
+          title: 'Brain Gym',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={Gamepad2} color={color} focused={focused} />,
         }}
         listeners={{ tabPress: () => hapticLight() }}
@@ -94,7 +94,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: 'Stats',
+          title: 'Score',
           tabBarIcon: ({ color, focused }) => <TabIcon icon={BarChart3} color={color} focused={focused} />,
         }}
         listeners={{ tabPress: () => hapticLight() }}

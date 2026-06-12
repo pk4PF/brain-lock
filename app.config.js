@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'Brainlock',
     slug: 'brain-lock',
-    version: '1.4.5',
+    version: '1.4.6',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -16,7 +16,8 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.pk4pf.brain-lock',
-      buildNumber: '203',
+      appleTeamId: '96R8269UVC',
+      buildNumber: '204',
       deploymentTarget: '16.0',
       entitlements: {
         'com.apple.developer.family-controls': true,
@@ -48,7 +49,8 @@ module.exports = {
           color: '#F2660E',
         },
       ],
-      './plugins/withScreenTimeExtensions',
+      '@bacons/apple-targets',
+      'expo-audio',
     ],
     extra: {
       router: {},

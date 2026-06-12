@@ -5,6 +5,7 @@ import { Table } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundWrong, soundComplete, soundFail } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult, TimerBar } from '../../src/components/games/GameLayout';
@@ -73,7 +74,6 @@ export default function SchulteScreen() {
   useEffect(() => () => { stopTick(); if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'schulte' });
     setNumbers(shuffle(Array.from({ length: TOTAL }, (_, i) => i + 1)));
     setNextExpected(1);
@@ -104,6 +104,7 @@ export default function SchulteScreen() {
     if (num !== nextExpected) {
       // Wrong - flash + time penalty, but keep going.
       hapticMedium();
+      soundWrong();
       penaltyMs.current += WRONG_PENALTY_MS;
       setWrongCount((w) => w + 1);
       setFlashCell(cell);
@@ -113,6 +114,7 @@ export default function SchulteScreen() {
     }
 
     hapticLight();
+    soundTap();
     const newDone = new Set(done);
     newDone.add(cell);
     setDone(newDone);
@@ -130,6 +132,7 @@ export default function SchulteScreen() {
     stopTick();
     const credits = success ? creditsForSchulte(seconds) : 2;
     const passed = success; // win = finish all 25 before the clock runs out
+    if (passed) soundComplete(); else soundFail();
     const timeSec = success ? Math.round(seconds * 10) / 10 : TIME_LIMIT;
     recordGame('schulte', passed, timeSec);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
@@ -179,8 +182,6 @@ export default function SchulteScreen() {
         <GameResult
           hue={HUE}
           badgeIcon={<Table size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-          title={resultMsg.title}
-          message={resultMsg.line}
           passed={passed}
           bigStat={finalSuccess ? finalTime : 'TIME UP'}
           bigStatSuffix={finalSuccess ? 's' : undefined}

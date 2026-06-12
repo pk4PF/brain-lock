@@ -5,6 +5,7 @@ import { Trophy } from 'phosphor-react-native';
 import { useStore } from '../../src/store/useStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { hapticLight, hapticMedium } from '../../src/utils/haptics';
+import { soundTap, soundComplete, soundFail } from '../../src/utils/sounds';
 import { track, Events } from '../../src/services/analytics';
 import { FontFamily, Spacing, GameAccents } from '../../src/constants/theme';
 import { GameHeader, GameIntro, GameResult, GameButton } from '../../src/components/games/GameLayout';
@@ -70,7 +71,6 @@ export default function WordRecallScreen() {
   }, [phase]);
 
   const startGame = () => {
-    if (!canEarnToday()) { setShowPaywall(true); return; }
     track(Events.GameStarted, { game: 'word_recall' });
 
     const words = shuffle(WORD_BANK).slice(0, WORD_COUNT);
@@ -101,6 +101,7 @@ export default function WordRecallScreen() {
 
   const toggleWord = (word: string) => {
     hapticLight();
+    soundTap();
     setSelected(prev => {
       const next = new Set(prev);
       if (next.has(word)) next.delete(word);
@@ -114,6 +115,7 @@ export default function WordRecallScreen() {
     const correct = [...selected].filter(w => studyWords.includes(w)).length;
     const credits = creditsForScore(correct, WORD_COUNT);
     const passed = passByAccuracy(correct, WORD_COUNT, difficulty);
+    if (passed) soundComplete(); else soundFail();
     // completeDailyGame internally calls earnReward - don't double-award.
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
@@ -248,8 +250,6 @@ export default function WordRecallScreen() {
       <GameResult
         hue={HUE}
         badgeIcon={<Trophy size={36} color={resultHue} weight="duotone" duotoneColor={resultHue} duotoneOpacity={0.32} />}
-        title={resultMsg.title}
-        message={resultMsg.line}
         passed={passed}
         bigStat={`${correct}/${WORD_COUNT}`}
         subtitle="words recalled"
