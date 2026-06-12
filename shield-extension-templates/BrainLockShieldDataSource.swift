@@ -31,11 +31,11 @@ class BrainLockShieldDataSource: ShieldConfigurationDataSource {
             backgroundColor: brandOrange,
             icon: UIImage(named: "ShieldIcon"),
             title: ShieldConfiguration.Label(
-                text: "This app is locked.",
+                text: "Locked by Brainlock",
                 color: .white
             ),
             subtitle: ShieldConfiguration.Label(
-                text: "Pass a test in Brainlock to unlock it.",
+                text: "Less brain rot, more brainpower.",
                 color: UIColor.white.withAlphaComponent(0.85)
             ),
             primaryButtonLabel: ShieldConfiguration.Label(

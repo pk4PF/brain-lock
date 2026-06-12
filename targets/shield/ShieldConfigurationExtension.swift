@@ -39,11 +39,11 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
             backgroundColor: brandOrange,
             icon: UIImage(named: "ShieldIcon"),
             title: ShieldConfiguration.Label(
-                text: "This app is locked.",
+                text: "Locked by Brainlock",
                 color: .white
             ),
             subtitle: ShieldConfiguration.Label(
-                text: "Pass a test to earn it back.",
+                text: "Less brain rot, more brainpower.",
                 color: UIColor.white.withAlphaComponent(0.92)
             ),
             primaryButtonLabel: ShieldConfiguration.Label(

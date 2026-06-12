@@ -127,7 +127,7 @@ export default function FinalOfferScreen() {
               A full year for {winbackPrice}. That&rsquo;s just {winbackPerWeek} a week.
             </Text>
             <Text style={[styles.urgency, { color: colors.accent }]}>
-              You&rsquo;ll only see this once.
+              Once you close this one-time offer, it&rsquo;s gone!
             </Text>
           </Animated.View>
 
