@@ -75,7 +75,7 @@ export default function GeneralKnowledgeScreen() {
     recordGame('general-knowledge', passed, timeTaken);
     if (passed) doUnlock();
     setResultMsg(pickResultMessage(passed));
-    recordCognitiveScore('problemSolving', (finalCorrect / count) * 100);
+    recordCognitiveScore('knowledge', (finalCorrect / count) * 100);
     track(Events.GameCompleted, {
       game: 'general-knowledge', correct: finalCorrect, total: count, difficulty, passed,
     });

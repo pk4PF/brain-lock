@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   StyleSheet,
+  TouchableOpacity,
   ActivityIndicator,
   BackHandler,
   Animated,
@@ -37,10 +38,11 @@ export default function FinalOfferScreen() {
   useOnboardingStepView('final_offer');
   const insets = useSafeAreaInsets();
   const { colors } = useThemeColors();
-  const { isPremium, completeOnboarding, markWinbackSeen } = useStore();
+  const { isPremium, completeOnboarding, markWinbackSeen, winbackSeen } = useStore();
 
-  // One-time offer: the moment it's on screen, burn it. Even if they swipe
-  // away without buying, the paywall won't route here a second time.
+  // First view gets the punchy "one-time" urgency; repeat views soften to an
+  // honest "best price" framing (the offer now re-shows on every abandonment).
+  const firstView = useRef(!winbackSeen).current;
   useEffect(() => {
     markWinbackSeen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,6 +102,13 @@ export default function FinalOfferScreen() {
   });
 
   const handleClaim = () => purchase(finishOnboarding);
+  const handleDecline = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/onboarding/paywall');
+    }
+  };
 
   return (
     <OnboardingLayout>
@@ -119,7 +128,9 @@ export default function FinalOfferScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={[styles.eyebrow, { color: colors.accent }]}>ONE-TIME OFFER</Text>
+            <Text style={[styles.eyebrow, { color: colors.accent }]}>
+              {firstView ? 'ONE-TIME OFFER' : 'YOUR BEST PRICE'}
+            </Text>
             <Text style={[styles.bigOff, { color: colors.text }]}>
               {off > 0 ? `${off}% off` : 'Half price'}
             </Text>
@@ -127,7 +138,9 @@ export default function FinalOfferScreen() {
               A full year for {winbackPrice}. That&rsquo;s just {winbackPerWeek} a week.
             </Text>
             <Text style={[styles.urgency, { color: colors.accent }]}>
-              Once you close this one-time offer, it&rsquo;s gone!
+              {firstView
+                ? 'Once you close this one-time offer, it’s gone!'
+                : 'The lowest price we’ll ever offer — still here.'}
             </Text>
           </Animated.View>
 
@@ -162,6 +175,13 @@ export default function FinalOfferScreen() {
               <Text style={[styles.billedNote, { color: colors.muted }]}>
                 Then {annualPrice}/year. Cancel anytime.
               </Text>
+              <TouchableOpacity
+                activeOpacity={0.6}
+                onPress={handleDecline}
+                hitSlop={{ top: 10, bottom: 10, left: 16, right: 16 }}
+              >
+                <Text style={[styles.noThanks, { color: colors.muted }]}>No thanks</Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
@@ -270,11 +290,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  swipeHint: {
-    fontSize: 12,
-    fontFamily: FontFamily.regular,
-    marginTop: 2,
+  noThanks: {
+    fontSize: 13,
+    fontFamily: FontFamily.medium,
+    marginTop: 12,
     textAlign: 'center',
-    opacity: 0.75,
+    textDecorationLine: 'underline',
+    opacity: 0.7,
   },
 });

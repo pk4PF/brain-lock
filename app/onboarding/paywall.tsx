@@ -33,7 +33,7 @@ export default function OnboardingPaywallScreen() {
   useOnboardingStepView('paywall');
   const insets = useSafeAreaInsets();
   const { colors } = useThemeColors();
-  const { isPremium, completeOnboarding, setSubscription, userName, userGoals, winbackSeen } = useStore();
+  const { isPremium, completeOnboarding, setSubscription, userName, userGoals } = useStore();
   const firstName = FIRST_NAME(userName);
 
   const {
@@ -55,11 +55,10 @@ export default function OnboardingPaywallScreen() {
   };
 
   const handleCancel = () => {
-    // The winback is a one-shot: only surface it if it's never been seen.
-    // After that, cancelling just leaves them on the paywall (the hard gate).
-    if (!winbackSeen) {
-      router.push('/onboarding/final-offer');
-    }
+    // Re-show the winback on every abandonment so the discount is always the
+    // safety net - we'd rather show it again than lose them over a vanished
+    // offer. (The offer copy softens after the first view; see final-offer.)
+    router.push('/onboarding/final-offer');
   };
 
   useEffect(() => {

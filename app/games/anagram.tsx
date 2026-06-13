@@ -150,7 +150,7 @@ export default function AnagramScreen() {
     recordGame('anagram', passed, timeTaken);
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
-    recordCognitiveScore('recall', (finalCorrect / TOTAL_ROUNDS) * 100);
+    recordCognitiveScore('problemSolving', (finalCorrect / TOTAL_ROUNDS) * 100);
     setEarnedCredits(credits);
     track(Events.GameCompleted, { game: 'anagram', correct: finalCorrect, total: TOTAL_ROUNDS, passed, credits: passed ? credits : 0 });
     setPhase('result');

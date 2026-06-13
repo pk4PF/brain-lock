@@ -25,10 +25,15 @@ export default function BreatheScreen() {
   const [cycle, setCycle] = useState(0);
   const [done, setDone] = useState(false);
   const adjustBrainScore = useStore((s) => s.adjustBrainScore);
+  const recordCognitiveScore = useStore((s) => s.recordCognitiveScore);
 
-  // A completed calm rep counts as training - pushes the Brainpower Score up.
+  // A completed calm rep counts as training - pushes the overall score up and
+  // builds the Calm area (the mindfulness key behind it).
   useEffect(() => {
-    if (done) adjustBrainScore(+2);
+    if (done) {
+      adjustBrainScore(+2);
+      recordCognitiveScore('mindfulness', 85);
+    }
   }, [done]);
 
   const scale = useRef(new Animated.Value(0.55)).current;

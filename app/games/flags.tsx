@@ -78,7 +78,7 @@ export default function FlagsScreen() {
     recordGame('flags', passed, timeTaken);
     if (passed) doUnlock();
     setResultMsg(pickResultMessage(passed));
-    recordCognitiveScore('recall', (finalCorrect / count) * 100);
+    recordCognitiveScore('knowledge', (finalCorrect / count) * 100);
     track(Events.GameCompleted, {
       game: 'flags', correct: finalCorrect, total: count, difficulty, passed,
     });

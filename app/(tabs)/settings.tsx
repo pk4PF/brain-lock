@@ -218,7 +218,7 @@ export default function ProfileScreen() {
           <AnvilCard padding="md">
             <TouchableOpacity
               activeOpacity={0.6}
-              onPress={() => Linking.openURL('mailto:contact@pltbk.com')}
+              onPress={() => Linking.openURL('mailto:contact@plbtk.com')}
               style={[styles.row, { paddingVertical: 12 }]}
             >
               <Mail size={18} color={colors.muted} strokeWidth={1.8} />

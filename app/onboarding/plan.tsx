@@ -79,7 +79,7 @@ export default function PlanScreen() {
         >
           <Text style={[styles.eyebrow, { color: colors.muted }]}>WHAT CHANGES</Text>
           <Text style={[styles.title, { color: colors.text }]}>
-            In a month, {firstName}, you get{'\n'}
+            In a week, {firstName}, you get{'\n'}
             <Text style={{ color: colors.accent }}>your brain back</Text>.
           </Text>
           <Text style={[styles.sub, { color: colors.secondary }]}>

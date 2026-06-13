@@ -90,6 +90,7 @@ export interface CognitiveScores {
   speed: number;
   problemSolving: number;
   mindfulness: number;
+  knowledge: number;
 }
 
 export type CognitiveArea = keyof CognitiveScores;
@@ -321,6 +322,7 @@ export const useStore = create<AppState>()(
         speed: 0,
         problemSolving: 0,
         mindfulness: 0,
+        knowledge: 0,
       },
       lockedApps: [],
       dailyGamesCompleted: 0,

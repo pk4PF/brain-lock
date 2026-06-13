@@ -119,8 +119,8 @@ export default function WordRecallScreen() {
     // completeDailyGame internally calls earnReward - don't double-award.
     if (passed) doUnlock(); // pass → unlock apps (no-op in practice)
     setResultMsg(pickResultMessage(passed));
-    // Recall is the % of words correctly identified. Pass directly.
-    recordCognitiveScore('recall', (correct / WORD_COUNT) * 100);
+    // Verbal memory - feeds the Memory area (recall isn't a shown area now).
+    recordCognitiveScore('memory', (correct / WORD_COUNT) * 100);
     // Lifetime tile-stat counter - drives "X played" on the games tab.
     recordGame('word-recall', passed, correct);
     setEarnedCredits(credits);

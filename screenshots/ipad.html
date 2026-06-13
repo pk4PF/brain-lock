@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Brainlock — App Store Screenshots</title>
+<title>Brainlock iPad App Store Screenshots</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -22,10 +22,10 @@
     text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;
   }
 
-  /* Preview container — master is 1290x2796, scaled by 250/1290 = 0.19379 */
+  /* Master is 2064x2752 (iPad 13"), scaled by 320/2064 = 0.15504 */
   .preview-wrap {
-    width: 250px;
-    height: 542px;
+    width: 320px;
+    height: 427px;
     overflow: hidden;
     border-radius: 16px;
     border: 1px solid #2A2620;
@@ -33,9 +33,9 @@
     background: #1a1a1a;
   }
   .ss {
-    width: 1290px;
-    height: 2796px;
-    transform: scale(0.19379);
+    width: 2064px;
+    height: 2752px;
+    transform: scale(0.15504);
     transform-origin: top left;
     display: flex;
     flex-direction: column;
@@ -43,67 +43,65 @@
     position: relative;
   }
 
-  /* Decorative brand blobs (clipped by .ss overflow:hidden) */
   .blob { position: absolute; border-radius: 50%; pointer-events: none; }
 
-  /* Top caption area. All headlines are two lines, so a fixed top padding
-     aligns them across every screenshot. */
+  /* Caption band */
   .top-area {
     position: relative;
     z-index: 2;
-    padding: 155px 110px 0;
+    padding: 150px 180px 0;
     text-align: center;
     flex-shrink: 0;
   }
   .top-area h2 {
-    font-size: 108px;
+    font-size: 132px;
     font-weight: 800;
-    line-height: 1.04;
-    letter-spacing: -3.5px;
+    line-height: 1.05;
+    letter-spacing: -4px;
   }
   .top-area p {
-    font-size: 40px;
+    font-size: 50px;
     font-weight: 500;
-    margin-top: 26px;
+    margin-top: 30px;
     letter-spacing: -0.5px;
   }
 
-  /* Phone mockup area */
-  .phone-area {
+  /* iPad mockup, centred in the space below the caption */
+  .pad-area {
     position: relative;
     z-index: 2;
     flex: 1;
     display: flex;
     justify-content: center;
-    align-items: flex-end;
-    padding: 70px 140px 0;
+    align-items: center;
+    padding: 60px 0 90px;
     overflow: hidden;
   }
-  .phone-frame {
-    width: 1010px;
-    height: 2136px; /* default ≈ iPhone aspect; JS resizes to match upload */
+  .pad-frame {
+    width: 1560px;
+    height: 2050px; /* default ≈ iPad aspect; JS resizes to match upload */
     background: #0C0C0E;
-    border-radius: 86px 86px 0 0;
-    padding: 16px 16px 0;
+    border-radius: 56px;
+    padding: 20px;
     overflow: hidden;
-    box-shadow: 0 -18px 90px rgba(0,0,0,0.22);
+    box-shadow: 0 30px 110px rgba(0,0,0,0.28);
     position: relative;
   }
-  .phone-frame .screen {
+  .pad-frame .screen {
     width: 100%;
     height: 100%;
-    border-radius: 72px 72px 0 0;
+    border-radius: 40px;
     overflow: hidden;
     background: #FAF6F0;
   }
-  .phone-frame img {
+  .pad-frame img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: top center;
     display: block;
   }
-  .phone-frame .placeholder {
+  .pad-frame .placeholder {
     width: 100%;
     height: 100%;
     display: flex;
@@ -112,20 +110,18 @@
     justify-content: center;
     background: #F4EFE7;
     color: #B8AE9F;
-    font-size: 46px;
+    font-size: 60px;
     font-weight: 600;
-    gap: 24px;
+    gap: 28px;
   }
-  .phone-frame .placeholder .upload-icon { font-size: 90px; opacity: 0.45; }
+  .pad-frame .placeholder .upload-icon { font-size: 120px; opacity: 0.45; }
 
-  /* ── Brand themes ───────────────────────────────────────── */
-  /* Cream: dark headline + orange accent word on warm paper */
+  /* Brand themes */
   .bg-cream { background: #FAF6F0; }
   .bg-cream .top-area h2 { color: #1A1208; }
   .bg-cream .top-area p { color: #8A7E70; }
   .bg-cream .accent { color: #FF6A1A; }
 
-  /* Orange: white headline on the brand accent */
   .bg-orange { background: linear-gradient(170deg, #FF7A2E 0%, #F2660E 100%); }
   .bg-orange .top-area h2 { color: #FFFFFF; }
   .bg-orange .top-area p { color: rgba(255,255,255,0.88); }
@@ -177,8 +173,8 @@
 <body>
 
 <div class="header">
-  <h1>Brainlock App Store Screenshots</h1>
-  <p>Upload a phone screenshot into each slot, pick a display size, then download marketing PNGs.</p>
+  <h1>Brainlock iPad App Store Screenshots</h1>
+  <p>Upload an <span class="accent">iPad</span> screenshot into each slot, pick a size, then download. Capture on an iPad simulator (13").</p>
   <div class="size-row">
     <label for="sizeSel">Display size</label>
     <select id="sizeSel"></select>
@@ -193,46 +189,43 @@
 <div class="status" id="status"></div>
 
 <script>
-// ── Edit captions / order / theme here ──────────────────────────────
-// title: HTML, use <br> for line breaks and <span class="accent"> to highlight.
-// bg: 'orange' | 'cream'. logo:true shows the app icon above the headline.
+// Same four captions as the iPhone set, for a consistent listing.
 const SCREENS = [
   {
     label: 'Score',
     bg: 'orange',
     title: 'Less brain rot.<br><span class="accent">More brainpower.</span>',
     sub: 'One Brainpower Score, built over time.',
-    file: 'Brainlock-01-Score.png',
+    file: 'Brainlock-iPad-01-Score.png',
   },
   {
     label: 'Block',
     bg: 'cream',
     title: 'Lock the apps<br>that <span class="accent">rot your brain.</span>',
     sub: 'One tap to block. They stay locked.',
-    file: 'Brainlock-02-Block.png',
+    file: 'Brainlock-iPad-02-Block.png',
   },
   {
     label: 'Brain Gym',
     bg: 'orange',
     title: 'Train it back<br>to <span class="accent">sharp.</span>',
     sub: '15+ brain games. A fresh workout every day.',
-    file: 'Brainlock-03-Gym.png',
+    file: 'Brainlock-iPad-03-Gym.png',
   },
   {
     label: 'Unlock',
     bg: 'cream',
     title: 'Scroll only<br>when <span class="accent">you choose.</span>',
     sub: 'Unlocking costs Brainpower, so you reach for it less.',
-    file: 'Brainlock-04-Unlock.png',
+    file: 'Brainlock-iPad-04-Unlock.png',
   },
 ];
 
-// The layout is designed once at this size; export scales the render to the
-// chosen App Store dimensions (their aspect ratios are ~identical).
-const DESIGN_W = 1290, DESIGN_H = 2796;
+// Designed once at 2064x2752; export scales to the chosen 13" dimensions.
+const DESIGN_W = 2064, DESIGN_H = 2752;
 const SIZES = [
-  { label: '6.5" (1242 × 2688)', w: 1242, h: 2688 },
-  { label: '6.9" (1290 × 2796)', w: 1290, h: 2796 },
+  { label: '13" (2064 × 2752)', w: 2064, h: 2752 },
+  { label: '12.9" (2048 × 2732)', w: 2048, h: 2732 },
 ];
 function outSize() {
   const i = +document.getElementById('sizeSel').value || 0;
@@ -246,19 +239,18 @@ function buildSizeSelect() {
 function blobsFor(bg) {
   if (bg === 'orange') {
     return `
-      <div class="blob" style="top:-260px;right:-180px;width:720px;height:720px;background:rgba(255,255,255,0.10);"></div>
-      <div class="blob" style="bottom:140px;left:-220px;width:560px;height:560px;background:rgba(255,255,255,0.07);"></div>`;
+      <div class="blob" style="top:-340px;right:-240px;width:1040px;height:1040px;background:rgba(255,255,255,0.10);"></div>
+      <div class="blob" style="bottom:180px;left:-300px;width:780px;height:780px;background:rgba(255,255,255,0.07);"></div>`;
   }
   return `
-    <div class="blob" style="top:-220px;right:-160px;width:680px;height:680px;background:rgba(255,106,26,0.13);"></div>
-    <div class="blob" style="top:900px;left:-240px;width:560px;height:560px;background:rgba(255,106,26,0.09);"></div>`;
+    <div class="blob" style="top:-300px;right:-220px;width:960px;height:960px;background:rgba(255,106,26,0.12);"></div>
+    <div class="blob" style="top:1200px;left:-320px;width:780px;height:780px;background:rgba(255,106,26,0.08);"></div>`;
 }
 
 function buildCards() {
   const grid = document.getElementById('grid');
   grid.innerHTML = SCREENS.map((s, i) => {
     const n = i + 1;
-    const logo = s.logo ? `<img class="logo" src="../assets/icon.png" crossorigin="anonymous">` : '';
     return `
     <div class="card">
       <div class="label">${n}. ${s.label}</div>
@@ -266,16 +258,15 @@ function buildCards() {
         <div class="ss bg-${s.bg}" id="ss${n}">
           ${blobsFor(s.bg)}
           <div class="top-area">
-            ${logo}
             <h2>${s.title}</h2>
             <p>${s.sub}</p>
           </div>
-          <div class="phone-area">
-            <div class="phone-frame">
-              <div class="screen" id="phone${n}">
+          <div class="pad-area">
+            <div class="pad-frame">
+              <div class="screen" id="pad${n}">
                 <div class="placeholder" id="ph${n}">
                   <div class="upload-icon">📱</div>
-                  <span>Upload screenshot</span>
+                  <span>Upload iPad screenshot</span>
                 </div>
               </div>
             </div>
@@ -296,22 +287,22 @@ function loadImage(num, input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    const phone = document.getElementById('phone' + num);
+    const screen = document.getElementById('pad' + num);
     const placeholder = document.getElementById('ph' + num);
     if (placeholder) placeholder.remove();
-    const existingImg = phone.querySelector('img');
+    const existingImg = screen.querySelector('img');
     if (existingImg) existingImg.remove();
     const img = document.createElement('img');
-    // Resize the phone frame to the screenshot's exact aspect ratio so it's
+    // Resize the iPad frame to the screenshot's exact aspect ratio so it's
     // never stretched (html2canvas ignores object-fit on export).
     img.onload = function() {
       const aspect = img.naturalWidth / img.naturalHeight;
-      const frame = phone.parentElement;          // .phone-frame
-      const screenW = frame.clientWidth - 32;     // minus side bezels
-      frame.style.height = Math.round(screenW / aspect + 16) + 'px';
+      const frame = screen.parentElement;          // .pad-frame
+      const screenW = frame.clientWidth - 40;       // minus bezel padding
+      frame.style.height = Math.round(screenW / aspect + 40) + 'px';
     };
     img.src = e.target.result;
-    phone.appendChild(img);
+    screen.appendChild(img);
     setStatus('Screenshot ' + num + ' loaded.');
   };
   reader.readAsDataURL(file);
@@ -323,13 +314,12 @@ async function download(id, filename, btn) {
 
   const el = document.getElementById(id);
   const wrap = el.parentElement;
+  const out = outSize();
+  const outName = filename.replace(/\.png$/i, `-${out.w}x${out.h}.png`);
   const origTransform = el.style.transform;
   const origWidth = wrap.style.width;
   const origHeight = wrap.style.height;
   const origOverflow = wrap.style.overflow;
-
-  const out = outSize();
-  const outName = filename.replace(/\.png$/i, `-${out.w}x${out.h}.png`);
 
   el.style.transform = 'none';
   wrap.style.width = DESIGN_W + 'px';

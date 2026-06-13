@@ -92,7 +92,7 @@ function categoryOf(g: Game): GymCat {
   return 'test';
 }
 const SECTIONS: { cat: GymCat; label: string; blurb: string; pill: string }[] = [
-  { cat: 'test',      label: 'Tests',     blurb: 'Train memory, focus, speed, reasoning.', pill: 'TEST' },
+  { cat: 'test',      label: 'Workouts',  blurb: 'Train memory, focus, reaction, and reasoning.', pill: 'WORKOUT' },
   { cat: 'knowledge', label: 'Knowledge', blurb: 'Sharpen what you already know.',         pill: 'QUIZ' },
   { cat: 'calm',      label: 'Calm',      blurb: 'Slow down and reset your attention.',    pill: 'CALM' },
 ];
@@ -136,7 +136,7 @@ export default function GamesScreen() {
     const playedLabel = !stats || stats.played === 0
       ? 'Tap to start'
       : `${stats.played} played`;
-    const pillLabel = SECTIONS.find((s) => s.cat === categoryOf(game))?.pill ?? 'TEST';
+    const pillLabel = SECTIONS.find((s) => s.cat === categoryOf(game))?.pill ?? 'WORKOUT';
     return (
       <TouchableOpacity
         key={game.key}
@@ -193,7 +193,7 @@ export default function GamesScreen() {
         <SectionHeading size="lg">Raise your Brainpower Score.</SectionHeading>
         <View style={{ height: 10 }} />
         <MutedText size="md">
-          Every rep here pushes your score up. Tests, knowledge, and calm — your brain's workout.
+          Every rep here pushes your score up. Workouts, knowledge, and calm to keep you sharp.
         </MutedText>
 
         {/* Sections - Tests / Knowledge / Calm */}

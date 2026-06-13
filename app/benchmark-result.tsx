@@ -23,7 +23,7 @@ function scoreColor(score: number): string {
 export default function BenchmarkResultScreen() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { benchmarkScores, dailyScreenTimeHours, setBrainScore, clearBenchmarkScores } = useStore();
+  const { benchmarkScores, dailyScreenTimeHours, setBrainScore, clearBenchmarkScores, recordCognitiveScore } = useStore();
 
   const targetRef = useRef<number>(
     computeBenchmarkScore(dailyScreenTimeHours, benchmarkScores),
@@ -34,6 +34,15 @@ export default function BenchmarkResultScreen() {
   useEffect(() => {
     const target = targetRef.current;
     setBrainScore(target);
+
+    // Seed ONLY the areas the benchmark actually measures. The untested ones
+    // (Reaction time, Calm, General knowledge) stay at 0 until the user trains
+    // them in the Brain Gym - no made-up ratings.
+    const bs = benchmarkScores;
+    if (typeof bs.memory === 'number') recordCognitiveScore('memory', bs.memory);
+    if (typeof bs.attention === 'number') recordCognitiveScore('attention', bs.attention);
+    if (typeof bs.problemSolving === 'number') recordCognitiveScore('problemSolving', bs.problemSolving);
+
     clearBenchmarkScores();
 
     let step = 0;
