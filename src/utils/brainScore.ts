@@ -95,5 +95,5 @@ export function getBrainAge(score: number): number {
 
 /** Short caption for the native share sheet (text alongside the image). */
 export function brainScoreShareMessage(result: BrainScoreResult): string {
-  return `My Brainpower Score is ${result.score}/100 (${result.label}). Think you can beat it? Brainlock.`;
+  return `My Brainpower Score is ${result.score}/100. Can you beat me?`;
 }

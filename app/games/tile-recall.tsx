@@ -279,7 +279,7 @@ export default function TileRecallScreen() {
 
     recordCognitiveScore('memory', bp);
     if (isBenchmark) {
-      setBenchmarkScore(String(bmIndex), bp);
+      setBenchmarkScore('memory', bp);
       advanceBenchmark(bmIndex);
       return;
     }
@@ -309,7 +309,7 @@ export default function TileRecallScreen() {
   const finishBenchmark = (correct: number, total: number) => {
     if (phaseTimerRef.current) { clearTimeout(phaseTimerRef.current); phaseTimerRef.current = null; }
     const memScore = total > 0 ? Math.round((correct / total) * 100) : 0;
-    setBenchmarkScore(String(bmIndex), memScore);
+    setBenchmarkScore('memory', memScore);
     advanceBenchmark(bmIndex);
   };
 

@@ -235,7 +235,7 @@ export default function OnboardingPaywallScreen() {
 
           {/* One quiet trust line - everything else is cut for calm. */}
           <Text style={[styles.trustLine, { color: colors.muted }]}>
-            Cancel anytime · Secured by Apple
+            Cancel anytime
           </Text>
 
           {/* Footer links */}

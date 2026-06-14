@@ -466,7 +466,7 @@ export const useStore = create<AppState>()(
         //  - A great first run is rewarded (no "0 → 10 after a perfect game").
         //  - A great FIRST run alone shouldn't peg the bar at 100 - we want
         //    headroom so 5+ great runs can climb toward Elite.
-        //  - Bad days don't hurt: only upward movement is recorded.
+        //  - Bad days hurt gently: 10% drag toward a low score.
         //
         // Math:
         //  - First game (current === 0): seed with the midpoint of (target, 50).
@@ -489,9 +489,12 @@ export const useStore = create<AppState>()(
         if (current === 0) {
           // First-ever run in this area: cushioned seed.
           next = (target + 50) / 2;
-        } else {
-          if (target <= current) return; // bad days don't hurt
+        } else if (target >= current) {
+          // Good game: ratchet 25% toward the score.
           next = current + (target - current) * 0.25;
+        } else {
+          // Bad game: drag down 10% toward the score — bad days hurt, but gently.
+          next = current + (target - current) * 0.1;
         }
 
         const rounded = Math.round(next * 10) / 10;

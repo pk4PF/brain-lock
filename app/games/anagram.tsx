@@ -23,17 +23,28 @@ type Phase = 'intro' | 'playing' | 'result';
 // that an adult will recognise them when scrambled but not so trivial that
 // the game becomes pointless.
 const WORD_BANK = [
+  // 5-letter
   'apple', 'bread', 'chair', 'dance', 'eagle', 'flame', 'glass', 'heart',
   'image', 'judge', 'knife', 'lemon', 'maple', 'noble', 'ocean', 'paper',
   'queen', 'river', 'stone', 'tiger', 'urban', 'voice', 'water', 'youth',
-  'zebra', 'amber', 'brave', 'cloud', 'dream', 'earth', 'fault', 'globe',
-  'happy', 'ivory', 'jolly', 'koala', 'lunar', 'metal', 'novel', 'olive',
-  'piano', 'quiet', 'royal', 'salad', 'tower', 'unity', 'vapor', 'wagon',
+  'zebra', 'amber', 'brave', 'cloud', 'dream', 'earth', 'globe', 'happy',
+  'lunar', 'metal', 'novel', 'olive', 'piano', 'quiet', 'royal', 'salad',
+  'tower', 'unity', 'wagon', 'beach', 'candy', 'chess', 'cobra', 'crown',
+  'diary', 'fruit', 'ghost', 'grape', 'honey', 'horse', 'juice', 'laser',
+  'light', 'mango', 'money', 'mouse', 'music', 'night', 'pearl', 'pizza',
+  'plant', 'pride', 'prize', 'robot', 'shark', 'sheep', 'smile', 'snake',
+  'spice', 'sport', 'storm', 'sugar', 'sword', 'table', 'theme', 'toast',
+  'train', 'whale', 'witch', 'world',
   // 6-letter
   'animal', 'bridge', 'castle', 'dragon', 'engine', 'forest', 'garden',
   'hammer', 'island', 'jacket', 'kitten', 'ladder', 'mirror', 'needle',
-  'orange', 'pencil', 'quartz', 'rocket', 'silver', 'temple', 'umbrel',
-  'violet', 'window', 'yellow',
+  'orange', 'pencil', 'quartz', 'rocket', 'silver', 'temple', 'violet',
+  'window', 'yellow', 'basket', 'branch', 'button', 'candle', 'cheese',
+  'circle', 'coffee', 'cotton', 'dollar', 'donkey', 'flower', 'guitar',
+  'helmet', 'jungle', 'market', 'monkey', 'museum', 'parrot', 'pirate',
+  'planet', 'pocket', 'potato', 'puzzle', 'rabbit', 'ribbon', 'school',
+  'shadow', 'singer', 'soccer', 'spider', 'spring', 'square', 'summer',
+  'throne', 'tunnel', 'turtle', 'valley', 'winter', 'wizard',
 ];
 
 function shuffleLetters(word: string): string {

@@ -137,11 +137,6 @@ export default function FinalOfferScreen() {
             <Text style={[styles.subline, { color: colors.secondary }]}>
               A full year for {winbackPrice}. That&rsquo;s just {winbackPerWeek} a week.
             </Text>
-            <Text style={[styles.urgency, { color: colors.accent }]}>
-              {firstView
-                ? 'Once you close this one-time offer, it’s gone!'
-                : 'The lowest price we’ll ever offer — still here.'}
-            </Text>
           </Animated.View>
 
           <Animated.View style={[styles.bullets, slideUp(bulletsAnim)]}>
@@ -172,9 +167,6 @@ export default function FinalOfferScreen() {
                 label={purchasing ? 'Processing…' : `Get it for ${winbackPrice}/year`}
                 onPress={purchasing ? () => {} : handleClaim}
               />
-              <Text style={[styles.billedNote, { color: colors.muted }]}>
-                Then {annualPrice}/year. Cancel anytime.
-              </Text>
               <TouchableOpacity
                 activeOpacity={0.6}
                 onPress={handleDecline}

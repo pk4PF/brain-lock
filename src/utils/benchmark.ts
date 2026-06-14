@@ -20,7 +20,10 @@ export interface BenchmarkStep {
 // effortless. Each game records its raw 0-100 score keyed by step index.
 export const BENCHMARK_SEQUENCE: BenchmarkStep[] = [
   { route: '/games/tile-recall', label: 'Memory' },
-  { route: '/games/cup-shuffle', label: 'Attention' },
+  // Focus Flash plays a fixed set of rounds and scores by accuracy - a clean
+  // attention measure that never bails early on a wrong tap (unlike the
+  // streak-based cup game).
+  { route: '/games/focus', label: 'Attention', query: 'rounds=6' },
   { route: '/games/math', label: 'Problem solving' },
 ];
 
@@ -59,8 +62,10 @@ export function computeBenchmarkScore(
   const vals = Object.values(scores).filter((v): v is number => typeof v === 'number');
   const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
   const hours = screenTimeHours > 0 ? screenTimeHours : 4;
-  const base = hours * 9 + 25; // 4h → 61, 8h → 97 of "rot"
-  const earnedBack = (avg / 100) * 45; // a strong average claws up to 45 back
-  const rot = Math.max(5, Math.min(95, Math.round(base - earnedBack)));
-  return 100 - rot; // invert: high = good
+  // Cognitive performance is the primary driver: all-wrong → ~10, all-correct
+  // → ~55 (top of the "Mid" band, leaving room to climb to Locked In / Elite
+  // through training). Heavy self-reported screen time applies a modest penalty.
+  const fromPerformance = (avg / 100) * 45 + 10; // 10..55
+  const screenPenalty = Math.max(0, hours - 3) * 2; // 0 at <=3h, grows with use
+  return Math.max(5, Math.min(55, Math.round(fromPerformance - screenPenalty)));
 }

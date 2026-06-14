@@ -81,7 +81,7 @@ export default function MathGame() {
     const accuracy = (finalCorrect / ROUNDS) * 100;
     recordCognitiveScore('problemSolving', accuracy);
     // Benchmark step (final test): record raw score, advance to the reveal.
-    if (isBenchmark) { setBenchmarkScore(String(bmIndex), accuracy); advanceBenchmark(bmIndex); return; }
+    if (isBenchmark) { setBenchmarkScore('problemSolving', accuracy); advanceBenchmark(bmIndex); return; }
     track(Events.GameCompleted, {
       game: 'math',
       score: finalScore,

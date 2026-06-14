@@ -139,7 +139,6 @@ export default function StatsScreen() {
             <View style={styles.gaugeCenter} pointerEvents="none">
               <Text style={[styles.gaugeScore, { color }]}>{result.score}</Text>
               <Text style={[styles.gaugeBand, { color }]}>{result.label.toUpperCase()}</Text>
-              <Text style={[styles.brainAge, { color: colors.muted }]}>Brain Age: {brainAge}</Text>
             </View>
           </View>
 
@@ -212,20 +211,48 @@ export default function StatsScreen() {
       {/* Hidden branded share card - captured by view-shot, never on screen. */}
       <View collapsable={false} ref={shareRef} style={styles.shareCard}>
         <LinearGradient
-          colors={['#F2660E', '#D94F00']}
+          colors={['#1A1A1A', '#0D0D0D']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 0, y: 1 }}
           style={styles.shareCardInner}
         >
-          <Image source={require('../../assets/icon.png')} style={styles.shareLogo} resizeMode="contain" />
-          <Text style={styles.shareCardEyebrow}>MY BRAINPOWER SCORE</Text>
-          <Text style={styles.shareCardScore}>{result.score}</Text>
-          <Text style={styles.shareCardBand}>{result.emoji}  {result.label}</Text>
-          <Text style={styles.shareCardAge}>Brain Age: {brainAge}</Text>
-          <View style={styles.shareCardMeterTrack}>
-            <View style={[styles.shareCardMeterFill, { width: `${Math.max(3, result.score)}%` }]} />
+          <View style={styles.shareCardHeader}>
+            <Image source={require('../../assets/icon.png')} style={styles.shareLogo} resizeMode="contain" />
+            <Text style={styles.shareCardAppName}>Brainlock</Text>
           </View>
-          <Text style={styles.shareCardCta}>Can you beat it?  ·  Brainlock</Text>
+
+          <Text style={styles.shareCardEyebrow}>BRAINPOWER SCORE</Text>
+          <Text style={styles.shareCardScore}>{result.score}</Text>
+
+          <View style={styles.shareCardMeterTrack}>
+            <LinearGradient
+              colors={['#F2660E', '#FF8A3D']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.shareCardMeterFill, { width: `${Math.max(3, result.score)}%` }]}
+            />
+          </View>
+
+          <View style={styles.shareCardStats}>
+            <View style={styles.shareCardStatItem}>
+              <Text style={styles.shareCardStatValue}>{rank.emoji} {rank.name}</Text>
+              <Text style={styles.shareCardStatLabel}>RANK</Text>
+            </View>
+            <View style={styles.shareCardDivider} />
+            <View style={styles.shareCardStatItem}>
+              <Text style={styles.shareCardStatValue}>{brainAge}</Text>
+              <Text style={styles.shareCardStatLabel}>BRAIN AGE</Text>
+            </View>
+            <View style={styles.shareCardDivider} />
+            <View style={styles.shareCardStatItem}>
+              <Text style={styles.shareCardStatValue}>{result.label}</Text>
+              <Text style={styles.shareCardStatLabel}>LEVEL</Text>
+            </View>
+          </View>
+
+          <View style={styles.shareCardFooter}>
+            <Text style={styles.shareCardCta}>Can you beat me?</Text>
+          </View>
         </LinearGradient>
       </View>
     </View>
@@ -249,7 +276,6 @@ const styles = StyleSheet.create({
   gaugeEmoji: { fontSize: 30, marginBottom: 2 },
   gaugeScore: { fontSize: 60, fontFamily: FontFamily.heavy, letterSpacing: -2, lineHeight: 64, fontVariant: ['tabular-nums'] },
   gaugeBand: { fontSize: 12, fontFamily: FontFamily.semibold, letterSpacing: 1.2, marginTop: 1 },
-  brainAge: { fontSize: 13, fontFamily: FontFamily.medium, marginTop: 4 },
 
   // CTA
   cta: {
@@ -300,14 +326,20 @@ const styles = StyleSheet.create({
   benchSub: { fontSize: 15, fontFamily: FontFamily.regular, marginTop: 8, marginBottom: 28, textAlign: 'center' },
 
   // Hidden share card
-  shareCard: { position: 'absolute', left: -10000, top: 0, width: 340 },
-  shareCardInner: { width: 340, paddingVertical: 48, paddingHorizontal: 32, borderRadius: 28, alignItems: 'center' },
-  shareLogo: { width: 64, height: 64, borderRadius: 16, marginBottom: 24 },
-  shareCardEyebrow: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontFamily: FontFamily.medium, letterSpacing: 2, marginBottom: 6 },
-  shareCardScore: { color: '#FFFFFF', fontSize: 116, fontFamily: FontFamily.heavy, lineHeight: 120, letterSpacing: -4, fontVariant: ['tabular-nums'] },
-  shareCardBand: { color: '#FFFFFF', fontSize: 22, fontFamily: FontFamily.semibold, marginTop: 4, marginBottom: 8 },
-  shareCardAge: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontFamily: FontFamily.medium, marginBottom: 24 },
-  shareCardMeterTrack: { width: '100%', height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden', marginBottom: 28 },
-  shareCardMeterFill: { height: '100%', borderRadius: 5, backgroundColor: '#FFFFFF' },
-  shareCardCta: { color: 'rgba(255,255,255,0.95)', fontSize: 16, fontFamily: FontFamily.semibold, letterSpacing: -0.2 },
+  shareCard: { position: 'absolute', left: -10000, top: 0, width: 360 },
+  shareCardInner: { width: 360, paddingTop: 32, paddingBottom: 28, paddingHorizontal: 32, borderRadius: 28, alignItems: 'center' },
+  shareCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 28 },
+  shareLogo: { width: 40, height: 40, borderRadius: 10 },
+  shareCardAppName: { color: 'rgba(255,255,255,0.9)', fontSize: 18, fontFamily: FontFamily.semibold, letterSpacing: -0.3 },
+  shareCardEyebrow: { color: '#F2660E', fontSize: 12, fontFamily: FontFamily.semibold, letterSpacing: 2.4, marginBottom: 4 },
+  shareCardScore: { color: '#FFFFFF', fontSize: 120, fontFamily: FontFamily.heavy, lineHeight: 124, letterSpacing: -5, fontVariant: ['tabular-nums'] },
+  shareCardMeterTrack: { width: '100%', height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginTop: 4, marginBottom: 28 },
+  shareCardMeterFill: { height: '100%', borderRadius: 4 },
+  shareCardStats: { flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'space-between', marginBottom: 28 },
+  shareCardStatItem: { flex: 1, alignItems: 'center' },
+  shareCardStatValue: { color: '#FFFFFF', fontSize: 18, fontFamily: FontFamily.semibold, letterSpacing: -0.3, marginBottom: 4 },
+  shareCardStatLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 10, fontFamily: FontFamily.medium, letterSpacing: 1.6 },
+  shareCardDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.12)' },
+  shareCardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
+  shareCardCta: { color: 'rgba(255,255,255,0.7)', fontSize: 15, fontFamily: FontFamily.medium, letterSpacing: -0.2 },
 });

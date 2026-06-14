@@ -10,9 +10,9 @@ export const PASS_MESSAGES: ResultMessage[] = [
 ];
 
 export const FAIL_MESSAGES: ResultMessage[] = [
-  { title: 'Skill issue', line: 'Not sharp enough. Run it back.' },
-  { title: 'Not quite', line: 'Close, but your brain needs more reps.' },
-  { title: 'Access denied', line: 'Your brain gave up before you did.' },
+  { title: 'Almost', line: 'Give it another go.' },
+  { title: 'So close', line: 'Run it back.' },
+  { title: 'Not yet', line: 'One more rep and you\'ve got it.' },
 ];
 
 /** Random verdict message from the appropriate bank. */
